@@ -160,87 +160,98 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 
 ## Traceability
 
-각 요구사항의 phase 매핑은 roadmap 생성 단계에서 채워진다.
+각 요구사항의 phase 매핑 (roadmap 생성 시 확정됨). 모든 v1 요구사항은 정확히 하나의 phase에 매핑된다.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | — | Pending |
-| FOUND-02 | — | Pending |
-| FOUND-03 | — | Pending |
-| FOUND-04 | — | Pending |
-| FOUND-05 | — | Pending |
-| FOUND-06 | — | Pending |
-| ENT-01 | — | Pending |
-| ENT-02 | — | Pending |
-| ENT-03 | — | Pending |
-| COLL-01 | — | Pending |
-| COLL-02 | — | Pending |
-| COLL-03 | — | Pending |
-| COLL-04 | — | Pending |
-| COLL-05 | — | Pending |
-| COLL-06 | — | Pending |
-| COLL-07 | — | Pending |
-| COLL-08 | — | Pending |
-| COLL-09 | — | Pending |
-| INGEST-01 | — | Pending |
-| INGEST-02 | — | Pending |
-| INGEST-03 | — | Pending |
-| INGEST-04 | — | Pending |
-| INGEST-05 | — | Pending |
-| INGEST-06 | — | Pending |
-| INGEST-07 | — | Pending |
-| INGEST-08 | — | Pending |
-| INGEST-09 | — | Pending |
-| INGEST-10 | — | Pending |
-| INGEST-11 | — | Pending |
-| INGEST-12 | — | Pending |
-| STORE-01 | — | Pending |
-| STORE-02 | — | Pending |
-| STORE-03 | — | Pending |
-| STORE-04 | — | Pending |
-| STORE-05 | — | Pending |
-| STORE-06 | — | Pending |
-| RET-01 | — | Pending |
-| RET-02 | — | Pending |
-| RET-03 | — | Pending |
-| MCP-01 | — | Pending |
-| MCP-02 | — | Pending |
-| MCP-03 | — | Pending |
-| MCP-04 | — | Pending |
-| MCP-05 | — | Pending |
-| MCP-06 | — | Pending |
-| MCP-07 | — | Pending |
-| MCP-08 | — | Pending |
-| MCP-09 | — | Pending |
-| MCP-10 | — | Pending |
-| GRAPH-01 | — | Pending |
-| GRAPH-02 | — | Pending |
-| GRAPH-03 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| DASH-04 | — | Pending |
-| NOTE-01 | — | Pending |
-| NOTE-02 | — | Pending |
-| NOTE-03 | — | Pending |
-| JUDGE-01 | — | Pending |
-| JUDGE-02 | — | Pending |
-| JUDGE-03 | — | Pending |
-| JUDGE-04 | — | Pending |
-| JUDGE-05 | — | Pending |
-| JUDGE-06 | — | Pending |
-| OPS-01 | — | Pending |
-| OPS-02 | — | Pending |
-| OPS-03 | — | Pending |
-| OPS-04 | — | Pending |
-| OPS-05 | — | Pending |
-| OPS-06 | — | Pending |
+| FOUND-01 | Phase 1 | Pending |
+| FOUND-02 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Pending |
+| FOUND-05 | Phase 1 | Pending |
+| FOUND-06 | Phase 1 | Pending |
+| ENT-01 | Phase 2 | Pending |
+| ENT-02 | Phase 2 | Pending |
+| ENT-03 | Phase 2 | Pending |
+| COLL-01 | Phase 3 | Pending |
+| COLL-02 | Phase 4 | Pending |
+| COLL-03 | Phase 4 | Pending |
+| COLL-04 | Phase 4 | Pending |
+| COLL-05 | Phase 4 | Pending |
+| COLL-06 | Phase 3 | Pending |
+| COLL-07 | Phase 1 | Pending |
+| COLL-08 | Phase 3 | Pending |
+| COLL-09 | Phase 3 | Pending |
+| INGEST-01 | Phase 3 | Pending |
+| INGEST-02 | Phase 5 | Pending |
+| INGEST-03 | Phase 5 | Pending |
+| INGEST-04 | Phase 5 | Pending |
+| INGEST-05 | Phase 5 | Pending |
+| INGEST-06 | Phase 5 | Pending |
+| INGEST-07 | Phase 5 | Pending |
+| INGEST-08 | Phase 3 | Pending |
+| INGEST-09 | Phase 3 | Pending |
+| INGEST-10 | Phase 3 | Pending |
+| INGEST-11 | Phase 3 | Pending |
+| INGEST-12 | Phase 3 | Pending |
+| STORE-01 | Phase 2 | Pending |
+| STORE-02 | Phase 2 | Pending |
+| STORE-03 | Phase 3 | Pending |
+| STORE-04 | Phase 3 | Pending |
+| STORE-05 | Phase 3 | Pending |
+| STORE-06 | Phase 3 | Pending |
+| RET-01 | Phase 3 | Pending |
+| RET-02 | Phase 3 | Pending |
+| RET-03 | Phase 3 | Pending |
+| MCP-01 | Phase 3 | Pending |
+| MCP-02 | Phase 3 | Pending |
+| MCP-03 | Phase 6 | Pending |
+| MCP-04 | Phase 6 | Pending |
+| MCP-05 | Phase 6 | Pending |
+| MCP-06 | Phase 6 | Pending |
+| MCP-07 | Phase 6 | Pending |
+| MCP-08 | Phase 6 | Pending |
+| MCP-09 | Phase 6 | Pending |
+| MCP-10 | Phase 6 | Pending |
+| GRAPH-01 | Phase 7 | Pending |
+| GRAPH-02 | Phase 7 | Pending |
+| GRAPH-03 | Phase 7 | Pending |
+| DASH-01 | Phase 8 | Pending |
+| DASH-02 | Phase 8 | Pending |
+| DASH-03 | Phase 8 | Pending |
+| DASH-04 | Phase 8 | Pending |
+| NOTE-01 | Phase 8 | Pending |
+| NOTE-02 | Phase 8 | Pending |
+| NOTE-03 | Phase 8 | Pending |
+| JUDGE-01 | Phase 9 | Pending |
+| JUDGE-02 | Phase 9 | Pending |
+| JUDGE-03 | Phase 9 | Pending |
+| JUDGE-04 | Phase 3 | Pending |
+| JUDGE-05 | Phase 9 | Pending |
+| JUDGE-06 | Phase 9 | Pending |
+| OPS-01 | Phase 9 | Pending |
+| OPS-02 | Phase 9 | Pending |
+| OPS-03 | Phase 9 | Pending |
+| OPS-04 | Phase 9 | Pending |
+| OPS-05 | Phase 9 | Pending |
+| OPS-06 | Phase 1 | Pending |
 
 **Coverage:**
-- v1 requirements: 66 total
-- Mapped to phases: 0 (roadmap 단계에서 채움)
-- Unmapped: 66 ⚠️ (roadmap 직후 0이어야 함)
+- v1 requirements: 71 total
+- Mapped to phases: 71 ✓ (모든 v1 요구사항이 정확히 한 phase에 매핑됨)
+- Unmapped: 0
+
+**Phase distribution:**
+- Phase 1 (Load-Bearing Foundation): 8 requirements
+- Phase 2 (Canonical Entity Identity): 5 requirements
+- Phase 3 (One-Company Walking Skeleton): 20 requirements
+- Phase 4 (Multi-Source Collector Coverage): 4 requirements
+- Phase 5 (Local-LLM Enrichment with Korean Number Safety): 6 requirements
+- Phase 6 (Full MCP Tool Surface): 8 requirements
+- Phase 7 (Graph Layer & graphify Integration): 3 requirements
+- Phase 8 (Vault Dashboards & Research Memo Templates): 7 requirements
+- Phase 9 (Judgment Prompt Conventions & Operations Hardening): 10 requirements
 
 ---
 *Requirements defined: 2026-04-17*
-*Last updated: 2026-04-17 after initial definition*
+*Last updated: 2026-04-17 after roadmap traceability mapping*
