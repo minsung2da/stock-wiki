@@ -23,6 +23,7 @@ SQLAlchemy `text()` + bind parameters (Phase 2 WR-03).
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
@@ -31,6 +32,7 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.engine import Engine
 
+from db.entity import upsert_entity
 from ingest.chunking import chunk_document
 from ingest.embedder import EMBEDDING_MODEL_VERSION, Embedder
 from ingest.heartbeat import record_source_run
@@ -76,6 +78,8 @@ def process_document(
     fm_model, body = read_frontmatter(str(path))
     source = fm_model.provenance.source
     corp_code = fm_model.provenance.corp_code  # may be None (news, notes)
+    fm_ticker = fm_model.provenance.ticker
+    fm_company_name = fm_model.provenance.company_name
 
     # Content hash: sha256 of normalized body (D-13/D-14).
     new_hash = hashlib.sha256(normalize_body(body).encode("utf-8")).hexdigest()
@@ -146,6 +150,23 @@ def process_document(
                         "toks": toks,
                     },
                 )
+
+    # Bug D-1: re-seed entities from frontmatter so `ingest rebuild` (which
+    # wipes entities/entity_aliases) restores ticker->corp_code resolution
+    # using vault alone. Collector also calls upsert_entity (idempotent), so
+    # this double-seed is safe. Best-effort: never fail a document ingest on
+    # an entity seeding hiccup (mirrors collector's defense-in-depth).
+    if corp_code:
+        canonical_name = fm_company_name
+        if canonical_name is None:
+            with engine.connect() as conn:
+                existing_name = conn.execute(
+                    sa.text("SELECT canonical_name FROM entities WHERE corp_code = :cc"),
+                    {"cc": corp_code},
+                ).scalar()
+            canonical_name = existing_name or f"corp_{corp_code}"
+        with contextlib.suppress(Exception):  # seed is best-effort (D-1)
+            upsert_entity(engine, corp_code, canonical_name, fm_ticker)
 
     # After commit: update zone 2 (ingest_state) and write back.
     fm_model.ingest_state.processed = True

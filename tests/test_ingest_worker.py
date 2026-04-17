@@ -17,7 +17,7 @@ from sqlalchemy.engine import Engine
 
 from ingest import worker as worker_mod
 from ingest.embedder import EMBEDDING_MODEL_VERSION
-from shared.frontmatter import FrontMatter, ProvenanceBlock, write_frontmatter
+from shared.frontmatter import FrontMatter, ProvenanceBlock, read_frontmatter, write_frontmatter
 
 # ---------- Fakes ----------
 
@@ -305,6 +305,108 @@ class TestIngestWorker:
         assert stats_force["succeeded"] == 1
         assert stats_force["skipped"] == 0
         assert _count_rows(pg_clean, "chunks") == chunks_before
+
+    def test_W14_worker_seeds_entity_from_frontmatter(
+        self, pg_clean: Engine, tmp_path: Path, fast_worker_env: _FakeEmbedder
+    ) -> None:
+        """D-1: worker must seed entities+entity_aliases from frontmatter.
+
+        After ingest, resolve_entity(ticker) must return the Samsung entity
+        — proves the rebuild path (collector never runs) can still populate
+        the identity tables.
+        """
+        from db.entity import resolve_entity
+
+        _seed_vault_doc(tmp_path, "20260101000001", "samsung body", corp_code="00126380")
+        # Manually write company_name into frontmatter (collector does this in prod).
+        path = next((tmp_path / "raw" / "dart" / "2026").glob("*.md"))
+        fm_model, body = read_frontmatter(str(path))
+        fm_model.provenance.company_name = "삼성전자"
+        write_frontmatter(str(path), fm_model, body)
+
+        stats = worker_mod.ingest_run(tmp_path, pg_clean)
+        assert stats["succeeded"] == 1
+
+        # entities + entity_aliases populated
+        with pg_clean.connect() as c:
+            ent = c.execute(
+                sa.text("SELECT corp_code, canonical_name, current_ticker FROM entities")
+            ).one()
+            assert ent.corp_code == "00126380"
+            assert ent.canonical_name == "삼성전자"
+            assert ent.current_ticker == "005930"
+            alias_count = c.execute(
+                sa.text(
+                    "SELECT count(*) FROM entity_aliases "
+                    "WHERE corp_code = '00126380' AND kind = 'ticker' AND value = '005930'"
+                )
+            ).scalar_one()
+            assert alias_count == 1
+
+        # Ticker lookup works
+        ent = resolve_entity(pg_clean, "005930")
+        assert ent is not None
+        assert ent.corp_code == "00126380"
+        assert ent.canonical_name == "삼성전자"
+
+    def test_W15_worker_seeds_entity_with_fallback_canonical_name(
+        self, pg_clean: Engine, tmp_path: Path, fast_worker_env: _FakeEmbedder
+    ) -> None:
+        """D-1: frontmatter missing company_name → fall back to `corp_{code}`.
+
+        Simulates legacy vault files written before the company_name field existed.
+        """
+        from db.entity import resolve_entity
+
+        _seed_vault_doc(tmp_path, "20260101000001", "samsung body", corp_code="00126380")
+        # frontmatter has no company_name (default None, excluded from YAML dump).
+
+        stats = worker_mod.ingest_run(tmp_path, pg_clean)
+        assert stats["succeeded"] == 1
+
+        ent = resolve_entity(pg_clean, "005930")
+        assert ent is not None
+        assert ent.canonical_name == "corp_00126380"
+
+    def test_W16_rebuild_reseeds_entities_from_vault(
+        self, pg_clean: Engine, tmp_path: Path, fast_worker_env: _FakeEmbedder
+    ) -> None:
+        """D-1 end-to-end: simulate rebuild = wipe entities + re-run worker.
+
+        Mimics `stock ingest rebuild --yes` path: entities table is wiped
+        before worker re-processes vault documents. After rebuild, ticker
+        resolution must still work purely from vault-resident frontmatter.
+        """
+        from db.entity import resolve_entity, upsert_entity
+
+        # 1. Initial state: collector seeded entity + worker ingested doc.
+        _seed_vault_doc(tmp_path, "20260101000001", "samsung body", corp_code="00126380")
+        path = next((tmp_path / "raw" / "dart" / "2026").glob("*.md"))
+        fm_model, body = read_frontmatter(str(path))
+        fm_model.provenance.company_name = "삼성전자"
+        write_frontmatter(str(path), fm_model, body)
+        upsert_entity(pg_clean, "00126380", "삼성전자", "005930")
+        worker_mod.ingest_run(tmp_path, pg_clean)
+        assert resolve_entity(pg_clean, "005930") is not None
+
+        # 2. Simulate rebuild: wipe identity tables. (Real rebuild calls
+        # alembic downgrade/upgrade which drops+recreates all tables;
+        # TRUNCATE here is equivalent for the identity surface.)
+        with pg_clean.begin() as conn:
+            conn.execute(sa.text("TRUNCATE entities RESTART IDENTITY CASCADE"))
+
+        assert resolve_entity(pg_clean, "005930") is None
+
+        # 3. Re-run worker (force_reembed since documents may also have
+        # been wiped in a real rebuild; TRUNCATE cascade already wiped them).
+        stats = worker_mod.ingest_run(tmp_path, pg_clean, force_reembed=True)
+        assert stats["succeeded"] == 1
+
+        # 4. resolve_entity(ticker) works again — vault alone restored identity.
+        ent = resolve_entity(pg_clean, "005930")
+        assert ent is not None
+        assert ent.corp_code == "00126380"
+        assert ent.canonical_name == "삼성전자"
 
     def test_W13_populates_documents_corp_code(
         self, pg_clean: Engine, tmp_path: Path, fast_worker_env: _FakeEmbedder
