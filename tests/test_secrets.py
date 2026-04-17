@@ -53,3 +53,11 @@ class TestSecretManagement:
         assert "notes/private/" in content, (
             ".gitignore must exclude notes/private/ for portfolio privacy"
         )
+
+    def test_env_file_not_committed(self) -> None:
+        """.env must not exist in the project root (it must remain gitignored)."""
+        env_file = PROJECT_ROOT / ".env"
+        assert not env_file.exists(), (
+            ".env file found at project root — it must NOT be committed. "
+            "Add real values to .env but keep it gitignored."
+        )
