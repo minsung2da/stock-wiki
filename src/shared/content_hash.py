@@ -12,6 +12,7 @@ D-14: normalize body — CRLF->LF, rstrip each line, single trailing newline.
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
 import frontmatter as fm
 
@@ -28,6 +29,10 @@ def compute_content_hash(path: str) -> str:
     """Per D-13: sha256 of frontmatter-stripped, normalized body.
 
     Returns a 64-char lowercase hex digest.
+
+    Path is resolved via Path.resolve() to eliminate any ../  traversal
+    components before the file is opened (D-12 / path-traversal guard).
     """
-    post = fm.load(path)
+    resolved = Path(path).resolve()
+    post = fm.load(str(resolved))
     return hashlib.sha256(normalize_body(post.content).encode("utf-8")).hexdigest()
