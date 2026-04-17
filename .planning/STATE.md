@@ -130,9 +130,10 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260417-q3h | Replace local LLM (Ollama/Qwen/EXAONE) stack with Claude schedule + bge-m3-only embeddings | 2026-04-17 | be8c15e | [260417-q3h-replace-local-llm-ollama-qwen-exaone-sta](./quick/260417-q3h-replace-local-llm-ollama-qwen-exaone-sta/) |
 | 260418-asr | Fix Phase 3 E2E bugs: collector vault path (A), DART retry hardening (B), auto-seed entities (C) | 2026-04-17 | e23cbc1 | [260418-asr-fix-phase-3-bugs-a-collector-vault-path-](./quick/260418-asr-fix-phase-3-bugs-a-collector-vault-path-/) |
+| 260418-bwv | Fix D-1: ingest worker re-seeds entities from frontmatter so `stock ingest rebuild` restores ticker resolution from vault alone | 2026-04-17 | 85efe29 | [260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro](./quick/260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro/) |
 
 ## Session Continuity
 
-Last session: 2026-04-17T19:10:00.000Z
-Stopped at: Completed quick-260418-asr (3 Phase-3 E2E bugfixes)
+Last session: 2026-04-17T19:40:00.000Z
+Stopped at: Completed quick-260418-bwv (D-1 rebuild entity reseed)
 Resume file: None
