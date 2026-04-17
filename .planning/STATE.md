@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-04-17T13:53:25.075Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-04-17T14:08:17.108Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 12
-  completed_plans: 8
-  percent: 67
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 03 (one-company-walking-skeleton) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-canonical-entity-identity P03 | 15 min | 2 tasks | 8 files |
 | Phase 03 P01 | 18min | 2 tasks | 7 files |
 | Phase 03 P02 | 12min | 2 tasks | 8 files |
+| Phase 03-one-company-walking-skeleton P03 | 11min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,10 @@ Recent decisions affecting current work:
 - [Phase 03]: trust_level lives on ProvenanceBlock (Zone 1, collector-written, D-19 enum)
 - [Phase 03]: Content-hash comparison on freshly-fetched body (not existing file hash) — guarantees correctness when remote changes
 - [Phase 03]: Heartbeat sources dict lives outside FrontMatter Pydantic schema (operational telemetry != document content)
+- [Phase 03-one-company-walking-skeleton]: injection_defense lives under src/ingest/ — leaf utility consumed by both worker (Plan 04) and MCP (Plan 05); DB/LLM-free
+- [Phase 03-one-company-walking-skeleton]: Embedder lazy-imports SentenceTransformer; EMBEDDING_MODEL_VERSION='BAAI/bge-m3@v1' importable without torch for CI parity
+- [Phase 03-one-company-walking-skeleton]: chunk_index monotonic per document; section_index resets at each new section (Q4 resolution)
+- [Phase 03-one-company-walking-skeleton]: PATTERNS ID snapshot stable: EN_IGNORE_PREV/FAKE_SYSTEM_TAG/DAN_MODE/ROLEPLAY_ADMIN/KO_IGNORE_PREV/KO_ADMIN_MODE
 
 ### Pending Todos
 
@@ -113,6 +118,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T13:53:13.620Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-04-17T14:08:07.855Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None

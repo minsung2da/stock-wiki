@@ -72,7 +72,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md — Migration 0002 (section_path/section_index/bm25_tokens + HNSW + BM25 indexes) + dart-fss/vchord_bm25 API probes
 - [x] 03-02-PLAN.md — DART collector (client/fetcher/writer) + heartbeat + ProvenanceBlock.trust_level
-- [ ] 03-03-PLAN.md — Injection defense scaffolding + mecab-ko tokenizer + bge-m3 embedder + section chunker + DART parser
+- [x] 03-03-PLAN.md — Injection defense scaffolding + mecab-ko tokenizer + bge-m3 embedder + section chunker + DART parser
 - [ ] 03-04-PLAN.md — Ingest worker (scan → parse → chunk → embed → tokenize → upsert) with per-doc transaction + content-hash dedup
 - [ ] 03-05-PLAN.md — FastMCP 2.x stdio server + hybrid RRF search tool + .mcp.json registration
 - [ ] 03-06-PLAN.md — stock CLI + ingest rebuild (idempotent) + E2E schema test + human-verify JUDGE-04 checkpoint

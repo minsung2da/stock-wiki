@@ -43,10 +43,10 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [ ] **INGEST-05**: LLM이 frontmatter의 `_derived` 블록에 `tickers`, `event_type`, `catalysts`, `sentiment`, `numeric_facts`, `summary` 속성을 추출하여 쓴다
 - [ ] **INGEST-06**: DART 재무제표 수치는 LLM을 거치지 않고 dart-fss 구조화 접근자를 통해 직접 추출된다
 - [ ] **INGEST-07**: 뉴스·리포트 본문의 숫자 추출은 regex 후보 추출 → LLM 선택 → Pydantic 검증 → 자릿수 체크섬 단계를 거친다
-- [ ] **INGEST-08**: 프롬프트 인젝션 방어: untrusted 본문은 XML 델리미터로 감싸 전달, 알려진 주입 패턴(`ignore previous`, 가짜 system 태그 등)을 사전 필터링한다
-- [ ] **INGEST-09**: 종목토론방 같은 적대적 소스의 개별 게시물 본문은 LLM 추출 파이프라인에 투입하지 않는다
-- [ ] **INGEST-10**: bge-m3 임베딩(1024차원)이 sentence-transformers 라이브러리로 로컬에서 직접 생성(No Ollama)되고 Postgres `chunks` 테이블에 저장된다
-- [ ] **INGEST-11**: mecab-ko로 한국어 사전 토큰화된 필드가 `chunks.bm25_tokens`에 저장되어 BM25 쿼리에 사용된다
+- [x] **INGEST-08**: 프롬프트 인젝션 방어: untrusted 본문은 XML 델리미터로 감싸 전달, 알려진 주입 패턴(`ignore previous`, 가짜 system 태그 등)을 사전 필터링한다
+- [x] **INGEST-09**: 종목토론방 같은 적대적 소스의 개별 게시물 본문은 LLM 추출 파이프라인에 투입하지 않는다
+- [x] **INGEST-10**: bge-m3 임베딩(1024차원)이 sentence-transformers 라이브러리로 로컬에서 직접 생성(No Ollama)되고 Postgres `chunks` 테이블에 저장된다
+- [x] **INGEST-11**: mecab-ko로 한국어 사전 토큰화된 필드가 `chunks.bm25_tokens`에 저장되어 BM25 쿼리에 사용된다
 - [x] **INGEST-12**: 임베딩 모델 버전이 `chunks.embedding_model` 컬럼에 기록되어 모델 변경 시 재인덱싱이 가능하다
 
 ### 저장소 (Storage)
@@ -189,10 +189,10 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | INGEST-05 | Phase 5 | Pending |
 | INGEST-06 | Phase 5 | Pending |
 | INGEST-07 | Phase 5 | Pending |
-| INGEST-08 | Phase 3 | Pending |
-| INGEST-09 | Phase 3 | Pending |
-| INGEST-10 | Phase 3 | Pending |
-| INGEST-11 | Phase 3 | Pending |
+| INGEST-08 | Phase 3 | Complete |
+| INGEST-09 | Phase 3 | Complete |
+| INGEST-10 | Phase 3 | Complete |
+| INGEST-11 | Phase 3 | Complete |
 | INGEST-12 | Phase 3 | Complete |
 | STORE-01 | Phase 2 | Complete |
 | STORE-02 | Phase 2 | Complete |
