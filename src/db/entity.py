@@ -5,16 +5,22 @@ Downstream collectors (Phase 3+) must use `resolve_entity` — do not re-impleme
 
 SQL safety: all queries use SQLAlchemy bind parameters (:v, :asof). No
 f-string interpolation into SQL. Digit/length pre-filter (D-12) ensures only
-^\\d{8}$ or ^\\d{6}$ strings reach the database. See threat T-02-11.
+^[0-9]{8}$ or ^[0-9]{6}$ strings reach the database. See threat T-02-11.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
+
+# ASCII-only digit patterns — str.isdigit() accepts non-ASCII digits (e.g.
+# superscript ² returns True); these regexes close that loophole (D-12).
+_CORP_CODE_RE = re.compile(r"^[0-9]{8}$")
+_TICKER_RE = re.compile(r"^[0-9]{6}$")
 
 
 @dataclass(frozen=True)
@@ -22,10 +28,6 @@ class Entity:
     corp_code: str
     canonical_name: str
     current_ticker: str | None
-
-
-def _is_digits(value: str, length: int) -> bool:
-    return len(value) == length and value.isdigit()
 
 
 def resolve_entity(
@@ -39,11 +41,11 @@ def resolve_entity(
     D-10/D-11: as_of=None → current only (valid_to IS NULL);
                as_of=<date> → historical through an entity_aliases row whose
                [valid_from, valid_to) half-open interval covers the date.
-    D-12: 8 digits → direct corp_code lookup on entities;
-          6 digits → ticker alias lookup through entity_aliases;
-          any other length → None (mismatch).
+    D-12: 8 ASCII digits → direct corp_code lookup on entities;
+          6 ASCII digits → ticker alias lookup through entity_aliases;
+          any other value → None (mismatch).
     """
-    if _is_digits(value, 8):
+    if _CORP_CODE_RE.match(value):
         sql = text(
             """
             SELECT corp_code, canonical_name, current_ticker
@@ -52,7 +54,7 @@ def resolve_entity(
             """
         )
         params: dict[str, object] = {"v": value}
-    elif _is_digits(value, 6):
+    elif _TICKER_RE.match(value):
         if as_of is None:
             sql = text(
                 """
