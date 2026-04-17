@@ -258,14 +258,23 @@ def test_downgrade_then_upgrade_idempotent(pg_engine):
     """Downgrade to base, re-upgrade to head — all tables return.
 
     Also asserts that re-running `upgrade head` on an already-migrated DB is a no-op.
+
+    NOTE: Uses a try/finally guard to ensure the session-scoped engine is always
+    left in a fully-upgraded state, even if an assertion fails mid-test. This
+    prevents session-state bleed where tests that run after this one (if test
+    ordering changes) would encounter a post-downgrade schema.
     """
     url = os.environ["DATABASE_URL"]
     cfg = Config("src/db/alembic.ini")
     cfg.set_main_option("sqlalchemy.url", url)
-    command.downgrade(cfg, "base")
-    assert not REQUIRED_TABLES.issubset(_fetch_tables(pg_engine))
-    command.upgrade(cfg, "head")
-    assert REQUIRED_TABLES.issubset(_fetch_tables(pg_engine))
-    # Idempotent: running upgrade head again is a no-op
-    command.upgrade(cfg, "head")
-    assert REQUIRED_TABLES.issubset(_fetch_tables(pg_engine))
+    try:
+        command.downgrade(cfg, "base")
+        assert not REQUIRED_TABLES.issubset(_fetch_tables(pg_engine))
+        command.upgrade(cfg, "head")
+        assert REQUIRED_TABLES.issubset(_fetch_tables(pg_engine))
+        # Idempotent: running upgrade head again is a no-op
+        command.upgrade(cfg, "head")
+        assert REQUIRED_TABLES.issubset(_fetch_tables(pg_engine))
+    finally:
+        # Always restore full schema so subsequent tests see a clean migrated DB.
+        command.upgrade(cfg, "head")
