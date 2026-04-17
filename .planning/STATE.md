@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-04-17T14:46:08.248Z"
+status: verifying
+stopped_at: Completed 03-06-PLAN.md (Phase 3 complete)
+last_updated: "2026-04-17T15:12:38.229Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 9
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
-  percent: 92
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 
 Phase: 03 (one-company-walking-skeleton) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-17
 
 Progress: [░░░░░░░░░░] 0%
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-one-company-walking-skeleton P03 | 11min | 3 tasks | 11 files |
 | Phase 03 P04 | 10min | 1 tasks | 3 files |
 | Phase 03 P05 | 55min | 2 tasks | 12 files |
+| Phase 03-one-company-walking-skeleton P06 | 35min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,9 @@ Recent decisions affecting current work:
 - [Phase 03]: BM25 ORDER BY is ASC NULLS LAST — vchord_bm25 returns negative scores where lower = better match (plan SQL sketch was inverted)
 - [Phase 03]: NULLable filter binds require explicit CAST to column type — psycopg3 AmbiguousParameter otherwise
 - [Phase 03]: FastMCP tool registered via mcp.tool()(search) call-form — preserves the callable name bound to plain function for tests + internal callers
+- [Phase 03-one-company-walking-skeleton]: Phase 03-06: hatchling build-backend + tool.uv.package=true required to register stock-mcp + stock entry scripts (latent bug from Plan 01)
+- [Phase 03-one-company-walking-skeleton]: Phase 03-06: Alembic URL must use engine.url.render_as_string(hide_password=False) — str(engine.url) masks password as ***
+- [Phase 03-one-company-walking-skeleton]: Phase 03-06: JUDGE-04 live Claude Code query auto-approved under gsd auto_advance — automated E2 schema test discharges machine-checkable half; operator runs live 9-step procedure out-of-band
 
 ### Pending Todos
 
@@ -127,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T14:46:07.758Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-04-17T15:12:29.372Z
+Stopped at: Completed 03-06-PLAN.md (Phase 3 complete)
 Resume file: None

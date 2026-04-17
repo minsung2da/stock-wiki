@@ -55,7 +55,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [x] **STORE-02**: `documents.id`는 `sha256(body)`로 정의되어 콘텐츠 주소화된다
 - [x] **STORE-03**: `chunks`에 HNSW 벡터 인덱스(pgvector 0.8, `iterative_scan=relaxed_order`)가 설정된다
 - [x] **STORE-04**: VectorChord-BM25 인덱스가 `chunks.bm25_tokens`에 설정된다
-- [ ] **STORE-05**: Markdown+frontmatter vault 단독으로 DB 전체를 재구성할 수 있는 `ingest rebuild` 커맨드가 있다 (DB는 캐시, vault는 SoT)
+- [x] **STORE-05**: Markdown+frontmatter vault 단독으로 DB 전체를 재구성할 수 있는 `ingest rebuild` 커맨드가 있다 (DB는 캐시, vault는 SoT)
 - [x] **STORE-06**: frontmatter 세 구역(provenance / ingest state / `_derived`)이 혼합되지 않도록 ingest 코드가 구역별 write 권한을 enforce한다
 
 ### 하이브리드 검색 (Retrieval)
@@ -198,7 +198,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | STORE-02 | Phase 2 | Complete |
 | STORE-03 | Phase 3 | Complete |
 | STORE-04 | Phase 3 | Complete |
-| STORE-05 | Phase 3 | Pending |
+| STORE-05 | Phase 3 | Complete |
 | STORE-06 | Phase 3 | Complete |
 | RET-01 | Phase 3 | Complete |
 | RET-02 | Phase 3 | Complete |
