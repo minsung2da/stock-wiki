@@ -1,6 +1,9 @@
 """Pydantic v2 models for the 3-zone frontmatter schema.
 
 Zone 1 (provenance): Written by collectors at fetch time. Never overwritten by ingest.
+    trust_level gates prompt-injection defense (D-19): trusted (DART/ECOS/FRED) →
+    LLM-allowed; semi_trusted (news) → allowed with delimiter wrap; adversarial
+    (forums) → LLM-skipped (INGEST-09).
 Zone 2 (ingest_state): Written by ingest pipeline. Tracks processing state.
 Zone 3 (_derived): LLM-extracted attributes. Regenerable; do not hand-edit.
 
@@ -10,6 +13,7 @@ Dataview queries use nested access: WHERE provenance.source = "dart" (per D-11).
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 import frontmatter as fm
 from pydantic import BaseModel, Field, ValidationError
@@ -27,6 +31,7 @@ class ProvenanceBlock(BaseModel):
     corp_code: str | None = None  # DART 8-digit canonical ID
     ticker: str | None = None  # KRX 6-digit convenience field
     lang: str = "ko"
+    trust_level: Literal["trusted", "semi_trusted", "adversarial"] = "trusted"
 
 
 class IngestStateBlock(BaseModel):
