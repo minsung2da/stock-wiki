@@ -5,6 +5,8 @@ Zone 1 (provenance): Written by collectors at fetch time. Never overwritten by i
     LLM-allowed; semi_trusted (news) → allowed with delimiter wrap; adversarial
     (forums) → LLM-skipped (INGEST-09).
 Zone 2 (ingest_state): Written by ingest pipeline. Tracks processing state.
+    injection_flags: pattern IDs from detect_injection_patterns (D-18) — recorded
+    by the ingest worker (Plan 04) so downstream LLM gates can skip poisoned docs.
 Zone 3 (_derived): LLM-extracted attributes. Regenerable; do not hand-edit.
 
 Dataview queries use nested access: WHERE provenance.source = "dart" (per D-11).
@@ -42,6 +44,7 @@ class IngestStateBlock(BaseModel):
     embedding_model: str | None = None
     ingest_model: str | None = None
     ingest_version: int | None = None
+    injection_flags: list[str] = Field(default_factory=list)
 
 
 class SentimentBlock(BaseModel):
