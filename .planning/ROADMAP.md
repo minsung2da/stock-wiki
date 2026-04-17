@@ -68,7 +68,14 @@ Plans:
   4. `ingest rebuild` wipes and re-creates the DB from vault alone and reproduces the same document/chunk counts
   5. A `search(query, ticker?, date_range?, source?, mode='hybrid')` MCP tool runs dense + BM25 in parallel, fuses with RRF (k=60), applies structured SQL filters before vector scan, and returns `{vault_path, excerpt, frontmatter_ref, score}` in under 8k tokens and under 5s p95
   6. In Claude Code, "삼성전자 최근 공시 알려줘" returns an answer containing a clickable vault path citation to a real file under `vault/raw/dart/`; prompt-injection defenses (XML delimiters, pattern pre-filter) are live and adversarial-source bodies are excluded from LLM pipelines even though the LLM is not yet wired in
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 03-01-PLAN.md — Migration 0002 (section_path/section_index/bm25_tokens + HNSW + BM25 indexes) + dart-fss/vchord_bm25 API probes
+- [ ] 03-02-PLAN.md — DART collector (client/fetcher/writer) + heartbeat + ProvenanceBlock.trust_level
+- [ ] 03-03-PLAN.md — Injection defense scaffolding + mecab-ko tokenizer + bge-m3 embedder + section chunker + DART parser
+- [ ] 03-04-PLAN.md — Ingest worker (scan → parse → chunk → embed → tokenize → upsert) with per-doc transaction + content-hash dedup
+- [ ] 03-05-PLAN.md — FastMCP 2.x stdio server + hybrid RRF search tool + .mcp.json registration
+- [ ] 03-06-PLAN.md — stock CLI + ingest rebuild (idempotent) + E2E schema test + human-verify JUDGE-04 checkpoint
 
 ### Phase 4: Multi-Source Collector Coverage
 **Goal**: Beyond DART, the vault receives KRX prices + investor flow + short balance, Korean economy news from at least two outlets, macro indicators from ECOS and FRED, and KIND trading-halt/관리종목/불성실공시 events. Each collector is an isolated module: one source failing does not block the others, and reruns are idempotent.
@@ -154,7 +161,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Load-Bearing Foundation | 0/3 | Planning complete | - |
 | 2. Canonical Entity Identity | 0/3 | Planning complete | - |
-| 3. One-Company Walking Skeleton | 0/TBD | Not started | - |
+| 3. One-Company Walking Skeleton | 0/6 | Planning complete | - |
 | 4. Multi-Source Collector Coverage | 0/TBD | Not started | - |
 | 5. Claude-Schedule Enrichment with Korean Number Safety | 0/TBD | Not started | - |
 | 6. Full MCP Tool Surface | 0/TBD | Not started | - |
