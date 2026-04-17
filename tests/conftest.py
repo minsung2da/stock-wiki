@@ -1,10 +1,13 @@
 import os
+import re
 from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+
+_SAFE_TABLE_RE = re.compile(r"^[a-z_]+$")
 
 
 @pytest.fixture
@@ -111,11 +114,9 @@ def pg_clean(pg_engine: Engine) -> Engine:
         }
         to_truncate = [t for t in _PHASE2_TABLES if t in existing]
         for tbl in to_truncate:
-            # tbl is guaranteed to be a member of _PHASE2_TABLES (filtered from
-            # information_schema); information_schema.table_name cannot contain
-            # SQL metacharacters.  Per-table calls avoid a single-f-string that
-            # would become an injection path if _PHASE2_TABLES ever grew dynamic
-            # entries.
+            # Assert safe identifier before interpolation: guards against future
+            # _PHASE2_TABLES entries that contain SQL metacharacters.
+            assert _SAFE_TABLE_RE.match(tbl), f"unsafe table name: {tbl!r}"
             conn.execute(sa.text(f"TRUNCATE {tbl} RESTART IDENTITY CASCADE"))
     return pg_engine
 
