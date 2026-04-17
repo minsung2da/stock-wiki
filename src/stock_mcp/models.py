@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 __all__ = ["DateRange", "SearchHit", "SearchResult"]
 
@@ -26,6 +26,12 @@ class DateRange(BaseModel):
         except ValueError as exc:
             raise ValueError("date must be ISO YYYY-MM-DD") from exc
         return v
+
+    @model_validator(mode="after")
+    def _start_before_end(self) -> DateRange:
+        if self.start and self.end and self.start > self.end:
+            raise ValueError("start must be <= end")
+        return self
 
 
 class SearchHit(BaseModel):
