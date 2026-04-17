@@ -39,14 +39,29 @@ class IngestStateBlock(BaseModel):
     ingest_version: int | None = None
 
 
+class SentimentBlock(BaseModel):
+    """Structured sentiment scores extracted by the ingest LLM."""
+
+    bullish_score: float | None = None  # 0.0–1.0
+    label: str | None = None  # bullish | bearish | neutral
+
+
+class NumericFact(BaseModel):
+    """A single numeric data point extracted by the ingest LLM."""
+
+    key: str
+    value: float
+    unit: str | None = None
+
+
 class DerivedBlock(BaseModel):
     """Zone 3: LLM-extracted attributes. Regenerable; do not hand-edit."""
 
     tickers: list[str] = Field(default_factory=list)
     event_type: str | None = None
     catalysts: list[str] = Field(default_factory=list)
-    sentiment: dict | None = None
-    numeric_facts: list[dict] = Field(default_factory=list)
+    sentiment: SentimentBlock | None = None
+    numeric_facts: list[NumericFact] = Field(default_factory=list)
     summary: str | None = None
 
 
