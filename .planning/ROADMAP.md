@@ -74,7 +74,7 @@ Plans:
 - [x] 03-02-PLAN.md — DART collector (client/fetcher/writer) + heartbeat + ProvenanceBlock.trust_level
 - [x] 03-03-PLAN.md — Injection defense scaffolding + mecab-ko tokenizer + bge-m3 embedder + section chunker + DART parser
 - [x] 03-04-PLAN.md — Ingest worker (scan → parse → chunk → embed → tokenize → upsert) with per-doc transaction + content-hash dedup
-- [ ] 03-05-PLAN.md — FastMCP 2.x stdio server + hybrid RRF search tool + .mcp.json registration
+- [x] 03-05-PLAN.md — FastMCP 2.x stdio server + hybrid RRF search tool + .mcp.json registration
 - [ ] 03-06-PLAN.md — stock CLI + ingest rebuild (idempotent) + E2E schema test + human-verify JUDGE-04 checkpoint
 
 ### Phase 4: Multi-Source Collector Coverage

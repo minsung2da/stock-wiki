@@ -60,14 +60,14 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 ### 하이브리드 검색 (Retrieval)
 
-- [ ] **RET-01**: `search(query, …)` API가 dense(HNSW 코사인) + BM25를 병렬 실행하고 RRF(k=60)로 융합한다
-- [ ] **RET-02**: `search`가 구조화 필터(`ticker`, `corp_code`, `date_range`, `source`, `event_type`)를 벡터 스캔 전에 SQL WHERE로 적용한다
-- [ ] **RET-03**: 응답은 `{vault_path, excerpt, frontmatter_ref, score}` 배열이며 단일 응답 8k 토큰 미만, 레이턴시 p95 < 5초이다
+- [x] **RET-01**: `search(query, …)` API가 dense(HNSW 코사인) + BM25를 병렬 실행하고 RRF(k=60)로 융합한다
+- [x] **RET-02**: `search`가 구조화 필터(`ticker`, `corp_code`, `date_range`, `source`, `event_type`)를 벡터 스캔 전에 SQL WHERE로 적용한다
+- [x] **RET-03**: 응답은 `{vault_path, excerpt, frontmatter_ref, score}` 배열이며 단일 응답 8k 토큰 미만, 레이턴시 p95 < 5초이다
 
 ### stock-mcp 서버
 
-- [ ] **MCP-01**: FastMCP 2.x 기반 `stock-mcp` 서버가 stdio 전송으로 Claude Code에 등록된다
-- [ ] **MCP-02**: `search(query, ticker?, date_range?, source?, mode='hybrid'|'semantic'|'bm25')` 툴
+- [x] **MCP-01**: FastMCP 2.x 기반 `stock-mcp` 서버가 stdio 전송으로 Claude Code에 등록된다
+- [x] **MCP-02**: `search(query, ticker?, date_range?, source?, mode='hybrid'|'semantic'|'bm25')` 툴
 - [ ] **MCP-03**: `get_ticker_overview(ticker)` 툴 — 재무·수급·최근 이벤트·관련 메모 통합 뷰
 - [ ] **MCP-04**: `get_recent_events(ticker, since)` 툴 — DART 공시·뉴스·KIND 이벤트 타임라인
 - [ ] **MCP-05**: `get_portfolio_state()` 툴 — `dashboards/portfolio.md`의 보유 종목·상태 반환
@@ -101,7 +101,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [ ] **JUDGE-01**: "종목 X 리서치해줘" 쿼리 시 Claude가 `get_ticker_overview`+`get_recent_events`+`search(user notes)`를 호출하여 공시·가격·유저메모·매크로 4축 근거 번들로 답한다
 - [ ] **JUDGE-02**: "포트폴리오 오늘 어때?" 쿼리 시 Claude가 `get_portfolio_state`+ 각 보유 종목 최근 이벤트 요약으로 답한다
 - [ ] **JUDGE-03**: "매도 후보 3개" 쿼리 시 Claude가 portfolio+events 기반 근거 포함 후보를 제안한다
-- [ ] **JUDGE-04**: 모든 응답에 vault 경로 인용이 포함된다 (`see: vault/raw/dart/2026-04-15/123.md`)
+- [x] **JUDGE-04**: 모든 응답에 vault 경로 인용이 포함된다 (`see: vault/raw/dart/2026-04-15/123.md`)
 - [ ] **JUDGE-05**: 관련 문서가 없거나 스테일할 때 Claude는 추측 대신 "근거 없음/스테일" 규칙을 따른다 (MCP `health()` 신호 활용)
 - [ ] **JUDGE-06**: 유저의 강한 의견(notes/)과 공시·뉴스(raw/)의 가중치를 프롬프트 규약에서 명시해 편향을 줄인다
 
@@ -200,11 +200,11 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | STORE-04 | Phase 3 | Complete |
 | STORE-05 | Phase 3 | Pending |
 | STORE-06 | Phase 3 | Complete |
-| RET-01 | Phase 3 | Pending |
-| RET-02 | Phase 3 | Pending |
-| RET-03 | Phase 3 | Pending |
-| MCP-01 | Phase 3 | Pending |
-| MCP-02 | Phase 3 | Pending |
+| RET-01 | Phase 3 | Complete |
+| RET-02 | Phase 3 | Complete |
+| RET-03 | Phase 3 | Complete |
+| MCP-01 | Phase 3 | Complete |
+| MCP-02 | Phase 3 | Complete |
 | MCP-03 | Phase 6 | Pending |
 | MCP-04 | Phase 6 | Pending |
 | MCP-05 | Phase 6 | Pending |
@@ -226,7 +226,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | JUDGE-01 | Phase 9 | Pending |
 | JUDGE-02 | Phase 9 | Pending |
 | JUDGE-03 | Phase 9 | Pending |
-| JUDGE-04 | Phase 3 | Pending |
+| JUDGE-04 | Phase 3 | Complete |
 | JUDGE-05 | Phase 9 | Pending |
 | JUDGE-06 | Phase 9 | Pending |
 | OPS-01 | Phase 9 | Pending |

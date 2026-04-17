@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-04-17T14:17:17.644Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-04-17T14:46:08.248Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 12
-  completed_plans: 10
-  percent: 83
+  completed_plans: 11
+  percent: 92
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 03 (one-company-walking-skeleton) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P02 | 12min | 2 tasks | 8 files |
 | Phase 03-one-company-walking-skeleton P03 | 11min | 3 tasks | 11 files |
 | Phase 03 P04 | 10min | 1 tasks | 3 files |
+| Phase 03 P05 | 55min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,10 @@ Recent decisions affecting current work:
 - [Phase 03]: Phase 03-04: Per-doc transaction (engine.begin per document) — D-26 failure isolation requires N commits, not one long txn
 - [Phase 03]: Phase 03-04: Delete-then-insert on content_hash change (not UPSERT) — documents.id IS the hash, so hash change is new row with FK cascade
 - [Phase 03]: Phase 03-04: injection_flags UNION across runs (prior ∪ new) — security-forward default; cleanup belongs to ingest doctor
+- [Phase 03]: hybrid_search uses direct d.corp_code filter (not LEFT JOIN entities) — migration 0002 added the column precisely for this
+- [Phase 03]: BM25 ORDER BY is ASC NULLS LAST — vchord_bm25 returns negative scores where lower = better match (plan SQL sketch was inverted)
+- [Phase 03]: NULLable filter binds require explicit CAST to column type — psycopg3 AmbiguousParameter otherwise
+- [Phase 03]: FastMCP tool registered via mcp.tool()(search) call-form — preserves the callable name bound to plain function for tests + internal callers
 
 ### Pending Todos
 
@@ -122,6 +127,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T14:17:17.586Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-04-17T14:46:07.758Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
