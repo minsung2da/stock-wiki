@@ -109,9 +109,28 @@ def write_frontmatter(path: str, model: FrontMatter, body: str) -> None:
 
     Content is fully computed before the file is opened, so a serialization
     error will not leave a zero-byte or partial file at path.
+
+    Uses an atomic write pattern (write to temp file in same directory, then
+    os.replace) so a crash or KeyboardInterrupt during the write cannot leave a
+    partial file at path.  os.replace() is atomic on POSIX; on Windows it is
+    best-effort (not guaranteed atomic but still safe — the original file is
+    only removed after the temp write succeeds).
     """
+    import contextlib
+    import os
+    import tempfile
+    from pathlib import Path
+
     post = fm.Post(body)
     post.metadata = model.model_dump(by_alias=True, exclude_none=True)
     content = fm.dumps(post)  # Compute before opening file
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
+    dir_ = Path(path).parent
+    fd, tmp_path = tempfile.mkstemp(dir=dir_, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+            tmp.write(content)
+        os.replace(tmp_path, path)
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
