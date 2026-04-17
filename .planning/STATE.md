@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 03-06-PLAN.md (Phase 3 complete)
-last_updated: "2026-04-17T15:22:14.150Z"
+last_updated: "2026-04-17T19:10:00.000Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 9
@@ -129,9 +129,10 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260417-q3h | Replace local LLM (Ollama/Qwen/EXAONE) stack with Claude schedule + bge-m3-only embeddings | 2026-04-17 | be8c15e | [260417-q3h-replace-local-llm-ollama-qwen-exaone-sta](./quick/260417-q3h-replace-local-llm-ollama-qwen-exaone-sta/) |
+| 260418-asr | Fix Phase 3 E2E bugs: collector vault path (A), DART retry hardening (B), auto-seed entities (C) | 2026-04-17 | e23cbc1 | [260418-asr-fix-phase-3-bugs-a-collector-vault-path-](./quick/260418-asr-fix-phase-3-bugs-a-collector-vault-path-/) |
 
 ## Session Continuity
 
-Last session: 2026-04-17T15:12:29.372Z
-Stopped at: Completed 03-06-PLAN.md (Phase 3 complete)
+Last session: 2026-04-17T19:10:00.000Z
+Stopped at: Completed quick-260418-asr (3 Phase-3 E2E bugfixes)
 Resume file: None
