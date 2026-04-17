@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   6. A documented option (script or symlink instructions) exists to migrate the vault from `/mnt/c/.../stock` to a WSL-native path
 **Plans**: 3 plans
 Plans:
-- [ ] 01-01-PLAN.md -- Docker Postgres 17 + vault directories + gitignore + obsidianignore
+- [x] 01-01-PLAN.md -- Docker Postgres 17 + vault directories + gitignore + obsidianignore
 - [ ] 01-02-PLAN.md -- Python env (pyproject.toml) + Pydantic frontmatter schema + tests
 - [ ] 01-03-PLAN.md -- CI import guard + secrets hygiene + WSL migration script
 
