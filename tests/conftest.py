@@ -110,7 +110,11 @@ def pg_clean(pg_engine: Engine) -> Engine:
             )
         }
         to_truncate = [t for t in _PHASE2_TABLES if t in existing]
-        if to_truncate:
-            # Trusted constant list — not user input; safe f-string composition.
-            conn.execute(sa.text(f"TRUNCATE {', '.join(to_truncate)} RESTART IDENTITY CASCADE"))
+        for tbl in to_truncate:
+            # tbl is guaranteed to be a member of _PHASE2_TABLES (filtered from
+            # information_schema); information_schema.table_name cannot contain
+            # SQL metacharacters.  Per-table calls avoid a single-f-string that
+            # would become an injection path if _PHASE2_TABLES ever grew dynamic
+            # entries.
+            conn.execute(sa.text(f"TRUNCATE {tbl} RESTART IDENTITY CASCADE"))
     return pg_engine
