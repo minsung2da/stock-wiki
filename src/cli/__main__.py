@@ -31,13 +31,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--vault-root",
-        default="vault",
-        help="Vault root directory (default: vault)",
+        default=".",
+        help="Vault root directory (default: . — repo root per Phase 1 D-01)",
     )
     subs = parser.add_subparsers(dest="command", required=True)
 
     # collect
-    collect = subs.add_parser("collect", help="Collect raw source data into vault/")
+    collect = subs.add_parser("collect", help="Collect raw source data into raw/")
     collect_subs = collect.add_subparsers(dest="source", required=True)
     dart = collect_subs.add_parser("dart", help="Collect DART filings (COLL-01)")
     dart.add_argument("--corp-code", required=True, help="8-digit DART corp_code")

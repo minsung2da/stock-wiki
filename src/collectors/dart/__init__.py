@@ -1,8 +1,10 @@
 """DART collector — A+B filings only (D-01), no LLM, no DB (COLL-06).
 
-Writes minimal-frontmatter Markdown to `vault/raw/dart/YYYY/{rcept_no}_{corp_code}.md`
-with content-hash idempotency (COLL-08) and per-filing error isolation. Updates
-`vault/ingested/_status/heartbeat.md` atomically after the run (COLL-09).
+Writes minimal-frontmatter Markdown to `raw/dart/YYYY/{rcept_no}_{corp_code}.md`
+(under `vault_root`, which defaults to the repo root = Obsidian vault root per
+Phase 1 D-01/D-02). Content-hash idempotency (COLL-08) and per-filing error
+isolation. Updates `ingested/_status/heartbeat.md` atomically after the run
+(COLL-09).
 
 NO imports of `anthropic` or `openai` — guarded by tests/test_import_guard.py
 (COLL-07 CI discipline).
@@ -23,9 +25,9 @@ def collect_dart(
     corp_code: str,
     since: str,
     max_docs: int = 100,
-    vault_root: Path = Path("vault"),
+    vault_root: Path = Path("."),
 ) -> dict[str, Any]:
-    """Collect DART A+B filings for a single corp into `vault/raw/dart/YYYY/`.
+    """Collect DART A+B filings for a single corp into `raw/dart/YYYY/`.
 
     Parameters
     ----------
@@ -36,7 +38,8 @@ def collect_dart(
     max_docs : int
         Phase-3 cap (D-03). Phase 4 removes this.
     vault_root : Path
-        Root of the Obsidian vault. Defaults to "vault" relative to cwd.
+        Root of the Obsidian vault. Defaults to current working directory
+        (repo root = Obsidian vault root per Phase 1 D-01).
 
     Returns
     -------

@@ -3,7 +3,7 @@
 Composes the Wave 2 leaf utilities (parsers, chunking, embedder, tokenizer,
 injection_defense) into the end-to-end ingest pipeline:
 
-    scan vault/raw/**/*.md
+    scan <vault_root>/raw/**/*.md (vault_root defaults to repo root, D-01)
       -> read frontmatter + normalize body
       -> sha256 content-hash (new doc id)
       -> per-document transaction:
@@ -168,7 +168,7 @@ def ingest_run(
     force_reembed: bool = False,
     embedder: Embedder | None = None,
 ) -> dict[str, Any]:
-    """Scan vault/raw/**/*.md and ingest each document.
+    """Scan `<vault_root>/raw/**/*.md` and ingest each document.
 
     Returns: ``{"total": int, "succeeded": int, "skipped": int, "failed": list}``.
     Per-document failure isolation: one bad doc never aborts the run (D-26).
