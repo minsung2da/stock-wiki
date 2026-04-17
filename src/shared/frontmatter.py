@@ -10,23 +10,22 @@ Dataview queries use nested access: WHERE provenance.source = "dart" (per D-11).
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 import frontmatter as fm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 
 class ProvenanceBlock(BaseModel):
     """Zone 1: Written by collectors. Never overwritten by ingest."""
 
     source: str  # dart | naver | news | macro | krx | note | kind
-    source_id: Optional[str] = None
-    source_url: Optional[str] = None
-    date: Optional[str] = None
-    fetched_at: Optional[datetime] = None
-    content_hash: Optional[str] = None
-    corp_code: Optional[str] = None  # DART 8-digit canonical ID
-    ticker: Optional[str] = None  # KRX 6-digit convenience field
+    source_id: str | None = None
+    source_url: str | None = None
+    date: str | None = None
+    fetched_at: datetime | None = None
+    content_hash: str | None = None
+    corp_code: str | None = None  # DART 8-digit canonical ID
+    ticker: str | None = None  # KRX 6-digit convenience field
     lang: str = "ko"
 
 
@@ -34,21 +33,21 @@ class IngestStateBlock(BaseModel):
     """Zone 2: Written by ingest pipeline. Tracks processing state."""
 
     processed: bool = False
-    processed_at: Optional[datetime] = None
-    embedding_model: Optional[str] = None
-    ingest_model: Optional[str] = None
-    ingest_version: Optional[int] = None
+    processed_at: datetime | None = None
+    embedding_model: str | None = None
+    ingest_model: str | None = None
+    ingest_version: int | None = None
 
 
 class DerivedBlock(BaseModel):
     """Zone 3: LLM-extracted attributes. Regenerable; do not hand-edit."""
 
     tickers: list[str] = Field(default_factory=list)
-    event_type: Optional[str] = None
+    event_type: str | None = None
     catalysts: list[str] = Field(default_factory=list)
-    sentiment: Optional[dict] = None
+    sentiment: dict | None = None
     numeric_facts: list[dict] = Field(default_factory=list)
-    summary: Optional[str] = None
+    summary: str | None = None
 
 
 class FrontMatter(BaseModel):
@@ -71,9 +70,19 @@ def read_frontmatter(path: str) -> tuple[FrontMatter, str]:
 
     Returns:
         Tuple of (FrontMatter model, document body text).
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If frontmatter YAML is malformed or fails schema validation.
     """
-    post = fm.load(path)
-    model = FrontMatter.model_validate(dict(post.metadata))
+    try:
+        post = fm.load(path)
+    except Exception as exc:
+        raise ValueError(f"Failed to load frontmatter from {path!r}: {exc}") from exc
+    try:
+        model = FrontMatter.model_validate(dict(post.metadata))
+    except ValidationError as exc:
+        raise ValueError(f"Frontmatter schema validation failed for {path!r}: {exc}") from exc
     return model, post.content
 
 
@@ -82,8 +91,12 @@ def write_frontmatter(path: str, model: FrontMatter, body: str) -> None:
 
     Uses model_dump(by_alias=True, exclude_none=True) to emit '_derived'
     key and omit None values for clean YAML output.
+
+    Content is fully computed before the file is opened, so a serialization
+    error will not leave a zero-byte or partial file at path.
     """
     post = fm.Post(body)
     post.metadata = model.model_dump(by_alias=True, exclude_none=True)
+    content = fm.dumps(post)  # Compute before opening file
     with open(path, "w", encoding="utf-8") as f:
-        f.write(fm.dumps(post))
+        f.write(content)
