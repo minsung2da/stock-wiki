@@ -35,9 +35,8 @@
 | DB (multi-user, recommended for this project) | **Native Postgres 17** via Docker | postgres:17-alpine | HIGH |
 | Vector | **pgvector** | 0.8.0 | HIGH |
 | BM25 | **VectorChord-BM25** | latest (2026) | MEDIUM |
-| Embeddings | **bge-m3** (via Ollama) | bge-m3:latest | HIGH |
-| Local LLM (ingest) | **Qwen2.5-14B-Instruct** Q4_K_M (primary) + **EXAONE-3.5-7.8B** (Korean-heavy docs) | Ollama tags | HIGH |
-| Ingest fallback | **Claude Haiku 4.5** | via Anthropic SDK | HIGH |
+| Embeddings | **bge-m3** via sentence-transformers (local, in-process) | BAAI/bge-m3 | HIGH |
+| Ingest extraction | **Claude Schedule** (git round-trip, Claude Max subscription) | n/a | HIGH |
 | MCP server | **FastMCP** (Python) | 2.x stable (currently 2.11+); avoid 3.x until ecosystem catches up | MEDIUM |
 | Obsidian plugin | **domleca/llm-wiki** (optional, for UX) + **Dataview** (required, for dashboard notes) | dataview >= 0.5 | HIGH |
 | Graph | **graphify** (`safishamsi/graphify`, `graphifyy` on PyPI) | latest (v4) | HIGH |
@@ -94,7 +93,7 @@
 - **Reliability > Flexibility at personal-scale.** systemd.timer survives reboots, logs to journalctl, and has zero Python dependencies. If the scheduler process dies, your data collection dies silently — this is exactly the APScheduler failure mode.
 - **APScheduler requires a hosting process.** It's "not a daemon" (per its own docs). For a batch pipeline that runs 1-10x/day, you'd build a separate always-on runner just to host APScheduler. Strictly worse than systemd.timer.
 - **Cron works but is worse than systemd.timer.** No structured logs, no persistence tracking, no `OnBootSec`, no dependencies between units. systemd.timer supersedes cron on modern Linux for good reasons.
-- **GitHub Actions is wrong here.** Data is local (Obsidian vault on disk), Postgres is local, Ollama is local. Pulling collection into CI just to push results back via git is complexity for no benefit.
+- **GitHub Actions is wrong here.** Data is local (Obsidian vault on disk), Postgres is local, embedding model is local. Pulling collection into CI just to push results back via git is complexity for no benefit.
 - If and only if the MCP server process is always-on and needs to *also* trigger scheduled work internally (e.g., "refresh embeddings every 6h while I'm running"). Even then, prefer OS cron + MCP tool call over APScheduler.
 # ~/.config/systemd/user/stock-collect.service
 # ~/.config/systemd/user/stock-collect.timer
@@ -127,54 +126,29 @@
 - Pragmatic path: **tokenize in Python with `mecab-ko` (via `konlpy` or `python-mecab-ko`) before insert**, store the tokenized form in a dedicated column, let VectorChord-BM25 tokenize on whitespace. This avoids pg-extension build complexity and lets you swap Korean tokenizers later.
 - `ts_vector` alone (no BM25, no language-aware tokenization for Korean). Acceptable as a Phase-1 stopgap but don't plan around it.
 - Elasticsearch / Meilisearch / Typesense — separate infrastructure, a whole second system to manage. Hard veto for this project's "keep it local and small" constraint.
-## 4. Embeddings — Pick: `bge-m3` via Ollama
-- **Multilingual top-tier.** Ranked #1 average on MIRACL (18 languages, nDCG@10=70.0) — outperforms mE5-large (65.4) on the standard multilingual retrieval benchmark. Korean falls squarely within its training distribution.
-- **Unified dense + sparse + multi-vector.** bge-m3 produces dense embeddings (1024-d) AND learned sparse weights (lexical) AND ColBERT-style multi-vector in a single forward pass. For this project, use dense only (stored in pgvector) + separate BM25 for lexical. But the option to upgrade to learned-sparse later is valuable.
-- **8192-token context.** Handles full 공시 텍스트, 뉴스 기사, 증권사 리포트 요약 without aggressive chunking.
-- **Already trusted by gbrain-style setups** and the Korean ML community.
-- **VRAM:** ~2GB at fp16, ~1GB at q4. Runs on any consumer GPU; acceptable on CPU (Apple Silicon M-series blazes, x86 CPU is ~200ms/doc).
-- **Throughput:** On RTX 3060 (12GB), expect ~50 docs/sec batched, ~20 docs/sec single. On CPU-only M2, ~3 docs/sec.
-- **Query latency:** <50ms on GPU, <200ms on CPU.
-- **Storage cost per embedding:** 1024 × 4 bytes = 4KB (float32). With `halfvec` → 2KB. With binary quantize → 128 bytes. At 50k documents: 200MB → 100MB → 6MB.
+## 4. Embeddings — Pick: `bge-m3` via sentence-transformers (local)
+- **Multilingual top-tier.** Ranked #1 average on MIRACL (nDCG@10=70.0). Korean falls squarely within its training distribution.
+- **Route via sentence-transformers directly.** `from sentence_transformers import SentenceTransformer; model = SentenceTransformer("BAAI/bge-m3")`. No separate embedding server process. Ingest venv imports and runs the model directly.
+- **8192-token context.** Handles full 공시 텍스트 without aggressive chunking.
+- **VRAM:** ~2GB at fp16, ~1GB at q4. CPU acceptable (~200ms/doc on x86, faster on Apple Silicon).
+- **Model version tracked in `chunks.embedding_model` column** so a future model swap triggers re-indexing.
+
 | Model | Dim | Korean | English | Cost | Verdict |
 |---|---|---|---|---|---|
 | **bge-m3** | 1024 | Strong | Strong | Free, local | **Pick** |
 | multilingual-e5-large | 1024 | Strong | Strong | Free, local | Runner-up; slightly weaker MIRACL score |
-| nomic-embed-text-v2 | 768 | OK | Strong | Free, local | MoE architecture is novel; under-tested on Korean; comparable size |
+| nomic-embed-text-v2 | 768 | OK | Strong | Free, local | MoE architecture is novel; under-tested on Korean |
 | OpenAI text-embedding-3-large | 3072 | Good | Excellent | $0.13/M tokens | Rejected: cost + external dep |
 | Voyage-3 | 1024 | Good | Excellent | $0.12/M tokens | Rejected: cost |
 - `text-embedding-ada-002` — obsolete.
 - `sentence-transformers/all-MiniLM-L6-v2` — English-only, bad on Korean.
 - Any BERT-base-multilingual — predates MIRACL-era methods by 3+ years; subpar.
-## 5. Local LLM for Ingest — Pick: Qwen2.5-14B-Instruct (primary) + EXAONE-3.5-7.8B (Korean-heavy)
-### 5.1 Primary model: Qwen2.5-14B-Instruct Q4_K_M
-- **Sweet spot for 16GB-VRAM GPUs.** Q4_K_M 14B uses ~10-12GB VRAM, leaves headroom for 8K-context ingest prompts + bge-m3 running simultaneously.
-- **Strong multilingual instruction following** including Korean — outperforms Llama-3.1-8B on KoMT-Bench in LG's own published comparisons.
-- **Structured output (JSON) is reliable** — critical for attribute extraction into frontmatter. Qwen2.5 was trained with heavy JSON-mode coverage.
-- **128K context** — ingests long 증권사 리포트 whole if needed (rare, but nice).
-- **Broad Ollama/llama.cpp/vLLM support.** No ecosystem surprises.
-### 5.2 Korean-specialist fallback: EXAONE-3.5-7.8B
-- **50% Korean / 50% English vocabulary** — genuinely bilingual tokenizer. Qwen2.5 is multilingual but Chinese-first; Korean token efficiency is worse (more tokens per character).
-- **KoMT-Bench highest scores at 7.8B size class** per LG's technical report. For pure Korean generation, this is the strongest sub-10B model in the published benchmarks.
-- **Smaller footprint** (~5GB VRAM at Q4) — runs alongside Qwen2.5-14B on a 16GB card.
-### 5.3 What NOT to use
-- **Llama-3.3-70B** — too heavy. Requires 40GB+ VRAM at Q4; you'd need a workstation-class card. Benchmark gains over Qwen2.5-14B on extraction tasks don't justify the infra leap.
-- **Qwen2.5-32B** — 22-24GB VRAM at Q4. Borderline on a 24GB card (RTX 4090/A5000) with context; if you already own one, fine. If you don't, 14B is a better ROI.
-- **Llama-3.1-8B** — acceptable baseline but Korean performance lags Qwen2.5 and EXAONE meaningfully.
-- **Gemma-2-27B** — Google-license concerns and no Korean tuning advantage.
-- **EXAONE-4.0** — released mid-2026; promising but the 3.5 series is more field-tested. Upgrade in 6-12 months once issues stabilize.
-### 5.4 Hardware guidance
-| GPU | Qwen2.5-14B Q4 | EXAONE 7.8B Q4 | bge-m3 | Verdict |
-|---|---|---|---|---|
-| RTX 3060 12GB | Tight (12GB) | Fine (5GB) | Fine | OK; run one LLM at a time |
-| RTX 4070 16GB | Fine (12GB) | Fine alongside | Fine | **Sweet spot** |
-| RTX 4090 24GB | Plenty | Both concurrent | Fine | Overkill unless doing 32B |
-| M2 Max 32GB unified | Fine (shared) | Fine | Fine | Viable; slower gen |
-| CPU only | Painful (2-3 tok/s) | Painful | Fine | Ingest will take hours. Not recommended. |
-### 5.5 Cost crossover with Claude Haiku
-- ~2k input tokens (doc + prompt), ~300 output tokens (JSON).
-- **Haiku 4.5 cost per doc:** ~$0.0035. At 100 docs/day: $0.35/day = ~$130/year.
-- **Haiku 3.5 cost per doc:** ~$0.0028. At 100 docs/day: ~$100/year.
+## 5. Ingest Extraction — Pick: Claude Schedule (no local LLM)
+- **Why no local LLM.** User has a Claude Max subscription; routing ingest through a separate Anthropic API key would double-bill. Local model runners add GPU + model-management burden for no quality gain over Claude.
+- **Architecture.** A Claude Schedule agent (RemoteTrigger) polls the repo on a cron, reads `vault/raw/**/*.md` documents lacking a `_derived` frontmatter block, extracts attributes (tickers, event_type, catalysts, sentiment, numeric_facts, summary), writes them back as frontmatter, and commits via git. The ingest venv never imports `anthropic` — the schedule agent is a separate process.
+- **Korean number safety unchanged.** DART financials bypass the LLM entirely (dart-fss structured accessors). Narrative numbers in news/reports still go through regex → LLM → Pydantic → digit-checksum.
+- **Cost.** $0 marginal per document for subscribers (subject to Claude Max schedule quotas). Compared to a cloud-LLM fallback (~$0.0035/doc) that's 100 docs/day × 365 = ~$130/year saved.
+- **Hard rule retained.** `ingest/` and `collectors/` directories must not import `anthropic`/`openai` (CI guard COLL-07). Any Claude-facing code lives outside the ingest venv.
 ## 6. MCP Server — Pick: FastMCP 2.x (Python)
 - FastMCP 2.x is **the** Python MCP framework. Decorator API (`@mcp.tool()`) auto-generates schemas from type hints; docstrings become tool descriptions. The Python MCP SDK itself wraps FastMCP for the high-level API.
 - **Pin to 2.x for now.** 3.x shipped Feb 2026 with a major architectural rewrite (Providers / Transforms); it's promising but ecosystem catches up slowly, and Claude Code's MCP transport support is optimized for the 2.x patterns. Revisit in Q3 2026.
@@ -193,7 +167,7 @@
 ### 7.1 Dataview — install now
 ### 7.2 llm-wiki plugin — optional, consider after MVP
 - **`domleca/llm-wiki`** — natural-language query over vault, extracts entities/concepts, generates cross-link pages. Runs locally; writes `wiki/kb.json` + per-entity markdown.
-- **`kytmanov/obsidian-llm-wiki-local`** — 100% local variant with Ollama integration.
+- **`kytmanov/obsidian-llm-wiki-local`** — 100% local variant with a local-model-runner integration.
 ### 7.3 Frontmatter schema
 ### 7.4 Dataview vs Bases (Obsidian 1.7+)
 - **Stick with Dataview.** More powerful query language, richer community templates, stable.
@@ -253,8 +227,6 @@
 # Docker: Postgres 17 + pgvector
 # Then psql-exec: CREATE EXTENSION vector; CREATE EXTENSION vchord_bm25; CREATE EXTENSION pg_trgm;
 # (vchord_bm25 must be added to the image; build custom image or use tensorchord/vchord image)
-# Ollama: LLMs + embeddings
-# Install Ollama: https://ollama.com/download
 ## Alternatives Considered (Summary Table)
 | Layer | Recommended | Alternative | When Alternative Makes Sense |
 |---|---|---|---|
@@ -266,8 +238,6 @@
 | DB | Native Postgres 17 | PGLite | Single-user zero-infra demo |
 | BM25 | VectorChord-BM25 | ParadeDB pg_search | Need facets/highlighting |
 | Embeddings | bge-m3 | multilingual-e5-large | Marginal; no reason to switch |
-| Local LLM | Qwen2.5-14B Q4 | EXAONE-3.5 | Korean-only docs, small GPU |
-| Cloud LLM fallback | Haiku 4.5 | Haiku 3.5 | Lower cost, slightly older |
 | MCP | FastMCP 2.x | FastMCP 3.x | Revisit Q3 2026 |
 ## What NOT to Use (Hard Vetoes)
 | Avoid | Why | Use Instead |
@@ -280,7 +250,6 @@
 | APScheduler (as main scheduler) | Needs an always-on host process | systemd.timer |
 | PGLite (for this project) | Single-connection, can't run VectorChord-BM25 | Native Postgres 17 |
 | Elasticsearch / Meilisearch | Separate infra, overkill | VectorChord-BM25 inside Postgres |
-| Llama-3.3-70B local | 40GB+ VRAM needed | Qwen2.5-14B Q4 (or Haiku via API) |
 | `text-embedding-ada-002` | Obsolete OpenAI model | `bge-m3` local |
 | Obsidian Bases for complex dashboards | Less powerful than Dataview | Dataview plugin |
 | `openpyxl`-based 증권사 리포트 파싱 | Formats vary wildly; fragile | Extract via LLM + trafilatura |
@@ -289,8 +258,7 @@
 |---|---|---|
 | pgvector 0.8.0 | Postgres >= 13 (ideally 17) | `halfvec` only in 0.7+; old clients may not know it |
 | VectorChord-BM25 | Postgres 14+, native install | Not available on PGLite/WASM |
-| bge-m3 | PyTorch >= 2.0 OR Ollama | 8192 context needs recent transformers |
-| Qwen2.5-14B Q4_K_M | llama.cpp b3000+ / Ollama 0.4+ | Older Ollama may not have Q4_K_M variant |
+| bge-m3 | PyTorch >= 2.0 via sentence-transformers | 8192 context needs recent transformers |
 | FastMCP 2.x | Python >= 3.10, mcp-sdk >= 1.0 | 3.x has breaking API changes |
 | trafilatura 1.12 | lxml >= 4.9 | Don't run in parallel without `concurrent.futures` — internal state is not fully thread-safe |
 | graphifyy | Python 3.10-3.12 | Not yet tested on 3.13 |
@@ -305,8 +273,7 @@
 | VectorChord-BM25 | **MEDIUM** | Young but credible; ParadeDB pg_search is a viable alternative |
 | PGLite vs native Postgres | **HIGH** | PGLite docs explicitly state single-user mode; mismatch with our concurrency needs |
 | bge-m3 for Korean | **HIGH** | MIRACL scores published; Korean community adoption |
-| Qwen2.5-14B / EXAONE | **HIGH** on choice; **MEDIUM** on sizing | KoMT-Bench confirms; sizing depends on user GPU |
-| Claude Haiku pricing | **HIGH** | Anthropic public pricing, verified 2026-04 |
+| Claude Schedule for ingest extraction | **HIGH** on direction; **MEDIUM** on quota fit | RemoteTrigger latency at daily batch volumes needs empirical verification |
 | FastMCP version pin (2.x vs 3.x) | **MEDIUM** | 3.x is new; conservative pin is safer but may lag |
 | Obsidian integration (Dataview) | **HIGH** | Standard pattern |
 | llm-wiki plugin | **MEDIUM** | Optional; value depends on UX preference |
@@ -321,7 +288,6 @@
 - [pgvector CHANGELOG](https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md) — 0.7+ halfvec, 0.8+ binary_quantize
 - [FastMCP on PyPI](https://pypi.org/project/fastmcp/) — 2.x / 3.x version state as of 2026-04
 - [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) — Haiku 3.5 $0.80/$4, Haiku 4.5 $1/$5
-- [LG AI Research EXAONE 3.5 technical report](https://www.lgresearch.ai/data/upload/tech_report/ko/Technical_report_EXAONE_3.5.pdf) — Korean benchmarks
 - [BAAI bge-m3 on HuggingFace](https://huggingface.co/BAAI/bge-m3) — MIRACL scores
 - [VectorChord-BM25](https://github.com/tensorchord/VectorChord-bm25) — BM25 extension
 - [graphify SKILL.md (local)](~/.claude/skills/graphify/SKILL.md) — pipeline and outputs
@@ -334,8 +300,6 @@
 - [FinanceDataReader on GitHub](https://github.com/FinanceData/FinanceDataReader)
 - [PublicDataReader ECOS docs](https://github.com/WooilJeong/PublicDataReader/blob/main/assets/docs/ecos/ecos.md)
 - [trafilatura news scraping comparison](https://htdocs.dev/posts/comparative-analysis-of-open-source-news-crawlers/)
-- [Ollama VRAM guide 2026](https://localllm.in/blog/ollama-vram-requirements-for-local-llms)
-- [Qwen2.5-14B specs (apxml)](https://apxml.com/models/qwen2-5-14b)
 - [domleca/llm-wiki](https://github.com/domleca/llm-wiki)
 - [Dataview plugin](https://github.com/blacksmithgu/obsidian-dataview)
 - [Obsidian gitignore forum](https://forum.obsidian.md/t/what-should-i-gitignore-for-my-vaults-github-repository/101077)
