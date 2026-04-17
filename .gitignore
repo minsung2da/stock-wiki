@@ -22,6 +22,8 @@ data/pg/
 
 # graphify outputs (regeneratable)
 graphify-out/
+.graphify_detect.json
+.graphify_python
 
 # Secrets
 .env

@@ -56,11 +56,7 @@ class TestFrontMatterRoundTrip:
         model = FrontMatter.model_validate(dict(post.metadata))
 
         updated = model.model_copy(
-            update={
-                "ingest_state": IngestStateBlock(
-                    processed=True, embedding_model="bge-m3"
-                )
-            }
+            update={"ingest_state": IngestStateBlock(processed=True, embedding_model="bge-m3")}
         )
 
         assert updated.provenance.source == "dart"
@@ -98,9 +94,7 @@ class TestProvenanceValidation:
 
     def test_provenance_with_source_only(self) -> None:
         """Minimal valid FrontMatter has only provenance.source."""
-        model = FrontMatter.model_validate(
-            {"provenance": {"source": "note"}}
-        )
+        model = FrontMatter.model_validate({"provenance": {"source": "note"}})
         assert model.provenance.source == "note"
         assert model.provenance.lang == "ko"
 
@@ -129,9 +123,7 @@ class TestDerivedAlias:
 class TestDefaultValues:
     def test_default_values(self) -> None:
         """FrontMatter with only provenance has correct defaults."""
-        model = FrontMatter(
-            provenance=ProvenanceBlock(source="dart")
-        )
+        model = FrontMatter(provenance=ProvenanceBlock(source="dart"))
         assert model.ingest_state.processed is False
         assert model.ingest_state.processed_at is None
         assert model.derived.tickers == []
