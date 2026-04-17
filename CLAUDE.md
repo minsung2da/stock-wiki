@@ -11,7 +11,7 @@
 
 - **Tech stack**: Python(수집·인제스트 스크립트, stock-mcp 서버) + Postgres/PGLite+pgvector(검색 인덱스) + Obsidian(사용자 인터페이스) + MCP 프로토콜 — gbrain·graphify 생태계와 호환
 - **Storage**: Markdown + YAML frontmatter가 유일한 source of truth. DB는 인덱스·캐시이며 언제든 vault에서 재생성 가능해야 함 — 잠금-인 회피
-- **Cost**: 수집에 LLM 토큰 0. 인제스트는 로컬 모델 우선, 필요 시 Haiku 같은 저가 모델만 사용. Claude 메인 API 호출은 Claude Code 세션 내부에서만 발생
+- **Cost**: 수집에 LLM 토큰 0. `_derived` 추출은 Claude Max 구독 기반 Claude Schedule 에이전트가 수행(별도 API 과금 없음). 로컬 Ollama/Qwen/EXAONE는 사용하지 않음. 임베딩은 sentence-transformers로 로컬 직접 계산.
 - **Scale**: 관심 종목 수십~수백 개, 연간 문서 수만 건 수준 — 엔터프라이즈 스케일 불필요
 - **Privacy**: 로컬/개인 vault 기반. 공유는 git 저장소 협업 수준 — 공개 배포 고려 없음
 - **Legal**: 크롤링 대상 robots.txt·이용약관 존중. 라이선스 불명확한 리포트 원문은 전문 저장 대신 요약·링크 권장
