@@ -55,9 +55,17 @@ class TestSecretManagement:
         )
 
     def test_env_file_not_committed(self) -> None:
-        """.env must not exist in the project root (it must remain gitignored)."""
-        env_file = PROJECT_ROOT / ".env"
-        assert not env_file.exists(), (
-            ".env file found at project root — it must NOT be committed. "
-            "Add real values to .env but keep it gitignored."
+        """.env must not be tracked by git (local presence is fine for dev)."""
+        import subprocess
+
+        result = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", ".env"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode != 0, (
+            ".env file is tracked by git — it must NOT be committed. "
+            "Remove from git (`git rm --cached .env`) and keep it gitignored."
         )
