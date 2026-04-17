@@ -18,7 +18,7 @@ DST="$HOME/stock"
 
 # Auto-detect WSL distro name for Obsidian path
 if command -v wsl.exe &>/dev/null; then
-    DISTRO=$(wsl.exe -l -q 2>/dev/null | head -1 | tr -d '\r\0' || echo "Ubuntu")
+    DISTRO=$(wsl.exe -l -q 2>/dev/null | head -1 | tr -d '\r' | tr -d '\000' || echo "Ubuntu")
 else
     DISTRO=$(hostname)
 fi
