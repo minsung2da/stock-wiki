@@ -84,8 +84,14 @@ None yet.
 - WSL path migration (`/mnt/c/...` → `~/stock/`) must be resolved in Phase 1 before ingest runs (Pitfall 10 → documented in FOUND-04)
 - Private portfolio data structure (submodule vs local-only path vs frontmatter overlay) needs a decision during Phase 1 vault layout work
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260417-q3h | Replace local LLM (Ollama/Qwen/EXAONE) stack with Claude schedule + bge-m3-only embeddings | 2026-04-17 | be8c15e | [260417-q3h-replace-local-llm-ollama-qwen-exaone-sta](./quick/260417-q3h-replace-local-llm-ollama-qwen-exaone-sta/) |
+
 ## Session Continuity
 
-Last session: 2026-04-17T09:30:20.573Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-04-17
+Stopped at: Completed quick task 260417-q3h (replace local LLM stack with Claude schedule)
 Resume file: None
