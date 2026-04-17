@@ -13,6 +13,14 @@ if config.config_file_name:
 target_metadata = None  # Hand-written migrations only (no autogenerate).
 
 
+def run_migrations_offline() -> None:
+    """Generate SQL script without a live DB (alembic upgrade --sql)."""
+    url = os.environ["DATABASE_URL"]
+    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 def run_migrations_online() -> None:
     database_url = os.environ["DATABASE_URL"]
     config.set_main_option("sqlalchemy.url", database_url)
@@ -27,4 +35,7 @@ def run_migrations_online() -> None:
             context.run_migrations()
 
 
-run_migrations_online()
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
