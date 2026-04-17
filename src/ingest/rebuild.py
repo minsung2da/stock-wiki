@@ -84,6 +84,13 @@ def rebuild_from_vault(
 ) -> dict[str, Any]:
     """Wipe the DB via alembic downgrade base + upgrade head, then re-ingest.
 
+    .. warning::
+        If the process is killed after ``alembic downgrade base`` completes but
+        before ``alembic upgrade head`` succeeds, the database is left in a
+        wiped state with no schema (no tables).  In that case, re-run this
+        command with ``--yes`` to complete the rebuild, or run
+        ``alembic upgrade head`` manually before re-ingesting.
+
     Parameters
     ----------
     vault_root
@@ -143,6 +150,20 @@ def rebuild_from_vault(
     cfg = _alembic_config(engine)
     command.downgrade(cfg, "base")
     command.upgrade(cfg, "head")
+
+    # Verify schema health before ingest: if upgrade silently failed or the
+    # process was previously killed mid-downgrade, the documents table will
+    # not exist and ingest_run would fail with a cryptic DB error.
+    with engine.connect() as conn:
+        result = conn.execute(
+            sa.text("SELECT 1 FROM information_schema.tables WHERE table_name = 'documents'")
+        ).first()
+    if result is None:
+        raise RuntimeError(
+            "alembic upgrade head did not create expected schema"
+            " — 'documents' table not found. Re-run rebuild or run"
+            " 'alembic upgrade head' manually."
+        )
 
     # Re-ingest. force_reembed is moot post-wipe (empty chunks table) but
     # we pass True explicitly so the predicate is unambiguous.
