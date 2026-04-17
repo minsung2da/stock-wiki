@@ -94,3 +94,79 @@ def resolve_entity(
         canonical_name=row.canonical_name,
         current_ticker=row.current_ticker,
     )
+
+
+def upsert_entity(
+    engine: Engine,
+    corp_code: str,
+    canonical_name: str,
+    ticker: str | None,
+    market: str | None = "KOSPI",
+) -> None:
+    """Idempotent upsert of (entities, entity_aliases).
+
+    Called by collectors after a successful filing write so that downstream
+    `resolve_entity(ticker)` returns a match (Bug C fix, quick-260418-asr).
+
+    Semantics:
+    - `entities`: INSERT ... ON CONFLICT (corp_code) DO UPDATE — refreshes
+      canonical_name + current_ticker on rename.
+    - `entity_aliases`: SELECT-then-INSERT (NO unique constraint on
+      (corp_code, kind, value) — Pitfall 5: KRX recycles tickers). Only writes
+      when no current alias (kind='ticker', value=ticker, valid_to IS NULL)
+      exists for this corp_code.
+    - `ticker=None`: entities row still upserted; no alias written.
+
+    SQL discipline (Phase 2 WR-03): all values flow through bind params — no
+    f-string interpolation into SQL. corp_code/ticker are regex-validated
+    (D-12) before reaching the DB (threat T-Q1-01).
+    """
+    if not _CORP_CODE_RE.match(corp_code):
+        raise ValueError(
+            f"upsert_entity: invalid corp_code shape (need 8 ASCII digits), got {corp_code!r}"
+        )
+    if ticker is not None and not _TICKER_RE.match(ticker):
+        raise ValueError(
+            f"upsert_entity: invalid ticker shape (need 6 ASCII digits or None), got {ticker!r}"
+        )
+
+    from datetime import date
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO entities (corp_code, canonical_name, current_ticker, market)
+                VALUES (:cc, :name, :ticker, :market)
+                ON CONFLICT (corp_code) DO UPDATE
+                  SET canonical_name = EXCLUDED.canonical_name,
+                      current_ticker = EXCLUDED.current_ticker
+                """
+            ),
+            {"cc": corp_code, "name": canonical_name, "ticker": ticker, "market": market},
+        )
+        if ticker is not None:
+            existing = conn.execute(
+                text(
+                    """
+                    SELECT 1 FROM entity_aliases
+                    WHERE corp_code = :cc
+                      AND kind = 'ticker'
+                      AND value = :v
+                      AND valid_to IS NULL
+                    LIMIT 1
+                    """
+                ),
+                {"cc": corp_code, "v": ticker},
+            ).first()
+            if existing is None:
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO entity_aliases
+                          (corp_code, kind, value, valid_from, valid_to)
+                        VALUES (:cc, 'ticker', :v, :vf, NULL)
+                        """
+                    ),
+                    {"cc": corp_code, "v": ticker, "vf": date.today()},
+                )
