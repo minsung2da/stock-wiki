@@ -72,6 +72,8 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
     "slow: marks tests as slow (deselect with -m 'not slow')",
+    "e2e: end-to-end tests requiring a live pipeline (deselect with -m 'not e2e')",
+    "db: tests requiring a live Postgres connection",
 ]
 
 [tool.ruff]
