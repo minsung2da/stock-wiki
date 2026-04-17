@@ -35,7 +35,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Pydantic `FrontMatter`, `ProvenanceBlock`, `IngestStateBlock`, and `DerivedBlock` models round-trip YAML fixtures in unit tests
   5. CI fails the build if any file under `ingest/` or `collectors/` imports `anthropic` or `openai`; `.env`-only secret loading is documented and a pre-commit hook blocks committed secrets
   6. A documented option (script or symlink instructions) exists to migrate the vault from `/mnt/c/.../stock` to a WSL-native path
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 01-01-PLAN.md -- Docker Postgres 17 + vault directories + gitignore + obsidianignore
+- [ ] 01-02-PLAN.md -- Python env (pyproject.toml) + Pydantic frontmatter schema + tests
+- [ ] 01-03-PLAN.md -- CI import guard + secrets hygiene + WSL migration script
 
 ### Phase 2: Canonical Entity Identity
 **Goal**: The stable key for every entity is DART `corp_code` — not the reusable 6-digit KRX ticker. Schema, alias history, and supersession edges for 기재정정 chains are settled before any document is written so later re-ingest is avoided.
@@ -144,7 +148,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Load-Bearing Foundation | 0/TBD | Not started | - |
+| 1. Load-Bearing Foundation | 0/3 | Planning complete | - |
 | 2. Canonical Entity Identity | 0/TBD | Not started | - |
 | 3. One-Company Walking Skeleton | 0/TBD | Not started | - |
 | 4. Multi-Source Collector Coverage | 0/TBD | Not started | - |
