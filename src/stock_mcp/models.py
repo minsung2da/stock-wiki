@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, field_validator
 
 __all__ = ["DateRange", "SearchHit", "SearchResult"]
 
@@ -13,6 +15,17 @@ class DateRange(BaseModel):
     model_config = ConfigDict(extra="forbid")
     start: str | None = None
     end: str | None = None
+
+    @field_validator("start", "end", mode="before")
+    @classmethod
+    def _validate_iso_date(cls, v: object) -> object:
+        if v is None:
+            return v
+        try:
+            date.fromisoformat(str(v))
+        except ValueError as exc:
+            raise ValueError("date must be ISO YYYY-MM-DD") from exc
+        return v
 
 
 class SearchHit(BaseModel):
