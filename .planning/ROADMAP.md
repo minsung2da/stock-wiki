@@ -51,7 +51,11 @@ Plans:
   3. `entities` schema stores `corp_code` as the canonical ID, with KRX ticker, aliases, and valid-from/valid-to ranges; a fixture covering a rename, a split, and a ticker-recycling case resolves to the correct entity
   4. A `supersedes` edge type exists and a 기재정정 test fixture produces an edge linking amendment → original
   5. The canonical-entity helper (`resolve_entity(ticker_or_corp_code, as_of=...)`) returns the right row for historical queries
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [x] 02-01-PLAN.md -- Alembic scaffold + db/dev deps + content_hash utility + testcontainers fixtures
+- [ ] 02-02-PLAN.md -- Phase 2 migration (7 tables) + schema/dedup tests + live DB push
+- [ ] 02-03-PLAN.md -- resolve_entity helper + entity fixtures + supersedes edge tests
 
 ### Phase 3: One-Company Walking Skeleton
 **Goal**: End-to-end proof of architecture on one company. DART collector fetches, minimal ingest (content-hash dedup, bge-m3 embed, mecab-ko BM25 tokens — no LLM extraction), hybrid search over pgvector + VectorChord-BM25, FastMCP exposes `search`, Claude Code receives an answer with a vault-path citation. All the defenses that must exist before data accumulates (prompt-injection scaffolding, heartbeat, embedding-version tracking) are in place.
@@ -149,7 +153,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Load-Bearing Foundation | 0/3 | Planning complete | - |
-| 2. Canonical Entity Identity | 0/TBD | Not started | - |
+| 2. Canonical Entity Identity | 0/3 | Planning complete | - |
 | 3. One-Company Walking Skeleton | 0/TBD | Not started | - |
 | 4. Multi-Source Collector Coverage | 0/TBD | Not started | - |
 | 5. Claude-Schedule Enrichment with Korean Number Safety | 0/TBD | Not started | - |

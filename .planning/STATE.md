@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-04-17T10:38:23.144Z"
-last_activity: 2026-04-17 -- Phase 2 planning complete
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-04-17T10:46:49.402Z"
+last_activity: 2026-04-17
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Claude Code에서 보유·관심 종목을 질의했을 때, 최신 공시·뉴스·가격·본인 리서치 메모를 종합한 근거 있는 매수/매도 판단을 즉시 받을 수 있다.
-**Current focus:** Phase 01 — load-bearing-foundation
+**Current focus:** Phase 02 — canonical-entity-identity
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (canonical-entity-identity) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-04-17 -- Phase 2 planning complete
+Last activity: 2026-04-17
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 1min | 2 tasks | 11 files |
 | Phase 01 P02 | 4min | 2 tasks | 12 files |
 | Phase 01 P03 | 5min | 2 tasks | 5 files |
+| Phase 02 P01 | 6 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 01]: ingest dependency group excludes anthropic/openai to enforce cost discipline
 - [Phase 01]: _derived alias with populate_by_name enables both Python (.derived) and YAML (_derived) conventions
 - [Phase 01]: Downgraded gitleaks from v8.22.1 to v8.21.2 due to WASM panic on WSL2
+- [Phase 02]: psycopg3 driver (postgresql+psycopg://) adopted; testcontainers URL normalized at fixture boundary
+- [Phase 02]: Alembic target_metadata=None — hand-written migrations only (no autogenerate)
+- [Phase 02]: Content-hash is a dedup primitive, not a security primitive (sha256 collision assumed for dedup only)
 
 ### Pending Todos
 
@@ -92,6 +96,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T10:20:06.747Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-canonical-entity-identity/02-CONTEXT.md
+Last session: 2026-04-17T10:46:49.372Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
