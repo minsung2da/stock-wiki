@@ -118,3 +118,39 @@ def pg_clean(pg_engine: Engine) -> Engine:
             # entries.
             conn.execute(sa.text(f"TRUNCATE {tbl} RESTART IDENTITY CASCADE"))
     return pg_engine
+
+
+@pytest.fixture
+def pg_with_chunks_row(pg_clean: Engine) -> Engine:
+    """Insert one documents + chunks row for Phase 3 probe/integration tests.
+
+    Uses a dummy 1024-d zero vector for `chunks.embedding` and a short INT[]
+    for `chunks.bm25_tokens` so the vchord_bm25 cast probe has live data to
+    exercise.
+    """
+    doc_id = "a" * 64
+    with pg_clean.begin() as conn:
+        conn.execute(
+            sa.text(
+                "INSERT INTO documents (id, body, source, vault_path) "
+                "VALUES (:id, :body, :source, :vault_path)"
+            ),
+            {"id": doc_id, "body": "x", "source": "dart", "vault_path": "vault/raw/dart/test.md"},
+        )
+        # Build a pgvector literal: '[0,0,...,0]' (1024 zeros).
+        zero_vec = "[" + ",".join(["0"] * 1024) + "]"
+        conn.execute(
+            sa.text(
+                "INSERT INTO chunks (document_id, ord, text, embedding, bm25_tokens) "
+                "VALUES (:doc_id, :ord, :text, CAST(:emb AS vector), "
+                "CAST(:toks AS int[]))"
+            ),
+            {
+                "doc_id": doc_id,
+                "ord": 0,
+                "text": "probe chunk",
+                "emb": zero_vec,
+                "toks": [1, 2, 3],
+            },
+        )
+    return pg_clean
