@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-04-17T13:06:41.697Z"
-last_activity: 2026-04-17 -- Phase 3 planning complete
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-04-17T13:36:49.748Z"
+last_activity: 2026-04-17
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 12
-  completed_plans: 6
-  percent: 50
+  completed_plans: 7
+  percent: 58
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Claude Code에서 보유·관심 종목을 질의했을 때, 최신 공시·뉴스·가격·본인 리서치 메모를 종합한 근거 있는 매수/매도 판단을 즉시 받을 수 있다.
-**Current focus:** Phase 02 — canonical-entity-identity
+**Current focus:** Phase 03 — one-company-walking-skeleton
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
+Phase: 03 (one-company-walking-skeleton) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-04-17 -- Phase 3 planning complete
+Last activity: 2026-04-17
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P01 | 6 min | 3 tasks | 11 files |
 | Phase 02-canonical-entity-identity P02 | 6 min | 2 tasks | 3 files |
 | Phase 02-canonical-entity-identity P03 | 15 min | 2 tasks | 8 files |
+| Phase 03 P01 | 18min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Recent decisions affecting current work:
 - [Phase 02-canonical-entity-identity]: resolve_entity is the ONLY lookup surface — downstream collectors must import, not re-implement
 - [Phase 02-canonical-entity-identity]: Ticker-recycle fixture kept synthetic (Pitfall 1); real-case KRX mining deferred to v2
 - [Phase 02-canonical-entity-identity]: Half-open temporal interval [valid_from, valid_to) with depth<20 recursive CTE cycle guard
+- [Phase 03]: BM25 expression index ((bm25_tokens)::bm25vector) bm25_ops — opclass targets bm25vector, implicit cast materialised at index time
+- [Phase 03]: Migration self-contained: CREATE EXTENSION vchord_bm25 + pg_trgm inside 0002 for testcontainer parity with live docker-compose DB
+- [Phase 03]: documents.corp_code + btree index added in Plan 01 (not Plan 04) — Plan 05 hybrid_search filters without JSONB probe
 
 ### Pending Todos
 
@@ -105,6 +109,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T12:30:29.148Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-one-company-walking-skeleton/03-CONTEXT.md
+Last session: 2026-04-17T13:36:40.826Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None

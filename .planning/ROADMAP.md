@@ -70,7 +70,7 @@ Plans:
   6. In Claude Code, "삼성전자 최근 공시 알려줘" returns an answer containing a clickable vault path citation to a real file under `vault/raw/dart/`; prompt-injection defenses (XML delimiters, pattern pre-filter) are live and adversarial-source bodies are excluded from LLM pipelines even though the LLM is not yet wired in
 **Plans**: 6 plans
 Plans:
-- [ ] 03-01-PLAN.md — Migration 0002 (section_path/section_index/bm25_tokens + HNSW + BM25 indexes) + dart-fss/vchord_bm25 API probes
+- [x] 03-01-PLAN.md — Migration 0002 (section_path/section_index/bm25_tokens + HNSW + BM25 indexes) + dart-fss/vchord_bm25 API probes
 - [ ] 03-02-PLAN.md — DART collector (client/fetcher/writer) + heartbeat + ProvenanceBlock.trust_level
 - [ ] 03-03-PLAN.md — Injection defense scaffolding + mecab-ko tokenizer + bge-m3 embedder + section chunker + DART parser
 - [ ] 03-04-PLAN.md — Ingest worker (scan → parse → chunk → embed → tokenize → upsert) with per-doc transaction + content-hash dedup

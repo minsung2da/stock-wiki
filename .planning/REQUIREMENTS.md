@@ -47,14 +47,14 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [ ] **INGEST-09**: 종목토론방 같은 적대적 소스의 개별 게시물 본문은 LLM 추출 파이프라인에 투입하지 않는다
 - [ ] **INGEST-10**: bge-m3 임베딩(1024차원)이 sentence-transformers 라이브러리로 로컬에서 직접 생성(No Ollama)되고 Postgres `chunks` 테이블에 저장된다
 - [ ] **INGEST-11**: mecab-ko로 한국어 사전 토큰화된 필드가 `chunks.bm25_tokens`에 저장되어 BM25 쿼리에 사용된다
-- [ ] **INGEST-12**: 임베딩 모델 버전이 `chunks.embedding_model` 컬럼에 기록되어 모델 변경 시 재인덱싱이 가능하다
+- [x] **INGEST-12**: 임베딩 모델 버전이 `chunks.embedding_model` 컬럼에 기록되어 모델 변경 시 재인덱싱이 가능하다
 
 ### 저장소 (Storage)
 
 - [x] **STORE-01**: Alembic 마이그레이션으로 `documents`, `chunks`, `entities`, `edges`, `events`, `ingest_runs` 테이블과 인덱스가 생성된다
 - [x] **STORE-02**: `documents.id`는 `sha256(body)`로 정의되어 콘텐츠 주소화된다
-- [ ] **STORE-03**: `chunks`에 HNSW 벡터 인덱스(pgvector 0.8, `iterative_scan=relaxed_order`)가 설정된다
-- [ ] **STORE-04**: VectorChord-BM25 인덱스가 `chunks.bm25_tokens`에 설정된다
+- [x] **STORE-03**: `chunks`에 HNSW 벡터 인덱스(pgvector 0.8, `iterative_scan=relaxed_order`)가 설정된다
+- [x] **STORE-04**: VectorChord-BM25 인덱스가 `chunks.bm25_tokens`에 설정된다
 - [ ] **STORE-05**: Markdown+frontmatter vault 단독으로 DB 전체를 재구성할 수 있는 `ingest rebuild` 커맨드가 있다 (DB는 캐시, vault는 SoT)
 - [ ] **STORE-06**: frontmatter 세 구역(provenance / ingest state / `_derived`)이 혼합되지 않도록 ingest 코드가 구역별 write 권한을 enforce한다
 
@@ -193,11 +193,11 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | INGEST-09 | Phase 3 | Pending |
 | INGEST-10 | Phase 3 | Pending |
 | INGEST-11 | Phase 3 | Pending |
-| INGEST-12 | Phase 3 | Pending |
+| INGEST-12 | Phase 3 | Complete |
 | STORE-01 | Phase 2 | Complete |
 | STORE-02 | Phase 2 | Complete |
-| STORE-03 | Phase 3 | Pending |
-| STORE-04 | Phase 3 | Pending |
+| STORE-03 | Phase 3 | Complete |
+| STORE-04 | Phase 3 | Complete |
 | STORE-05 | Phase 3 | Pending |
 | STORE-06 | Phase 3 | Pending |
 | RET-01 | Phase 3 | Pending |
