@@ -53,18 +53,22 @@ def test_C2_collect_dart_delegates(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
 ) -> None:
     captured: dict = {}
+    sentinel_engine = object()
 
-    def fake_collect_dart(*, corp_code, since, max_docs, vault_root):  # noqa: ANN001
+    def fake_collect_dart(*, corp_code, since, max_docs, vault_root, engine):  # noqa: ANN001
         captured["corp_code"] = corp_code
         captured["since"] = since
         captured["max_docs"] = max_docs
         captured["vault_root"] = vault_root
+        captured["engine"] = engine
         return {"total": 5, "succeeded": 5, "skipped": 0, "failed": []}
 
-    # cmd_collect_dart imports collect_dart lazily at call time
+    # cmd_collect_dart imports collect_dart + get_engine lazily at call time
     import collectors.dart as dart_mod
+    import db.engine as engine_mod
 
     monkeypatch.setattr(dart_mod, "collect_dart", fake_collect_dart)
+    monkeypatch.setattr(engine_mod, "get_engine", lambda: sentinel_engine)
 
     exit_code = main(
         [
@@ -82,6 +86,7 @@ def test_C2_collect_dart_delegates(
     assert captured["since"] == "2026-01-01"
     assert captured["max_docs"] == 5
     assert captured["vault_root"] == tmp_path
+    assert captured["engine"] is sentinel_engine
     out = capsys.readouterr().out
     assert json.loads(out)["succeeded"] == 5
 
