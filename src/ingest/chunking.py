@@ -18,7 +18,10 @@ Index semantics (Open Question Q4):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from ingest.parsers.dart import Section
 
 __all__ = ["Chunk", "chunk_document"]
 
@@ -49,7 +52,7 @@ class Chunk:
 
 
 def chunk_document(
-    sections: list,
+    sections: list[Section],
     *,
     max_tokens: int = 1500,
     win: int = 512,
