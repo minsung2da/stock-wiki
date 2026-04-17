@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-04-17T14:08:17.108Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-04-17T14:17:17.644Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 12
-  completed_plans: 9
-  percent: 75
+  completed_plans: 10
+  percent: 83
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 03 (one-company-walking-skeleton) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P01 | 18min | 2 tasks | 7 files |
 | Phase 03 P02 | 12min | 2 tasks | 8 files |
 | Phase 03-one-company-walking-skeleton P03 | 11min | 3 tasks | 11 files |
+| Phase 03 P04 | 10min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,9 @@ Recent decisions affecting current work:
 - [Phase 03-one-company-walking-skeleton]: Embedder lazy-imports SentenceTransformer; EMBEDDING_MODEL_VERSION='BAAI/bge-m3@v1' importable without torch for CI parity
 - [Phase 03-one-company-walking-skeleton]: chunk_index monotonic per document; section_index resets at each new section (Q4 resolution)
 - [Phase 03-one-company-walking-skeleton]: PATTERNS ID snapshot stable: EN_IGNORE_PREV/FAKE_SYSTEM_TAG/DAN_MODE/ROLEPLAY_ADMIN/KO_IGNORE_PREV/KO_ADMIN_MODE
+- [Phase 03]: Phase 03-04: Per-doc transaction (engine.begin per document) — D-26 failure isolation requires N commits, not one long txn
+- [Phase 03]: Phase 03-04: Delete-then-insert on content_hash change (not UPSERT) — documents.id IS the hash, so hash change is new row with FK cascade
+- [Phase 03]: Phase 03-04: injection_flags UNION across runs (prior ∪ new) — security-forward default; cleanup belongs to ingest doctor
 
 ### Pending Todos
 
@@ -118,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T14:08:07.855Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-04-17T14:17:17.586Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None

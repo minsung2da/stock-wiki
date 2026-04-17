@@ -36,7 +36,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 ### 인제스트 (Ingestion) — 로컬 LLM 우선
 
-- [ ] **INGEST-01**: 인제스트 워커가 raw 문서를 content-hash 기반으로 중복 감지하고 변경된 것만 재처리한다 (idempotent)
+- [x] **INGEST-01**: 인제스트 워커가 raw 문서를 content-hash 기반으로 중복 감지하고 변경된 것만 재처리한다 (idempotent)
 - [ ] **INGEST-02**: `_derived` 추출은 ingest venv 내부가 아닌 별도 Claude Schedule 에이전트가 수행한다 — vault raw 문서를 git round-trip으로 읽고 enriched frontmatter를 커밋해 돌려놓는 방식. ingest venv에서는 `anthropic`/`openai` import가 여전히 금지(COLL-07 CI 가드 유지).
 - [ ] **INGEST-03**: Claude Schedule 에이전트는 `vault/raw/` 하위에서 `_derived` 블록이 없는 문서를 주기적으로 감지하고 처리한다 (멱등: 이미 `_derived`가 있고 원문 content-hash가 동일하면 건너뜀).
 - [ ] **INGEST-04**: Claude Schedule 에이전트는 `_derived` 구역에만 쓰기 권한이 있으며 provenance·ingest-state 구역을 수정하면 ingest doctor가 drift로 리포트한다 (STORE-06 구역 무결성 유지).
@@ -56,7 +56,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [x] **STORE-03**: `chunks`에 HNSW 벡터 인덱스(pgvector 0.8, `iterative_scan=relaxed_order`)가 설정된다
 - [x] **STORE-04**: VectorChord-BM25 인덱스가 `chunks.bm25_tokens`에 설정된다
 - [ ] **STORE-05**: Markdown+frontmatter vault 단독으로 DB 전체를 재구성할 수 있는 `ingest rebuild` 커맨드가 있다 (DB는 캐시, vault는 SoT)
-- [ ] **STORE-06**: frontmatter 세 구역(provenance / ingest state / `_derived`)이 혼합되지 않도록 ingest 코드가 구역별 write 권한을 enforce한다
+- [x] **STORE-06**: frontmatter 세 구역(provenance / ingest state / `_derived`)이 혼합되지 않도록 ingest 코드가 구역별 write 권한을 enforce한다
 
 ### 하이브리드 검색 (Retrieval)
 
@@ -182,7 +182,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | COLL-07 | Phase 1 | Complete |
 | COLL-08 | Phase 3 | Complete |
 | COLL-09 | Phase 3 | Complete |
-| INGEST-01 | Phase 3 | Pending |
+| INGEST-01 | Phase 3 | Complete |
 | INGEST-02 | Phase 5 | Pending |
 | INGEST-03 | Phase 5 | Pending |
 | INGEST-04 | Phase 5 | Pending |
@@ -199,7 +199,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | STORE-03 | Phase 3 | Complete |
 | STORE-04 | Phase 3 | Complete |
 | STORE-05 | Phase 3 | Pending |
-| STORE-06 | Phase 3 | Pending |
+| STORE-06 | Phase 3 | Complete |
 | RET-01 | Phase 3 | Pending |
 | RET-02 | Phase 3 | Pending |
 | RET-03 | Phase 3 | Pending |
