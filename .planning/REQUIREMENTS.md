@@ -37,15 +37,15 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 ### 인제스트 (Ingestion) — 로컬 LLM 우선
 
 - [ ] **INGEST-01**: 인제스트 워커가 raw 문서를 content-hash 기반으로 중복 감지하고 변경된 것만 재처리한다 (idempotent)
-- [ ] **INGEST-02**: 단일 `llm_client.py` 추상화가 Ollama 엔드포인트를 기본으로 하고 `ALLOW_CLOUD_LLM=1` + `MAX_CLOUD_USD` 가드 하에서만 Claude Haiku 4.5 폴백을 허용한다
-- [ ] **INGEST-03**: Ollama + Qwen2.5-14B-Instruct (Q4_K_M)가 기본 추출 모델로 동작한다
-- [ ] **INGEST-04**: EXAONE-3.5-7.8B가 한국어 특화 문서(뉴스 본문·리포트)에 사용된다
+- [ ] **INGEST-02**: `_derived` 추출은 ingest venv 내부가 아닌 별도 Claude Schedule 에이전트가 수행한다 — vault raw 문서를 git round-trip으로 읽고 enriched frontmatter를 커밋해 돌려놓는 방식. ingest venv에서는 `anthropic`/`openai` import가 여전히 금지(COLL-07 CI 가드 유지).
+- [ ] **INGEST-03**: Claude Schedule 에이전트는 `vault/raw/` 하위에서 `_derived` 블록이 없는 문서를 주기적으로 감지하고 처리한다 (멱등: 이미 `_derived`가 있고 원문 content-hash가 동일하면 건너뜀).
+- [ ] **INGEST-04**: Claude Schedule 에이전트는 `_derived` 구역에만 쓰기 권한이 있으며 provenance·ingest-state 구역을 수정하면 ingest doctor가 drift로 리포트한다 (STORE-06 구역 무결성 유지).
 - [ ] **INGEST-05**: LLM이 frontmatter의 `_derived` 블록에 `tickers`, `event_type`, `catalysts`, `sentiment`, `numeric_facts`, `summary` 속성을 추출하여 쓴다
 - [ ] **INGEST-06**: DART 재무제표 수치는 LLM을 거치지 않고 dart-fss 구조화 접근자를 통해 직접 추출된다
 - [ ] **INGEST-07**: 뉴스·리포트 본문의 숫자 추출은 regex 후보 추출 → LLM 선택 → Pydantic 검증 → 자릿수 체크섬 단계를 거친다
 - [ ] **INGEST-08**: 프롬프트 인젝션 방어: untrusted 본문은 XML 델리미터로 감싸 전달, 알려진 주입 패턴(`ignore previous`, 가짜 system 태그 등)을 사전 필터링한다
 - [ ] **INGEST-09**: 종목토론방 같은 적대적 소스의 개별 게시물 본문은 LLM 추출 파이프라인에 투입하지 않는다
-- [ ] **INGEST-10**: bge-m3 임베딩(1024차원)이 Ollama를 통해 생성되고 Postgres `chunks` 테이블에 저장된다
+- [ ] **INGEST-10**: bge-m3 임베딩(1024차원)이 sentence-transformers 라이브러리로 로컬에서 직접 생성(No Ollama)되고 Postgres `chunks` 테이블에 저장된다
 - [ ] **INGEST-11**: mecab-ko로 한국어 사전 토큰화된 필드가 `chunks.bm25_tokens`에 저장되어 BM25 쿼리에 사용된다
 - [ ] **INGEST-12**: 임베딩 모델 버전이 `chunks.embedding_model` 컬럼에 기록되어 모델 변경 시 재인덱싱이 가능하다
 
@@ -255,3 +255,4 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 ---
 *Requirements defined: 2026-04-17*
 *Last updated: 2026-04-17 after roadmap traceability mapping*
+*Updated: 2026-04-17 — INGEST-02/03/04/10 rewritten for Claude Schedule + sentence-transformers*
