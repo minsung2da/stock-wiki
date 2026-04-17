@@ -66,5 +66,7 @@ def chunk_document(
         step = win - overlap
         for i, start in enumerate(range(0, len(ids), step)):
             piece = tok.decode(ids[start : start + win])
+            if not piece.strip():
+                continue
             chunks.append(Chunk(piece, len(chunks), sec.path, i))
     return chunks
