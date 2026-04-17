@@ -1,0 +1,24 @@
+# Rename: ㈜삼성전자 → 삼성전자㈜ on 2000-01-01. corp_code unchanged.
+entities:
+  - corp_code: "00126380"
+    canonical_name: "삼성전자㈜"
+    current_ticker: "005930"
+    market: "KOSPI"
+    listed_at: "1975-06-11"
+
+entity_aliases:
+  - corp_code: "00126380"
+    kind: "name"
+    value: "㈜삼성전자"
+    valid_from: "1975-06-11"
+    valid_to: "2000-01-01"
+  - corp_code: "00126380"
+    kind: "name"
+    value: "삼성전자㈜"
+    valid_from: "2000-01-01"
+    valid_to: null
+  - corp_code: "00126380"
+    kind: "ticker"
+    value: "005930"
+    valid_from: "1975-06-11"
+    valid_to: null

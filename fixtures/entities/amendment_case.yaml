@@ -1,0 +1,26 @@
+# DART 기재정정: original doc + amendment doc + supersedes edge (original -> amendment).
+# Chain convention: src supersedes dst — walking forward from src=start via e.src_id=c.dst_id
+# finds the terminal (latest) document.
+entities:
+  - corp_code: "00999999"
+    canonical_name: "정정코퍼레이션"
+    current_ticker: "099998"
+    market: "KOSPI"
+    listed_at: "2020-01-01"
+
+documents:
+  - id: "0000000000000000000000000000000000000000000000000000000000000001"
+    body: "원본 공시 본문\n"
+    source: "dart"
+    vault_path: "raw/dart/2026-01-10/original.md"
+  - id: "0000000000000000000000000000000000000000000000000000000000000002"
+    body: "정정 공시 본문 — 최신판\n"
+    source: "dart"
+    vault_path: "raw/dart/2026-02-01/amendment.md"
+
+edges:
+  - src_type: "document"
+    src_id: "0000000000000000000000000000000000000000000000000000000000000001"
+    dst_type: "document"
+    dst_id: "0000000000000000000000000000000000000000000000000000000000000002"
+    edge_type: "supersedes"

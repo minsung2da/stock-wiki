@@ -1,0 +1,30 @@
+# SYNTHETIC fixture (Pitfall 1): two different corp_codes reuse ticker 099999
+# at non-overlapping times. Public search returned no concrete KRX recycling
+# example to model against; real-case backfill via pykrx listings is a v2 task.
+# Documented as synthetic in test docstrings.
+entities:
+  - corp_code: "99999991"
+    canonical_name: "Old Recycle Corp (delisted)"
+    current_ticker: null
+    market: "KOSDAQ"
+    listed_at: "1990-01-01"
+    delisted_at: "2000-12-31"
+  - corp_code: "99999992"
+    canonical_name: "New Recycle Corp"
+    current_ticker: "099999"
+    market: "KOSDAQ"
+    listed_at: "2010-01-01"
+
+entity_aliases:
+  # Old corp used ticker 099999 from listing until 2001-01-01 (valid_to is exclusive).
+  - corp_code: "99999991"
+    kind: "ticker"
+    value: "099999"
+    valid_from: "1990-01-01"
+    valid_to: "2001-01-01"
+  # New corp reuses ticker 099999 from its listing onward (current).
+  - corp_code: "99999992"
+    kind: "ticker"
+    value: "099999"
+    valid_from: "2010-01-01"
+    valid_to: null

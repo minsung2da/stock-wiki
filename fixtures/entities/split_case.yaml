@@ -1,0 +1,22 @@
+# 2014-05-28 Samsung-style 1:50 액면분할. corp_code and ticker unchanged.
+# The split is a fact about price series, not identity — no alias row changes at split date.
+# Test asserts as_of=2014-05-27 and as_of=2014-05-29 both resolve to the same corp_code.
+# Synthetic corp_code/ticker to avoid colliding with rename fixture.
+entities:
+  - corp_code: "00126381"
+    canonical_name: "스플릿코퍼레이션"
+    current_ticker: "099001"
+    market: "KOSPI"
+    listed_at: "2000-01-01"
+
+entity_aliases:
+  - corp_code: "00126381"
+    kind: "ticker"
+    value: "099001"
+    valid_from: "2000-01-01"
+    valid_to: null
+  - corp_code: "00126381"
+    kind: "name"
+    value: "스플릿코퍼레이션"
+    valid_from: "2000-01-01"
+    valid_to: null
