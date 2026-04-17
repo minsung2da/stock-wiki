@@ -39,7 +39,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md -- Docker Postgres 17 + vault directories + gitignore + obsidianignore
 - [x] 01-02-PLAN.md -- Python env (pyproject.toml) + Pydantic frontmatter schema + tests
-- [ ] 01-03-PLAN.md -- CI import guard + secrets hygiene + WSL migration script
+- [x] 01-03-PLAN.md -- CI import guard + secrets hygiene + WSL migration script
 
 ### Phase 2: Canonical Entity Identity
 **Goal**: The stable key for every entity is DART `corp_code` — not the reusable 6-digit KRX ticker. Schema, alias history, and supersession edges for 기재정정 chains are settled before any document is written so later re-ingest is avoided.

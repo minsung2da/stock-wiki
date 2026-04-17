@@ -12,7 +12,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [x] **FOUND-01**: 프로젝트가 네이티브 Postgres 17 컨테이너(Docker)를 `docker-compose`로 기동할 수 있다 (pgvector + VectorChord-BM25 + pg_trgm extension 로드됨)
 - [x] **FOUND-02**: Obsidian vault에 `raw/`, `notes/`, `ingested/`, `dashboards/`, `graph/` 폴더 구조가 준비되어 있다 (기존 `.obsidian/`, `환영합니다!.md` 보존)
 - [x] **FOUND-03**: `.gitignore`가 `.obsidian/workspace*`, `.obsidian/cache`, Ollama 캐시, 개인 포트폴리오 overlay 파일을 제외한다
-- [ ] **FOUND-04**: WSL 성능을 위해 vault 경로를 `/mnt/c/…/stock` 에서 WSL 네이티브 경로(`~/stock` 또는 symlink)로 마이그레이션 옵션이 문서·스크립트로 제공된다
+- [x] **FOUND-04**: WSL 성능을 위해 vault 경로를 `/mnt/c/…/stock` 에서 WSL 네이티브 경로(`~/stock` 또는 symlink)로 마이그레이션 옵션이 문서·스크립트로 제공된다
 - [x] **FOUND-05**: `uv` 기반 Python 3.12 환경에 수집·인제스트·MCP 각 의존성이 격리된 venv로 설치된다 (특히 ingest venv에는 `anthropic` 패키지 없음)
 - [x] **FOUND-06**: Pydantic 기반 frontmatter 스키마 (`FrontMatter`, `ProvenanceBlock`, `IngestStateBlock`, `DerivedBlock`)가 정의되고 단위 테스트로 검증된다
 
@@ -30,7 +30,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [ ] **COLL-04**: `collect_macro` 스크립트가 한은 ECOS + FRED에서 기준금리·USD/KRW·미10년물·WTI를 수집한다
 - [ ] **COLL-05**: `collect_kind` 스크립트가 KIND에서 거래정지·관리종목·불성실공시 지정을 수집한다
 - [ ] **COLL-06**: 모든 수집 스크립트는 최소 frontmatter(`source`, `date`, `id`, `ticker?`, `corp_code?`, `url`, `content_hash`)만 작성하고 LLM 호출을 하지 않는다
-- [ ] **COLL-07**: CI 테스트가 `ingest/` 및 `collectors/` 디렉터리에서 `anthropic`·`openai` import를 검출하면 실패한다
+- [x] **COLL-07**: CI 테스트가 `ingest/` 및 `collectors/` 디렉터리에서 `anthropic`·`openai` import를 검출하면 실패한다
 - [ ] **COLL-08**: 각 수집기가 소스별 격리(한 소스 실패가 다른 소스 실행을 막지 않음) + 재시도 + 멱등 업서트(content-hash 키)를 지원한다
 - [ ] **COLL-09**: 수집 실행 성공·실패 heartbeat가 `vault/ingested/_status/heartbeat.md`에 기록되어 사일런트 실패를 감지할 수 있다
 
@@ -112,7 +112,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [ ] **OPS-03**: `ingest_runs` 테이블이 각 실행의 시작·종료·소스·결과를 기록한다
 - [ ] **OPS-04**: `ingest doctor` 커맨드가 vault-DB drift(누락된 문서, 고아 chunks)를 감지·보고한다
 - [ ] **OPS-05**: 수집·인제스트 실패가 heartbeat 파일·로그·MCP `health()`에 드러난다
-- [ ] **OPS-06**: DART API 키·DB 비밀번호 등 시크릿이 `.env`에서 읽히고 vault·git에 커밋되지 않는다
+- [x] **OPS-06**: DART API 키·DB 비밀번호 등 시크릿이 `.env`에서 읽히고 vault·git에 커밋되지 않는다
 
 ## v2 Requirements
 
@@ -167,7 +167,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | FOUND-01 | Phase 1 | Complete |
 | FOUND-02 | Phase 1 | Complete |
 | FOUND-03 | Phase 1 | Complete |
-| FOUND-04 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Complete |
 | FOUND-05 | Phase 1 | Complete |
 | FOUND-06 | Phase 1 | Complete |
 | ENT-01 | Phase 2 | Pending |
@@ -179,7 +179,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | COLL-04 | Phase 4 | Pending |
 | COLL-05 | Phase 4 | Pending |
 | COLL-06 | Phase 3 | Pending |
-| COLL-07 | Phase 1 | Pending |
+| COLL-07 | Phase 1 | Complete |
 | COLL-08 | Phase 3 | Pending |
 | COLL-09 | Phase 3 | Pending |
 | INGEST-01 | Phase 3 | Pending |
@@ -234,7 +234,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | OPS-03 | Phase 9 | Pending |
 | OPS-04 | Phase 9 | Pending |
 | OPS-05 | Phase 9 | Pending |
-| OPS-06 | Phase 1 | Pending |
+| OPS-06 | Phase 1 | Complete |
 
 **Coverage:**
 - v1 requirements: 71 total
