@@ -1,0 +1,43 @@
+# Obsidian UI state (churn, merge conflicts)
+.obsidian/workspace*
+.obsidian/cache
+.obsidian/plugins/*/data.json.bak
+
+# Private portfolio data (per D-03: local-only, never committed)
+notes/private/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# Database (NEVER commit)
+data/pg/
+
+# Ollama cache
+.ollama/
+
+# graphify outputs (regeneratable)
+graphify-out/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Raw collected data caches
+raw_cache/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
