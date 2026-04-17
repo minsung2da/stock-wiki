@@ -51,7 +51,13 @@ def load_entity_fixture(engine: Engine, fixture_path: str | Path) -> None:
                       (:corp_code, :kind, :value, :valid_from, :valid_to)
                     """
                 ),
-                a,
+                {
+                    "corp_code": a["corp_code"],
+                    "kind": a["kind"],
+                    "value": a["value"],
+                    "valid_from": a["valid_from"],
+                    "valid_to": a.get("valid_to"),
+                },
             )
         for d in data.get("documents", []) or []:
             conn.execute(
