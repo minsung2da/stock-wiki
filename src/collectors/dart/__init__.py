@@ -60,6 +60,7 @@ def collect_dart(
     client.get_client()
     corp = client.find_corp(corp_code)
     ticker = getattr(corp, "stock_code", None)
+    company_name = getattr(corp, "corp_name", None)
 
     filings = fetcher.list_ab_filings(corp_code, since, max_docs)
 
@@ -84,7 +85,9 @@ def collect_dart(
                     stats["skipped"] += 1
                     continue
 
-            writer.write_filing(filing, body, corp_code, ticker, vault_root)
+            writer.write_filing(
+                filing, body, corp_code, ticker, vault_root, company_name=company_name
+            )
             stats["succeeded"] += 1
         except Exception as exc:  # per-filing isolation (COLL-08)
             stats["failed"].append({"doc": str(path), "error": str(exc)})
@@ -93,7 +96,7 @@ def collect_dart(
     # succeeds downstream. Only when caller supplies an engine AND at least one
     # filing landed on disk. Never allow entity seeding to fail the collect run.
     if engine is not None and stats["succeeded"] > 0:
-        canonical_name = getattr(corp, "corp_name", None) or ticker or corp_code
+        canonical_name = company_name or ticker or corp_code
         try:
             from db.entity import upsert_entity
 

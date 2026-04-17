@@ -32,6 +32,7 @@ class ProvenanceBlock(BaseModel):
     content_hash: str | None = None
     corp_code: str | None = None  # DART 8-digit canonical ID
     ticker: str | None = None  # KRX 6-digit convenience field
+    company_name: str | None = None  # Canonical corp name (Bug D-1: re-seed entities on rebuild)
     lang: str = "ko"
     trust_level: Literal["trusted", "semi_trusted", "adversarial"] = "trusted"
 

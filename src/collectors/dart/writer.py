@@ -50,6 +50,7 @@ def write_filing(
     corp_code: str,
     ticker: str | None,
     vault_root: Path,
+    company_name: str | None = None,
 ) -> tuple[Path, str]:
     """Write one filing to the vault. Returns (path, content_hash).
 
@@ -75,6 +76,7 @@ def write_filing(
             content_hash=content_hash,
             corp_code=corp_code,
             ticker=ticker,
+            company_name=company_name,
             lang="ko",
             trust_level="trusted",
         )
