@@ -12,8 +12,6 @@ import ast
 import textwrap
 from pathlib import Path
 
-import pytest
-
 BANNED_MODULES = {"anthropic", "openai"}
 GUARDED_DIRS = ["src/ingest", "src/collectors"]
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -31,14 +29,13 @@ def scan_for_banned_imports(directory: Path) -> list[str]:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     if alias.name.split(".")[0] in BANNED_MODULES:
-                        violations.append(
-                            f"{py_file}:{node.lineno} imports {alias.name}"
-                        )
-            elif isinstance(node, ast.ImportFrom):
-                if node.module and node.module.split(".")[0] in BANNED_MODULES:
-                    violations.append(
-                        f"{py_file}:{node.lineno} imports from {node.module}"
-                    )
+                        violations.append(f"{py_file}:{node.lineno} imports {alias.name}")
+            elif (
+                isinstance(node, ast.ImportFrom)
+                and node.module
+                and node.module.split(".")[0] in BANNED_MODULES
+            ):
+                violations.append(f"{py_file}:{node.lineno} imports from {node.module}")
     return violations
 
 
@@ -50,9 +47,8 @@ class TestImportGuard:
             dir_path = PROJECT_ROOT / dir_name
             if dir_path.exists():
                 all_violations.extend(scan_for_banned_imports(dir_path))
-        assert not all_violations, (
-            f"Cloud LLM imports found in guarded directories:\n"
-            + "\n".join(all_violations)
+        assert not all_violations, "Cloud LLM imports found in guarded directories:\n" + "\n".join(
+            all_violations
         )
 
     def test_guard_catches_import(self, tmp_path: Path) -> None:
@@ -66,9 +62,7 @@ class TestImportGuard:
     def test_guard_catches_from_import(self, tmp_path: Path) -> None:
         """Guard detects 'from openai import ...' statement."""
         bad_file = tmp_path / "bad_module.py"
-        bad_file.write_text(
-            "from openai import ChatCompletion\n", encoding="utf-8"
-        )
+        bad_file.write_text("from openai import ChatCompletion\n", encoding="utf-8")
         violations = scan_for_banned_imports(tmp_path)
         assert len(violations) == 1
         assert "openai" in violations[0]
