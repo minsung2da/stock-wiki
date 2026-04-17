@@ -25,6 +25,19 @@ class CollectorConfigError(RuntimeError):
 _initialized = False
 
 
+def _reset() -> None:
+    """Reset the module-level initialization flag.
+
+    Test-only helper: call this in test fixtures that unset DART_API_KEY so
+    subsequent calls to get_client() re-read the environment variable rather
+    than returning silently from the cached _initialized=True state.
+
+    Not intended for production use — the API key does not change at runtime.
+    """
+    global _initialized
+    _initialized = False
+
+
 def get_client() -> None:
     """Initialize dart-fss with the API key from `DART_API_KEY` env var.
 
