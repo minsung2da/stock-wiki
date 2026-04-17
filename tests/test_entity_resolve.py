@@ -79,6 +79,8 @@ def test_mismatch_length_returns_none(pg_clean):
     assert resolve_entity(pg_clean, "1234") is None
     assert resolve_entity(pg_clean, "garbage") is None
     assert resolve_entity(pg_clean, "1234567") is None  # 7 digits
+    assert resolve_entity(pg_clean, "KOSPI001") is None  # 8 chars, not all ASCII digits
+    assert resolve_entity(pg_clean, "²²²²²²²²") is None  # 8 superscript digits (non-ASCII)
 
 
 def test_nonexistent_corp_code_returns_none(pg_clean):
