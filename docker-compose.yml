@@ -2,6 +2,7 @@ services:
   postgres:
     image: tensorchord/vchord-suite:pg17-latest
     container_name: stock-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: stockwiki
       POSTGRES_USER: stockwiki
