@@ -9,11 +9,11 @@
 # 1. cd ~/stock && git remote -v (verify remotes)
 # 2. In Obsidian (Windows): Open vault at \\wsl$\<distro>\home\<user>\stock
 # 3. Verify .obsidian/ settings intact
-# 4. Remove old location when confirmed: rm -rf /mnt/c/Users/minsu/workspace/stock
+# 4. Remove old location when confirmed: rm -rf "$STOCK_SRC"
 
 set -euo pipefail
 
-SRC="/mnt/c/Users/minsu/workspace/stock"
+SRC="${STOCK_SRC:?Set STOCK_SRC to your Windows vault path, e.g. /mnt/c/Users/yourname/workspace/stock}"
 DST="$HOME/stock"
 
 # Auto-detect WSL distro name for Obsidian path
