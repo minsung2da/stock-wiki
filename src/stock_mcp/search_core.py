@@ -284,6 +284,15 @@ def hybrid_search(
 
     rows_by_cid = {r.chunk_id: r for r in rows}
     hits: list[dict[str, Any]] = []
+    # Per-source trust level mapping (D-19).  dart public filings are trusted;
+    # news and user notes are semi_trusted.  A Phase 4 follow-up should add a
+    # documents.trust_level column populated at ingest time so individual
+    # document overrides are honoured.
+    _SOURCE_TRUST: dict[str, str] = {
+        "dart": "trusted",
+        "news": "semi_trusted",
+        "note": "semi_trusted",
+    }
     # Preserve RRF ordering from the ranked result.
     for r in ranked:
         row = rows_by_cid.get(r.chunk_id)
@@ -296,10 +305,11 @@ def hybrid_search(
         # charset (shouldn't occur for sha256 ids, but defensive).
         if not doc_id_hex or not all(ch in "0123456789abcdef" for ch in doc_id_hex):
             doc_id_hex = "0" * 8
+        trust = _SOURCE_TRUST.get(row.source or "", "semi_trusted")
         excerpt = wrap_untrusted(
             raw_excerpt,
             source=(row.source or "unknown"),
-            trust_level="trusted",
+            trust_level=trust,
             doc_id=doc_id_hex,
         )
         hits.append(
