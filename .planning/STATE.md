@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-04-17T13:36:49.748Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-04-17T13:53:25.075Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 12
-  completed_plans: 7
-  percent: 58
+  completed_plans: 8
+  percent: 67
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 03 (one-company-walking-skeleton) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-canonical-entity-identity P02 | 6 min | 2 tasks | 3 files |
 | Phase 02-canonical-entity-identity P03 | 15 min | 2 tasks | 8 files |
 | Phase 03 P01 | 18min | 2 tasks | 7 files |
+| Phase 03 P02 | 12min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 03]: BM25 expression index ((bm25_tokens)::bm25vector) bm25_ops — opclass targets bm25vector, implicit cast materialised at index time
 - [Phase 03]: Migration self-contained: CREATE EXTENSION vchord_bm25 + pg_trgm inside 0002 for testcontainer parity with live docker-compose DB
 - [Phase 03]: documents.corp_code + btree index added in Plan 01 (not Plan 04) — Plan 05 hybrid_search filters without JSONB probe
+- [Phase 03]: trust_level lives on ProvenanceBlock (Zone 1, collector-written, D-19 enum)
+- [Phase 03]: Content-hash comparison on freshly-fetched body (not existing file hash) — guarantees correctness when remote changes
+- [Phase 03]: Heartbeat sources dict lives outside FrontMatter Pydantic schema (operational telemetry != document content)
 
 ### Pending Todos
 
@@ -109,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T13:36:40.826Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-04-17T13:53:13.620Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
