@@ -1,0 +1,62 @@
+[project]
+name = "stock-wiki"
+version = "0.1.0"
+description = "Claude-Powered Korean Market Knowledge Base"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.13,<3",
+    "pyyaml>=6.0",
+    "python-frontmatter>=1.1",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+collectors = [
+    "dart-fss",
+    "pykrx>=1.0.50",
+    "finance-datareader>=0.9.94",
+    "trafilatura>=1.12",
+    "PublicDataReader",
+    "fredapi>=0.5",
+    "yfinance>=0.2.50",
+    "beautifulsoup4>=4.12",
+    "requests>=2.32",
+    "pandas",
+    "lxml",
+]
+ingest = [
+    "ollama",
+    "psycopg[binary]",
+    "pgvector",
+    "sqlalchemy>=2.0",
+]
+mcp = [
+    "fastmcp>=2.11,<3.0",
+    "anthropic",
+    "psycopg[binary]",
+    "pgvector",
+    "sqlalchemy>=2.0",
+]
+dev = [
+    "pytest>=9.0",
+    "ruff>=0.15",
+    "pre-commit",
+    "mypy",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
