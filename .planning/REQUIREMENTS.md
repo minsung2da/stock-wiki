@@ -19,8 +19,8 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 ### 엔티티 모델 (Entity Model)
 
 - [x] **ENT-01**: `corp_code`(DART 8자리)가 캐노니컬 엔티티 ID로 사용된다; 6자리 KRX 티커는 편의 필드
-- [ ] **ENT-02**: 종목명 변경·합병·분할·상장폐지·티커 재활용을 추적할 수 있는 `entities` 테이블과 시간 범위 이력이 있다
-- [ ] **ENT-03**: DART 기재정정(`supersedes`) 체인이 엣지로 저장되어 최신 공시만 소비 가능하다
+- [x] **ENT-02**: 종목명 변경·합병·분할·상장폐지·티커 재활용을 추적할 수 있는 `entities` 테이블과 시간 범위 이력이 있다
+- [x] **ENT-03**: DART 기재정정(`supersedes`) 체인이 엣지로 저장되어 최신 공시만 소비 가능하다
 
 ### 수집 (Collection) — LLM 토큰 0
 
@@ -171,8 +171,8 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | FOUND-05 | Phase 1 | Complete |
 | FOUND-06 | Phase 1 | Complete |
 | ENT-01 | Phase 2 | Complete |
-| ENT-02 | Phase 2 | Pending |
-| ENT-03 | Phase 2 | Pending |
+| ENT-02 | Phase 2 | Complete |
+| ENT-03 | Phase 2 | Complete |
 | COLL-01 | Phase 3 | Pending |
 | COLL-02 | Phase 4 | Pending |
 | COLL-03 | Phase 4 | Pending |

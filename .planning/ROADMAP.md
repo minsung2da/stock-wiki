@@ -55,7 +55,7 @@ Plans:
 Plans:
 - [x] 02-01-PLAN.md -- Alembic scaffold + db/dev deps + content_hash utility + testcontainers fixtures
 - [x] 02-02-PLAN.md -- Phase 2 migration (7 tables) + schema/dedup tests + live DB push
-- [ ] 02-03-PLAN.md -- resolve_entity helper + entity fixtures + supersedes edge tests
+- [x] 02-03-PLAN.md -- resolve_entity helper + entity fixtures + supersedes edge tests
 
 ### Phase 3: One-Company Walking Skeleton
 **Goal**: End-to-end proof of architecture on one company. DART collector fetches, minimal ingest (content-hash dedup, bge-m3 embed, mecab-ko BM25 tokens — no LLM extraction), hybrid search over pgvector + VectorChord-BM25, FastMCP exposes `search`, Claude Code receives an answer with a vault-path citation. All the defenses that must exist before data accumulates (prompt-injection scaffolding, heartbeat, embedding-version tracking) are in place.
