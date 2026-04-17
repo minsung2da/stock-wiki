@@ -37,11 +37,18 @@ mcp = [
     "pgvector",
     "sqlalchemy>=2.0",
 ]
+db = [
+    "alembic>=1.18,<2",
+    "sqlalchemy>=2.0,<3",
+    "psycopg[binary]>=3.2",
+    "pgvector>=0.4",
+]
 dev = [
     "pytest>=9.0",
     "ruff>=0.11.7",
     "pre-commit",
     "mypy",
+    "testcontainers[postgres]>=4.8",
 ]
 
 [tool.pytest.ini_options]
