@@ -13,8 +13,8 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [x] **FOUND-02**: Obsidian vault에 `raw/`, `notes/`, `ingested/`, `dashboards/`, `graph/` 폴더 구조가 준비되어 있다 (기존 `.obsidian/`, `환영합니다!.md` 보존)
 - [x] **FOUND-03**: `.gitignore`가 `.obsidian/workspace*`, `.obsidian/cache`, Ollama 캐시, 개인 포트폴리오 overlay 파일을 제외한다
 - [ ] **FOUND-04**: WSL 성능을 위해 vault 경로를 `/mnt/c/…/stock` 에서 WSL 네이티브 경로(`~/stock` 또는 symlink)로 마이그레이션 옵션이 문서·스크립트로 제공된다
-- [ ] **FOUND-05**: `uv` 기반 Python 3.12 환경에 수집·인제스트·MCP 각 의존성이 격리된 venv로 설치된다 (특히 ingest venv에는 `anthropic` 패키지 없음)
-- [ ] **FOUND-06**: Pydantic 기반 frontmatter 스키마 (`FrontMatter`, `ProvenanceBlock`, `IngestStateBlock`, `DerivedBlock`)가 정의되고 단위 테스트로 검증된다
+- [x] **FOUND-05**: `uv` 기반 Python 3.12 환경에 수집·인제스트·MCP 각 의존성이 격리된 venv로 설치된다 (특히 ingest venv에는 `anthropic` 패키지 없음)
+- [x] **FOUND-06**: Pydantic 기반 frontmatter 스키마 (`FrontMatter`, `ProvenanceBlock`, `IngestStateBlock`, `DerivedBlock`)가 정의되고 단위 테스트로 검증된다
 
 ### 엔티티 모델 (Entity Model)
 
@@ -168,8 +168,8 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | FOUND-02 | Phase 1 | Complete |
 | FOUND-03 | Phase 1 | Complete |
 | FOUND-04 | Phase 1 | Pending |
-| FOUND-05 | Phase 1 | Pending |
-| FOUND-06 | Phase 1 | Pending |
+| FOUND-05 | Phase 1 | Complete |
+| FOUND-06 | Phase 1 | Complete |
 | ENT-01 | Phase 2 | Pending |
 | ENT-02 | Phase 2 | Pending |
 | ENT-03 | Phase 2 | Pending |

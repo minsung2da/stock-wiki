@@ -38,7 +38,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 Plans:
 - [x] 01-01-PLAN.md -- Docker Postgres 17 + vault directories + gitignore + obsidianignore
-- [ ] 01-02-PLAN.md -- Python env (pyproject.toml) + Pydantic frontmatter schema + tests
+- [x] 01-02-PLAN.md -- Python env (pyproject.toml) + Pydantic frontmatter schema + tests
 - [ ] 01-03-PLAN.md -- CI import guard + secrets hygiene + WSL migration script
 
 ### Phase 2: Canonical Entity Identity

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-17T09:16:55.516Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-17T09:22:54.858Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 01 (load-bearing-foundation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 1min | 2 tasks | 11 files |
+| Phase 01 P02 | 4min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - Phase 5 research flag: Korean BM25 tokenizer + bge-m3 chunking + VectorChord-BM25 Docker image need empirical spike before commit
 - [Phase 01]: Named volume pgdata over bind mount to avoid WSL2 permission issues
 - [Phase 01]: Postgres bound to 127.0.0.1 only (no external exposure)
+- [Phase 01]: ingest dependency group excludes anthropic/openai to enforce cost discipline
+- [Phase 01]: _derived alias with populate_by_name enables both Python (.derived) and YAML (_derived) conventions
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T09:16:55.494Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-17T09:22:54.835Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
