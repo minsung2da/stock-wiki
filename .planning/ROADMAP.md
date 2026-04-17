@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Canonical Entity Identity** - corp_code-as-PK model with alias/supersession tracking survives the next rename, split, or 기재정정
 - [ ] **Phase 3: One-Company Walking Skeleton** - DART → minimal ingest (no LLM) → hybrid search → FastMCP → Claude answers a real question with a vault citation
 - [ ] **Phase 4: Multi-Source Collector Coverage** - KRX prices/flow, economy news, macro indicators, and KIND alerts all flow into vault/raw/ with isolated, retry-safe, idempotent collectors
-- [ ] **Phase 5: Local-LLM Enrichment with Korean Number Safety** - Ollama+Qwen/EXAONE extract _derived attributes, DART financials bypass the LLM, narrative numbers pass regex-LLM-Pydantic-checksum
+- [ ] **Phase 5: Claude-Schedule Enrichment with Korean Number Safety** - Claude schedule (git round-trip) extracts _derived attributes, DART financials bypass the LLM, narrative numbers pass regex-LLM-Pydantic-checksum
 - [ ] **Phase 6: Full MCP Tool Surface** - Ten-tool MCP contract (overview, events, portfolio, related, filing, add_note, health) with docstring contracts, latency and token-size CI gates
 - [ ] **Phase 7: Graph Layer & graphify Integration** - Ingest-populated edges + graphify nightly snapshot + 3-5 canonical subgraph queries make "why did we conclude that?" traceable
 - [ ] **Phase 8: Vault Dashboards & Research Memo Templates** - Portfolio, watchlist, events-this-week, per-ticker hubs auto-regenerate; thesis and journal templates ready for human judgments
@@ -78,18 +78,18 @@ Plans:
   5. Orchestrated run with one source set to force-fail shows the other three complete successfully and the heartbeat file records per-source status
 **Plans**: TBD
 
-### Phase 5: Local-LLM Enrichment with Korean Number Safety
-**Goal**: The ingest worker extracts `_derived` attributes (tickers, event_type, catalysts, sentiment, numeric_facts, summary) using local Ollama models. Korean financial numbers are kept out of raw LLM extraction — DART financials go through `dart-fss` structured accessors; narrative numbers go through regex-LLM-Pydantic-checksum. The cloud-LLM escape hatch exists but is gated by budget caps and explicit env flags.
+### Phase 5: Claude-Schedule Enrichment with Korean Number Safety
+**Goal**: The ingest worker extracts `_derived` attributes (tickers, event_type, catalysts, sentiment, numeric_facts, summary) via a Claude Schedule agent that runs outside the ingest venv and commits enriched frontmatter back through git — not via a local model runner. The ingest venv's `anthropic` ban is preserved because the schedule agent is a separate process. Korean financial numbers are kept out of free-form LLM extraction — DART financials go through `dart-fss` structured accessors; narrative numbers go through regex-LLM-Pydantic-checksum. Embeddings (bge-m3, 1024-d) are computed locally via sentence-transformers directly, with no separate embedding-server dependency.
 **Depends on**: Phase 4
 **Requirements**: INGEST-02, INGEST-03, INGEST-04, INGEST-05, INGEST-06, INGEST-07
 **Success Criteria** (what must be TRUE):
-  1. A single `llm_client.py` abstraction routes all extraction calls to Ollama by default; Claude Haiku 4.5 fallback is reachable only when `ALLOW_CLOUD_LLM=1` and `MAX_CLOUD_USD` is set, and aborts the run on budget exhaustion
-  2. Qwen2.5-14B-Instruct (Q4_K_M) is the default extraction model, with EXAONE-3.5-7.8B selected automatically for Korean-only documents (news bodies, reports)
+  1. A Claude Schedule agent (defined outside the ingest venv) polls `vault/raw/` for documents missing a `_derived` block, extracts attributes, and commits the enriched frontmatter back via git; the ingest venv itself contains no `anthropic`/`openai` imports and the CI guard (COLL-07) still passes
+  2. The schedule agent writes only the `_derived` zone of frontmatter (provenance and ingest-state zones are write-protected against schedule writes)
   3. DART financial-statement numbers appearing in `_derived.numeric_facts` match values pulled directly from dart-fss structured accessors (no LLM involvement in those specific fields) on a 10-filing golden set
-  4. News/report narrative numbers pass the four-stage pipeline (regex candidate extraction → LLM picks → Pydantic validates → digit-checksum compares to source); disagreements flag the doc for review instead of silent acceptance
-  5. Re-running ingest on the same document 3× produces byte-identical `_derived` blocks; the three frontmatter zones remain non-overlapping
+  4. News/report narrative numbers pass the four-stage pipeline (regex candidate extraction → Claude picks → Pydantic validates → digit-checksum compares to source); disagreements flag the doc for review instead of silent acceptance
+  5. Re-running the schedule on the same unchanged document produces byte-identical `_derived` blocks; the three frontmatter zones remain non-overlapping
 **Plans**: TBD
-**Research flag**: NEEDS RESEARCH — Korean BM25 tokenizer benchmark on equity vocabulary (mecab-ko vs soynlp vs kiwipiepy), bge-m3 chunking strategy for long DART 사업보고서, VectorChord-BM25 Docker image availability (composite vs custom Dockerfile)
+**Research flag**: NEEDS RESEARCH — Korean BM25 tokenizer benchmark on equity vocabulary (mecab-ko vs soynlp vs kiwipiepy), bge-m3 chunking strategy for long DART 사업보고서, VectorChord-BM25 Docker image availability (composite vs custom Dockerfile), Claude Schedule RemoteTrigger git round-trip latency for daily batch volumes
 
 ### Phase 6: Full MCP Tool Surface
 **Goal**: Claude Code has the full FastMCP toolbox needed for the judgment workflow: `get_ticker_overview`, `get_recent_events`, `get_portfolio_state`, `get_related`, `get_filing`, `add_note`, `health`. Each tool has a docstring written as an LLM-facing behavioral contract, enforces the write-scope rules (only `vault/notes/` is writable), and passes CI gates on response latency and token size.
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 2. Canonical Entity Identity | 0/TBD | Not started | - |
 | 3. One-Company Walking Skeleton | 0/TBD | Not started | - |
 | 4. Multi-Source Collector Coverage | 0/TBD | Not started | - |
-| 5. Local-LLM Enrichment with Korean Number Safety | 0/TBD | Not started | - |
+| 5. Claude-Schedule Enrichment with Korean Number Safety | 0/TBD | Not started | - |
 | 6. Full MCP Tool Surface | 0/TBD | Not started | - |
 | 7. Graph Layer & graphify Integration | 0/TBD | Not started | - |
 | 8. Vault Dashboards & Research Memo Templates | 0/TBD | Not started | - |
