@@ -1,23 +1,23 @@
 ---
 phase: 03-one-company-walking-skeleton
-fixed_at: 2026-04-17T19:26:09Z
+fixed_at: 2026-04-17T21:20:40Z
 review_path: .planning/phases/03-one-company-walking-skeleton/03-REVIEW.md
-iteration: 1
-findings_in_scope: 4
-fixed: 4
+iteration: 2
+findings_in_scope: 8
+fixed: 8
 skipped: 0
 status: all_fixed
 ---
 
 # Phase 03: Code Review Fix Report
 
-**Fixed at:** 2026-04-17T19:26:09Z
+**Fixed at:** 2026-04-17T21:20:40Z
 **Source review:** .planning/phases/03-one-company-walking-skeleton/03-REVIEW.md
-**Iteration:** 1
+**Iteration:** 2 (cumulative — iteration 1 fixed WR-01 through WR-04; iteration 2 fixed IN-01 through IN-04)
 
 **Summary:**
-- Findings in scope: 4
-- Fixed: 4
+- Findings in scope: 8
+- Fixed: 8
 - Skipped: 0
 
 ## Fixed Issues
@@ -50,20 +50,52 @@ status: all_fixed
 
 **Files modified:** `tests/conftest.py`
 **Commit:** 36f9153
-**Applied fix:** Added `import re` and module-level `_SAFE_TABLE_RE = re.compile(r"^[a-z_]+$")`. Added `assert _SAFE_TABLE_RE.match(tbl), f"unsafe table name: {tbl!r}"` before the f-string interpolation in the truncate loop. Removed the old comment that described the injection risk; replaced with a comment explaining the assertion guard.
+**Applied fix:** Added `import re` and module-level `_SAFE_TABLE_RE = re.compile(r"^[a-z_]+$")`. Added `assert _SAFE_TABLE_RE.match(tbl), f"unsafe table name: {tbl!r}"` before the f-string interpolation in the truncate loop. Replaced the old injection-risk comment with a comment explaining the assertion guard.
+
+---
+
+### IN-01: `client._initialized` global is not reset between test runs
+
+**Files modified:** `src/collectors/dart/client.py`
+**Commit:** 90576f4
+**Applied fix:** Added a `_reset()` module-level function that sets `_initialized = False`. The function includes a docstring explicitly marking it as test-only and explaining that it allows test fixtures to force re-reading of `DART_API_KEY` after unsetting it, preventing test-ordering dependencies.
+
+---
+
+### IN-02: `chunk_document` receives a `sections` list typed as `list` (no element type)
+
+**Files modified:** `src/ingest/chunking.py`
+**Commit:** eba4f74
+**Applied fix:** Added `from typing import TYPE_CHECKING` and a `TYPE_CHECKING`-guarded `from ingest.parsers.dart import Section` import. Changed the `sections: list` parameter to `sections: list[Section]` to surface `AttributeError`s as type errors at static analysis time rather than at runtime.
+
+---
+
+### IN-03: `rebuild_from_vault` has no transaction boundary around alembic round-trip
+
+**Files modified:** `src/ingest/rebuild.py`
+**Commit:** cc0776c
+**Applied fix:** Added a `.. warning::` docstring block describing the interrupted-rebuild risk and recovery steps. Added a schema-health check after `alembic upgrade head` that queries `information_schema.tables` for the `documents` table and raises `RuntimeError` with a clear recovery message if it is absent.
+
+---
+
+### IN-04: `DateRange` does not validate that `start <= end`
+
+**Files modified:** `src/stock_mcp/models.py`
+**Commit:** cc2cefb
+**Applied fix:** Added `model_validator` import and a `_start_before_end` model validator (mode="after") that raises `ValueError("start must be <= end")` when both fields are non-None and `start > end` (lexicographic comparison, safe for ISO YYYY-MM-DD strings).
 
 ---
 
 ## Post-Fix Verification
 
-All 168 tests passed (0 failures, 9 deselected as slow/e2e) after all 4 fixes were applied:
+All 168 tests passed (0 failures, 9 deselected as slow/e2e) after all 8 fixes were applied:
 
 ```
-168 passed, 9 deselected, 14 warnings in 39.91s
+168 passed, 9 deselected, 14 warnings in 40.37s
 ```
 
 ---
 
-_Fixed: 2026-04-17T19:26:09Z_
+_Fixed: 2026-04-17T21:20:40Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 2_
