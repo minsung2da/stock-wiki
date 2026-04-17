@@ -18,7 +18,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 ### 엔티티 모델 (Entity Model)
 
-- [ ] **ENT-01**: `corp_code`(DART 8자리)가 캐노니컬 엔티티 ID로 사용된다; 6자리 KRX 티커는 편의 필드
+- [x] **ENT-01**: `corp_code`(DART 8자리)가 캐노니컬 엔티티 ID로 사용된다; 6자리 KRX 티커는 편의 필드
 - [ ] **ENT-02**: 종목명 변경·합병·분할·상장폐지·티커 재활용을 추적할 수 있는 `entities` 테이블과 시간 범위 이력이 있다
 - [ ] **ENT-03**: DART 기재정정(`supersedes`) 체인이 엣지로 저장되어 최신 공시만 소비 가능하다
 
@@ -51,7 +51,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 ### 저장소 (Storage)
 
-- [ ] **STORE-01**: Alembic 마이그레이션으로 `documents`, `chunks`, `entities`, `edges`, `events`, `ingest_runs` 테이블과 인덱스가 생성된다
+- [x] **STORE-01**: Alembic 마이그레이션으로 `documents`, `chunks`, `entities`, `edges`, `events`, `ingest_runs` 테이블과 인덱스가 생성된다
 - [x] **STORE-02**: `documents.id`는 `sha256(body)`로 정의되어 콘텐츠 주소화된다
 - [ ] **STORE-03**: `chunks`에 HNSW 벡터 인덱스(pgvector 0.8, `iterative_scan=relaxed_order`)가 설정된다
 - [ ] **STORE-04**: VectorChord-BM25 인덱스가 `chunks.bm25_tokens`에 설정된다
@@ -170,7 +170,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | FOUND-04 | Phase 1 | Complete |
 | FOUND-05 | Phase 1 | Complete |
 | FOUND-06 | Phase 1 | Complete |
-| ENT-01 | Phase 2 | Pending |
+| ENT-01 | Phase 2 | Complete |
 | ENT-02 | Phase 2 | Pending |
 | ENT-03 | Phase 2 | Pending |
 | COLL-01 | Phase 3 | Pending |
@@ -194,7 +194,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | INGEST-10 | Phase 3 | Pending |
 | INGEST-11 | Phase 3 | Pending |
 | INGEST-12 | Phase 3 | Pending |
-| STORE-01 | Phase 2 | Pending |
+| STORE-01 | Phase 2 | Complete |
 | STORE-02 | Phase 2 | Complete |
 | STORE-03 | Phase 3 | Pending |
 | STORE-04 | Phase 3 | Pending |

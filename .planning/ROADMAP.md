@@ -54,7 +54,7 @@ Plans:
 **Plans**: 3 plans
 Plans:
 - [x] 02-01-PLAN.md -- Alembic scaffold + db/dev deps + content_hash utility + testcontainers fixtures
-- [ ] 02-02-PLAN.md -- Phase 2 migration (7 tables) + schema/dedup tests + live DB push
+- [x] 02-02-PLAN.md -- Phase 2 migration (7 tables) + schema/dedup tests + live DB push
 - [ ] 02-03-PLAN.md -- resolve_entity helper + entity fixtures + supersedes edge tests
 
 ### Phase 3: One-Company Walking Skeleton

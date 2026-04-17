@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-04-17T10:46:49.402Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-04-17T10:55:12.894Z"
 last_activity: 2026-04-17
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 02 (canonical-entity-identity) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-17
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 4min | 2 tasks | 12 files |
 | Phase 01 P03 | 5min | 2 tasks | 5 files |
 | Phase 02 P01 | 6 min | 3 tasks | 11 files |
+| Phase 02-canonical-entity-identity P02 | 6 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 02]: psycopg3 driver (postgresql+psycopg://) adopted; testcontainers URL normalized at fixture boundary
 - [Phase 02]: Alembic target_metadata=None — hand-written migrations only (no autogenerate)
 - [Phase 02]: Content-hash is a dedup primitive, not a security primitive (sha256 collision assumed for dedup only)
+- [Phase 02-canonical-entity-identity]: Downgrade does NOT drop vector extension — shared infrastructure
+- [Phase 02-canonical-entity-identity]: chunks.embedding via raw ALTER TABLE (pgvector type) — avoids optional type-registration
+- [Phase 02-canonical-entity-identity]: D-15 UPSERT uses CASE + array_append — preserves insertion order
 
 ### Pending Todos
 
@@ -96,6 +100,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-17T10:46:49.372Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-04-17T10:55:12.859Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
