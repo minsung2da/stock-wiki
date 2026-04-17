@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "stock-mcp": {
+      "command": "uv",
+      "args": ["run", "--group", "mcp", "stock-mcp"]
+    }
+  }
+}
