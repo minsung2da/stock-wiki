@@ -14,11 +14,31 @@ Dataview queries use nested access: WHERE provenance.source = "dart" (per D-11).
 
 from __future__ import annotations
 
+from datetime import date as date_type
 from datetime import datetime
 from typing import Literal
 
 import frontmatter as fm
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+
+class TickerRef(BaseModel):
+    """Typed ticker reference embedded in news ProvenanceBlock.tickers (R-07, D-10)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ticker: str = Field(pattern=r"^[0-9]{6}$")
+    corp_code: str | None = Field(default=None, pattern=r"^[0-9]{8}$")
+    name: str | None = None  # canonical_name at fetch time (optional)
+
+
+class Observation(BaseModel):
+    """Typed macro observation embedded in ProvenanceBlock.observations (R-07, D-07)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    date: date_type  # pydantic auto-coerces ISO-8601 YYYY-MM-DD strings
+    value: float
 
 
 class ProvenanceBlock(BaseModel):
@@ -35,6 +55,14 @@ class ProvenanceBlock(BaseModel):
     company_name: str | None = None  # Canonical corp name (Bug D-1: re-seed entities on rebuild)
     lang: str = "ko"
     trust_level: Literal["trusted", "semi_trusted", "adversarial"] = "trusted"
+    # --- Phase 4 additive fields (all Optional defaulting to None) ---
+    # news writer (Plan 04): tickers matched against entity_aliases (D-10 step 4).
+    tickers: list[TickerRef] | None = None
+    outlet: str | None = None  # news: 'hankyung' | 'edaily' | ... (D-09)
+    # news: D-13 legal flag — 'summary_only' for copyrighted outlets, 'full' otherwise.
+    license_flag: Literal["summary_only", "full"] | None = None
+    # macro writer (Plan 03): [{date, value}, ...] (D-07).
+    observations: list[Observation] | None = None
 
 
 class IngestStateBlock(BaseModel):

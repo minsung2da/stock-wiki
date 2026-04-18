@@ -72,16 +72,26 @@ def _atomic_write(path: Path, content: str) -> None:
         raise
 
 
+_RESERVED_SOURCE_KEYS = frozenset({"last_run", "last_success", "last_failure", "docs_processed"})
+
+
 def record_source_run(
     source: str,
     stats: dict[str, Any],
     heartbeat_path: Path | None = None,
+    *,
+    extra: dict | None = None,
 ) -> None:
     """Update heartbeat.md with the outcome of a single source's run.
 
     `stats` shape: {"total": int, "succeeded": int, "skipped": int, "failed": list|int}.
     Preserves prior `last_success` when current run has failures, and vice versa.
     `last_run` and `docs_processed` (= stats.succeeded) are always updated.
+
+    `extra` (optional kwarg, Phase 4): a dict of non-secret flags merged into the
+    per-source block alongside stats-derived keys. Reserved keys (last_run,
+    last_success, last_failure, docs_processed) cannot be overridden — they are
+    silently dropped from `extra` (T-04-22 defense-in-depth).
 
     Other source blocks are preserved verbatim (per-source isolation, COLL-08).
     """
@@ -111,6 +121,11 @@ def record_source_run(
         new_block["last_success"] = now
         if "last_failure" in prev:
             new_block["last_failure"] = prev["last_failure"]
+
+    if extra:
+        for k, v in extra.items():
+            if k not in _RESERVED_SOURCE_KEYS:
+                new_block[k] = v
 
     sources[source] = new_block
     meta["sources"] = sources
