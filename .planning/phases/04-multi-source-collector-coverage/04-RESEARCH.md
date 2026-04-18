@@ -831,21 +831,21 @@ CI runs the parser against these three; never hits live KIND.
 | A9 | `feedparser` handles Korean RSS encoding correctly | §3.1 | Test fixtures will expose any mojibake |
 | A10 | Phase 2 `entity_aliases.kind` column accepts new values `'name','short_name','english_name'` without migration | §Entity Alias | If CHECK constraint exists, needs a migration; inspect `db/migrations/` before implementation |
 
-## Open Questions / Risks
+## Open Questions (RESOLVED)
 
-1. **ECOS series IDs (A1/A2):** Must be confirmed via Wave-0 probe against live ECOS API before `macro_series.yaml` is committed with real IDs. Planner: schedule this as the first task in the macro plan.
+1. **ECOS series IDs (A1/A2):** RESOLVED: Deferred to Wave-0 probe in Plan 03 Task 1 (checkpoint). `.planning/macro_series.yaml` ships with `# TODO: verify` placeholders; collector fails fast on empty ECOS response so the probe is unavoidable before first real run.
 
-2. **KIND 현황 URL (A4) + selectors (A6):** Must be discovered manually in a browser. Planner: schedule as the first task in the KIND plan. Output: committed `tests/fixtures/kind/nfaith_status_page1.html` + verified URL constant.
+2. **KIND 현황 URL (A4) + selectors (A6):** RESOLVED: Deferred to Wave-0 probe in Plan 05 Task 1 (checkpoint). Operator browses KIND → saves HTML snapshot to `tests/fixtures/kind/nfaith_status_page1.html` and updates `src/collectors/kind/selectors.py` with confirmed selectors before Task 2 runs.
 
-3. **edaily RSS URL (A3):** Single `curl` probe, 5 minutes work, but must happen before news collector implementation.
+3. **edaily RSS URL (A3):** RESOLVED: Deferred to Wave-0 probe in Plan 04 Task 1 (checkpoint). 5-minute `curl` probe updates `src/collectors/news/feeds.py::EDAILY_FEED` if the 2017-era URL 404s.
 
-4. **pykrx 관리종목/투자경고 strategy (§1.4 A7):** Direct-MDC-JSON approach needs empirical confirmation that the endpoints still respond (KRX changes these periodically). Planner: Wave-0 probe all three bld codes (MDCSTAT03901 / MDCSTAT03501 / suspension).
+4. **pykrx 관리종목/투자경고 strategy (§1.4 A7):** RESOLVED: Deferred to Wave-0 probe in Plan 05 Task 1 (checkpoint). Three `curl` probes against KRX MDC `MDCSTAT03901` / `MDCSTAT03501` / suspension bld codes; discovered codes land in `src/collectors/kind/sources.py::KRX_MDC_BLD`.
 
-5. **`entity_aliases.kind` CHECK constraint (A10):** Planner must read `src/db/migrations/` (specifically the Phase 2 migration that created `entity_aliases`) to check whether `kind` is enum-constrained or free-text. If constrained, the `resolve_entity_by_alias` implementation requires a new migration before it can match on `'name'`.
+5. **`entity_aliases.kind` CHECK constraint (A10):** RESOLVED: Verified during planning — migration `0001_phase02_initial_schema.py` already permits `kind IN ('name','ticker','eng_name')`. No migration required. Plan 01 Task 2 queries `kind IN ('name','eng_name')` (NOT the research's original `'short_name','english_name'`). Documented in Plan 01 `<interfaces>` block.
 
-6. **DART 거래정지 vs KRX 거래정지 precedence (§5):** When both sources report the same ticker-date suspension, which wins? Recommendation: KRX primary (it's the authoritative source for halt status), DART is a supplement only for richer context. De-dup in collector by `(ticker, event_date, event_type)` composite key; first write wins, others skipped by content_hash.
+6. **DART 거래정지 vs KRX 거래정지 precedence (§5):** RESOLVED: Planner-locked — KRX primary, DART supplement only. Plan 05 Task 3 dedups by `(event_type, ticker, event_date)` composite key; first write wins, subsequent writes skipped by content_hash (test case 9 in Plan 05 Task 3 behavior).
 
-7. **`valid_until`:** 30 days — the libraries (pykrx, trafilatura, fredapi) are stable; the ECOS codes + KIND page structure are the moving parts and both have Wave-0 probes to catch drift.
+7. **`valid_until`:** RESOLVED: 30 days — the libraries (pykrx, trafilatura, fredapi) are stable; the ECOS codes + KIND page structure are the moving parts and both have Wave-0 probes to catch drift. No plan action required.
 
 ---
 
@@ -882,7 +882,7 @@ CI runs the parser against these three; never hits live KIND.
 | Entity alias implementation | MEDIUM | Requires migration check for `entity_aliases.kind` CHECK constraint |
 
 ### Open Questions
-See §Open Questions / Risks. Seven items; five are Wave-0 probes (ECOS IDs, KIND URL, KIND selectors, edaily RSS, KRX MDC endpoints) plus one migration inspection (`entity_aliases.kind` constraint).
+See §Open Questions (RESOLVED). All seven items are now closed — five resolved by Wave-0 probes scheduled in Plan 03/04/05 Task 1 checkpoints, one resolved via planning-time migration inspection, one addressed by planner-locked precedence rule.
 
 ### Ready for Planning
 Research complete. Planner should schedule probes as Wave-0 tasks (first in each relevant plan) before parser/client code is written. Recommended plan order: (01) Portfolio + resolve_entity_by_alias → (02) KRX → (03) Macro → (04) News → (05) KIND → (06) CLI `collect all` + integration test.
