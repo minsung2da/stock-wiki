@@ -89,7 +89,7 @@ Plans:
   5. Orchestrated run with one source set to force-fail shows the other three complete successfully and the heartbeat file records per-source status
 **Plans**: 6 plans
 Plans:
-- [ ] 04-01-PLAN.md — Portfolio loader + resolve_entity_by_alias + macro_series.yaml scaffold + shared conftest
+- [x] 04-01-PLAN.md — Portfolio loader + resolve_entity_by_alias + macro_series.yaml scaffold + shared conftest
 - [ ] 04-02-PLAN.md — KRX collector (pykrx OHLCV+flow+short, merged per-ticker file)
 - [ ] 04-03-PLAN.md — Macro collector (ECOS+FRED, append-idempotent) with Wave-0 ECOS ID probe
 - [ ] 04-04-PLAN.md — News collector (RSS+trafilatura, alias match, 2-paragraph cap) with edaily RSS probe

@@ -25,10 +25,10 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 ### 수집 (Collection) — LLM 토큰 0
 
 - [x] **COLL-01**: `collect_dart` 스크립트가 dart-fss로 DART 4유형(A 정기 / B 주요사항 / C 발행 / D 지분)을 일배치 수집하여 `vault/raw/dart/YYYY-MM-DD/*.md`에 저장한다
-- [ ] **COLL-02**: `collect_krx` 스크립트가 pykrx로 관심·보유 종목의 일별 OHLCV·투자자 수급(외국인·기관·개인)·공매도 잔고를 수집한다
-- [ ] **COLL-03**: `collect_news` 스크립트가 trafilatura + RSS로 관심 종목 스코프 경제·금융 뉴스(한경·이데일리·서울경제 중 최소 2개)를 수집한다
-- [ ] **COLL-04**: `collect_macro` 스크립트가 한은 ECOS + FRED에서 기준금리·USD/KRW·미10년물·WTI를 수집한다
-- [ ] **COLL-05**: `collect_kind` 스크립트가 KIND에서 거래정지·관리종목·불성실공시 지정을 수집한다
+- [x] **COLL-02**: `collect_krx` 스크립트가 pykrx로 관심·보유 종목의 일별 OHLCV·투자자 수급(외국인·기관·개인)·공매도 잔고를 수집한다
+- [x] **COLL-03**: `collect_news` 스크립트가 trafilatura + RSS로 관심 종목 스코프 경제·금융 뉴스(한경·이데일리·서울경제 중 최소 2개)를 수집한다
+- [x] **COLL-04**: `collect_macro` 스크립트가 한은 ECOS + FRED에서 기준금리·USD/KRW·미10년물·WTI를 수집한다
+- [x] **COLL-05**: `collect_kind` 스크립트가 KIND에서 거래정지·관리종목·불성실공시 지정을 수집한다
 - [x] **COLL-06**: 모든 수집 스크립트는 최소 frontmatter(`source`, `date`, `id`, `ticker?`, `corp_code?`, `url`, `content_hash`)만 작성하고 LLM 호출을 하지 않는다
 - [x] **COLL-07**: CI 테스트가 `ingest/` 및 `collectors/` 디렉터리에서 `anthropic`·`openai` import를 검출하면 실패한다
 - [x] **COLL-08**: 각 수집기가 소스별 격리(한 소스 실패가 다른 소스 실행을 막지 않음) + 재시도 + 멱등 업서트(content-hash 키)를 지원한다
@@ -174,10 +174,10 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | ENT-02 | Phase 2 | Complete |
 | ENT-03 | Phase 2 | Complete |
 | COLL-01 | Phase 3 | Complete |
-| COLL-02 | Phase 4 | Pending |
-| COLL-03 | Phase 4 | Pending |
-| COLL-04 | Phase 4 | Pending |
-| COLL-05 | Phase 4 | Pending |
+| COLL-02 | Phase 4 | Complete |
+| COLL-03 | Phase 4 | Complete |
+| COLL-04 | Phase 4 | Complete |
+| COLL-05 | Phase 4 | Complete |
 | COLL-06 | Phase 3 | Complete |
 | COLL-07 | Phase 1 | Complete |
 | COLL-08 | Phase 3 | Complete |
