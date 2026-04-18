@@ -90,7 +90,7 @@ Plans:
 **Plans**: 6 plans
 Plans:
 - [x] 04-01-PLAN.md — Portfolio loader + resolve_entity_by_alias + macro_series.yaml scaffold + shared conftest
-- [ ] 04-02-PLAN.md — KRX collector (pykrx OHLCV+flow+short, merged per-ticker file)
+- [x] 04-02-PLAN.md — KRX collector (pykrx OHLCV+flow+short, merged per-ticker file)
 - [ ] 04-03-PLAN.md — Macro collector (ECOS+FRED, append-idempotent) with Wave-0 ECOS ID probe
 - [ ] 04-04-PLAN.md — News collector (RSS+trafilatura, alias match, 2-paragraph cap) with edaily RSS probe
 - [ ] 04-05-PLAN.md — KIND collector (hybrid KRX-MDC + KIND scrape, robots+throttle) with Wave-0 URL/selector probe
@@ -169,7 +169,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Load-Bearing Foundation | 0/3 | Planning complete | - |
 | 2. Canonical Entity Identity | 0/3 | Planning complete | - |
 | 3. One-Company Walking Skeleton | 0/6 | Planning complete | - |
-| 4. Multi-Source Collector Coverage | 0/6 | Planning complete | - |
+| 4. Multi-Source Collector Coverage | 2/6 | In Progress|  |
 | 5. Claude-Schedule Enrichment with Korean Number Safety | 0/TBD | Not started | - |
 | 6. Full MCP Tool Surface | 0/TBD | Not started | - |
 | 7. Graph Layer & graphify Integration | 0/TBD | Not started | - |

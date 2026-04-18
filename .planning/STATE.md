@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-04-18T08:50:41.579Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-04-18T09:12:13.394Z"
 last_activity: 2026-04-18
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 18
-  completed_plans: 13
-  percent: 72
+  completed_plans: 14
+  percent: 78
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 04 (multi-source-collector-coverage) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-04-18
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P05 | 55min | 2 tasks | 12 files |
 | Phase 03-one-company-walking-skeleton P06 | 35min | 3 tasks | 10 files |
 | Phase 04 P01 | 568 | 4 tasks | 10 files |
+| Phase 04 P02 | 1107 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,7 @@ Recent decisions affecting current work:
 - [Phase 03-one-company-walking-skeleton]: Phase 03-06: JUDGE-04 live Claude Code query auto-approved under gsd auto_advance — automated E2 schema test discharges machine-checkable half; operator runs live 9-step procedure out-of-band
 - [Phase 04]: Use entity_aliases kind='eng_name' (not 'english_name') — CHECK constraint already permits it, no migration
 - [Phase 04]: TickerRef + Observation typed Pydantic nested models (R-07) for news/macro frontmatter
+- [Phase 04]: KRX Plan 02: bundled orchestrator into writer T1 commit; promoted tenacity to collectors dep group
 
 ### Pending Todos
 
@@ -137,6 +139,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-18T08:50:41.544Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-04-18T09:12:13.361Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
