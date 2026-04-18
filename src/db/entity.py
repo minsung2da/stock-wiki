@@ -96,6 +96,64 @@ def resolve_entity(
     )
 
 
+_NAME_MAX_LEN = 128
+
+
+def resolve_entity_by_alias(
+    engine: Engine,
+    name: str,
+    as_of: date | None = None,
+) -> Entity | None:
+    """Resolve a Korean or English company name to an Entity via entity_aliases (D-11).
+
+    Exact match only (no fuzzy/substring). Filters kind IN ('name','eng_name') matching
+    the CHECK constraint `ck_alias_kind` in migration 0001. Temporal semantics mirror
+    resolve_entity: as_of=None → current only (valid_to IS NULL); as_of=<date> →
+    half-open interval [valid_from, valid_to).
+
+    Defensive length guard (T-04-02): names > 128 chars short-circuit to None before
+    touching the database.
+    """
+    if not name or len(name) > _NAME_MAX_LEN:
+        return None
+    if as_of is None:
+        sql = text(
+            """
+            SELECT e.corp_code, e.canonical_name, e.current_ticker
+            FROM entity_aliases a
+            JOIN entities e USING (corp_code)
+            WHERE a.kind IN ('name','eng_name')
+              AND a.value = :v
+              AND a.valid_to IS NULL
+            LIMIT 1
+            """
+        )
+        params: dict[str, object] = {"v": name}
+    else:
+        sql = text(
+            """
+            SELECT e.corp_code, e.canonical_name, e.current_ticker
+            FROM entity_aliases a
+            JOIN entities e USING (corp_code)
+            WHERE a.kind IN ('name','eng_name')
+              AND a.value = :v
+              AND a.valid_from <= :asof
+              AND (a.valid_to IS NULL OR a.valid_to > :asof)
+            LIMIT 1
+            """
+        )
+        params = {"v": name, "asof": as_of}
+    with engine.connect() as conn:
+        row = conn.execute(sql, params).first()
+    if row is None:
+        return None
+    return Entity(
+        corp_code=row.corp_code,
+        canonical_name=row.canonical_name,
+        current_ticker=row.current_ticker,
+    )
+
+
 def upsert_entity(
     engine: Engine,
     corp_code: str,
