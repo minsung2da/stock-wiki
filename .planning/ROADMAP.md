@@ -87,7 +87,14 @@ Plans:
   3. `collect_macro` writes daily ECOS (기준금리, USD/KRW) and FRED (US 10Y, WTI) rows; schema matches what search-filters can later key on
   4. `collect_kind` captures 거래정지, 관리종목, 불성실공시 events into `vault/raw/kind/...` with structured event-type tags
   5. Orchestrated run with one source set to force-fail shows the other three complete successfully and the heartbeat file records per-source status
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+- [ ] 04-01-PLAN.md — Portfolio loader + resolve_entity_by_alias + macro_series.yaml scaffold + shared conftest
+- [ ] 04-02-PLAN.md — KRX collector (pykrx OHLCV+flow+short, merged per-ticker file)
+- [ ] 04-03-PLAN.md — Macro collector (ECOS+FRED, append-idempotent) with Wave-0 ECOS ID probe
+- [ ] 04-04-PLAN.md — News collector (RSS+trafilatura, alias match, 2-paragraph cap) with edaily RSS probe
+- [ ] 04-05-PLAN.md — KIND collector (hybrid KRX-MDC + KIND scrape, robots+throttle) with Wave-0 URL/selector probe
+- [ ] 04-06-PLAN.md — CLI extension (collect krx/news/macro/kind + collect all) with isolation integration test
 
 ### Phase 5: Claude-Schedule Enrichment with Korean Number Safety
 **Goal**: The ingest worker extracts `_derived` attributes (tickers, event_type, catalysts, sentiment, numeric_facts, summary) via a Claude Schedule agent that runs outside the ingest venv and commits enriched frontmatter back through git — not via a local model runner. The ingest venv's `anthropic` ban is preserved because the schedule agent is a separate process. Korean financial numbers are kept out of free-form LLM extraction — DART financials go through `dart-fss` structured accessors; narrative numbers go through regex-LLM-Pydantic-checksum. Embeddings (bge-m3, 1024-d) are computed locally via sentence-transformers directly, with no separate embedding-server dependency.
@@ -162,7 +169,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 1. Load-Bearing Foundation | 0/3 | Planning complete | - |
 | 2. Canonical Entity Identity | 0/3 | Planning complete | - |
 | 3. One-Company Walking Skeleton | 0/6 | Planning complete | - |
-| 4. Multi-Source Collector Coverage | 0/TBD | Not started | - |
+| 4. Multi-Source Collector Coverage | 0/6 | Planning complete | - |
 | 5. Claude-Schedule Enrichment with Korean Number Safety | 0/TBD | Not started | - |
 | 6. Full MCP Tool Surface | 0/TBD | Not started | - |
 | 7. Graph Layer & graphify Integration | 0/TBD | Not started | - |
