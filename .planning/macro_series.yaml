@@ -1,0 +1,20 @@
+# ECOS + FRED series catalog (D-23).
+# ECOS IDs below are PLACEHOLDERS — Plan 03 Task 1 (Wave-0 probe) must verify against
+# live ECOS API and update before macro_series.yaml values are trusted.
+# FRED IDs are VERIFIED canonical identifiers from fred.stlouisfed.org.
+
+ecos:
+  - label: "base_rate_kr"
+    series_id: "722Y001"          # TODO: verify — 한국은행 기준금리 candidate
+    cycle: "D"
+    item_code: "0101000"          # TODO: verify
+  - label: "usd_krw"
+    series_id: "731Y001"          # TODO: verify — 원/달러 매매기준율 candidate
+    cycle: "D"
+    item_code: "0000001"          # TODO: verify
+
+fred:
+  - label: "us_10y"
+    series_id: "DGS10"            # VERIFIED
+  - label: "wti"
+    series_id: "DCOILWTICO"       # VERIFIED
