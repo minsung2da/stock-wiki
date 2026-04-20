@@ -1,0 +1,32 @@
+# KIND robots.txt snapshot — Phase 4 Plan 05
+
+**Captured:** 2026-04-20
+**URL:** https://kind.krx.co.kr/robots.txt
+
+## Response
+
+`https://kind.krx.co.kr/robots.txt` returns a Korean error page ("페이지 오류")
+rather than a robots.txt file. No `User-agent:` / `Disallow:` directives are
+published by the KRX KIND subdomain as of 2026-04-20.
+
+## Compliance stance (D-15, T-04-15)
+
+Because no robots.txt is published, compliance with good-citizen scraping
+guidelines is **operator-asserted** through the following controls baked into
+`src/collectors/kind/client.py`:
+
+1. **Throttle** — `MIN_REQUEST_INTERVAL_SEC = 1.0` — single-flight monotonic
+   throttle ensures ≤1 request/second to `kind.krx.co.kr`.
+2. **Identifying User-Agent** — a browser-like UA with `stock-wiki-collector`
+   suffix; a minimal custom UA was empirically rejected by WAF during probe.
+3. **Daily-batch cadence** — Phase 9 systemd.timer runs `stock collect kind`
+   once per day. No polling, no concurrent workers.
+4. **Failure semantics** — any parse drift raises `ParseError` and marks
+   `heartbeat.kind_parse_error=true` (D-17); the collector does NOT silently
+   retry or hammer the endpoint on schema changes.
+
+## Revisit cadence
+
+Operator must re-run `curl -sS https://kind.krx.co.kr/robots.txt` quarterly
+and update this snapshot if the response changes to publish actual
+`Disallow:` rules.
