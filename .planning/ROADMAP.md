@@ -93,7 +93,7 @@ Plans:
 - [x] 04-02-PLAN.md — KRX collector (pykrx OHLCV+flow+short, merged per-ticker file)
 - [x] 04-03-PLAN.md — Macro collector (ECOS+FRED, append-idempotent) with Wave-0 ECOS ID probe
 - [x] 04-04-PLAN.md — News collector (RSS+trafilatura, alias match, 2-paragraph cap) with edaily RSS probe
-- [ ] 04-05-PLAN.md — KIND collector (hybrid KRX-MDC + KIND scrape, robots+throttle) with Wave-0 URL/selector probe
+- [x] 04-05-PLAN.md — KIND collector (hybrid KRX-MDC + KIND scrape, robots+throttle) with Wave-0 URL/selector probe
 - [ ] 04-06-PLAN.md — CLI extension (collect krx/news/macro/kind + collect all) with isolation integration test
 
 ### Phase 5: Claude-Schedule Enrichment with Korean Number Safety

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-04-20T13:43:58.189Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-04-20T14:47:48.557Z"
 last_activity: 2026-04-20
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 18
-  completed_plans: 16
-  percent: 89
+  completed_plans: 17
+  percent: 94
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 04 (multi-source-collector-coverage) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-04-20
 
@@ -71,6 +71,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P02 | 1107 | 2 tasks | 10 files |
 | Phase 04 P03 | 7min | 2 tasks | 12 files |
 | Phase 04-multi-source-collector-coverage P04 | 30min | 2 tasks | 12 files |
+| Phase 04 P05 | 1800 | 5 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,7 @@ Recent decisions affecting current work:
 - [Phase 04-multi-source-collector-coverage]: News collector: pre-load scoped alias inventory once (R-01), substring scan over regex tokens for better Korean recall
 - [Phase 04-multi-source-collector-coverage]: trafilatura deduplicate=False in news fetcher: the LRU cache breaks R-11 cross-URL dedup behavior
 - [Phase 04-multi-source-collector-coverage]: edaily RSS stays http:// — HTTPS fails upstream (Microsoft-IIS without SNI)
+- [Phase 04]: Plan 05 Option D: DART pblntf_ty='I' supersedes pykrx for exchange status events (pykrx has no get_market_status function)
 
 ### Pending Todos
 
@@ -147,6 +149,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-20T13:43:50.542Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-04-20T14:47:48.528Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None
