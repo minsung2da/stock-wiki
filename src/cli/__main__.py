@@ -19,7 +19,16 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from cli.commands import cmd_collect_dart, cmd_ingest_rebuild, cmd_ingest_run
+from cli.commands import (
+    cmd_collect_all,
+    cmd_collect_dart,
+    cmd_collect_kind,
+    cmd_collect_krx,
+    cmd_collect_macro,
+    cmd_collect_news,
+    cmd_ingest_rebuild,
+    cmd_ingest_run,
+)
 
 __all__ = ["main", "build_parser"]
 
@@ -44,6 +53,34 @@ def build_parser() -> argparse.ArgumentParser:
     dart.add_argument("--since", required=True, help="YYYY-MM-DD receipt date lower bound")
     dart.add_argument("--max-docs", type=int, default=100, help="Phase-3 cap (D-03)")
     dart.set_defaults(func=cmd_collect_dart)
+
+    krx = collect_subs.add_parser("krx", help="Collect KRX OHLCV + flow + short (COLL-02)")
+    krx.add_argument("--since", default=None, help="YYYY-MM-DD (default: today KST trading day)")
+    krx.set_defaults(func=cmd_collect_krx)
+
+    news = collect_subs.add_parser("news", help="Collect 한경/이데일리 news (COLL-03)")
+    news.add_argument("--since", default=None)
+    news.add_argument("--max-per-feed", type=int, default=100)
+    news.set_defaults(func=cmd_collect_news)
+
+    macro = collect_subs.add_parser("macro", help="Collect ECOS+FRED macro (COLL-04)")
+    macro.add_argument("--series", default=None, help="Comma-separated labels; default=all")
+    macro.set_defaults(func=cmd_collect_macro)
+
+    kind = collect_subs.add_parser("kind", help="Collect KIND events (COLL-05)")
+    kind.add_argument("--since", default=None)
+    kind.set_defaults(func=cmd_collect_kind)
+
+    all_ = collect_subs.add_parser(
+        "all", help="Run collectors with per-source isolation (D-18..D-21)"
+    )
+    all_.add_argument(
+        "--sources",
+        default="krx,news,macro,kind",
+        help="Comma-separated subset; default excludes dart. Unknown entries fail-fast (D-21).",
+    )
+    all_.add_argument("--since", default=None)
+    all_.set_defaults(func=cmd_collect_all)
 
     # ingest
     ingest = subs.add_parser("ingest", help="Run ingest pipeline (parse + embed + index)")
