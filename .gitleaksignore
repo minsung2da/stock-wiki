@@ -1,0 +1,5 @@
+# Plan 04-04: captured third-party news article HTML. The 'key' token is a
+# public JS cookie-relay identifier embedded in hankyung.com's article page
+# (not a secret of this project). Fixture is verbatim HTML saved for
+# trafilatura extraction tests.
+tests/fixtures/news/hankyung_sample.html:generic-api-key:901
