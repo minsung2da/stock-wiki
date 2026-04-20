@@ -1,0 +1,5 @@
+[
+  {"STAT_CODE":"731Y001","STAT_NAME":"8.8.2.1 주요국통화의 대원화환율","ITEM_CODE1":"0000001","ITEM_NAME1":"원/미국달러(매매기준율)","UNIT_NAME":"원","WGT":null,"TIME":"20260414","DATA_VALUE":"1395.20"},
+  {"STAT_CODE":"731Y001","STAT_NAME":"8.8.2.1 주요국통화의 대원화환율","ITEM_CODE1":"0000001","ITEM_NAME1":"원/미국달러(매매기준율)","UNIT_NAME":"원","WGT":null,"TIME":"20260415","DATA_VALUE":"1398.50"},
+  {"STAT_CODE":"731Y001","STAT_NAME":"8.8.2.1 주요국통화의 대원화환율","ITEM_CODE1":"0000001","ITEM_NAME1":"원/미국달러(매매기준율)","UNIT_NAME":"원","WGT":null,"TIME":"20260416","DATA_VALUE":"1401.75"}
+]

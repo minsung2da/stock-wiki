@@ -1,0 +1,5 @@
+[
+  {"STAT_CODE":"722Y001","STAT_NAME":"1.2.1.1 한국은행 기준금리 및 여수신금리","ITEM_CODE1":"0101000","ITEM_NAME1":"한국은행 기준금리","UNIT_NAME":"연%","WGT":null,"TIME":"20260414","DATA_VALUE":"3.25"},
+  {"STAT_CODE":"722Y001","STAT_NAME":"1.2.1.1 한국은행 기준금리 및 여수신금리","ITEM_CODE1":"0101000","ITEM_NAME1":"한국은행 기준금리","UNIT_NAME":"연%","WGT":null,"TIME":"20260415","DATA_VALUE":"3.25"},
+  {"STAT_CODE":"722Y001","STAT_NAME":"1.2.1.1 한국은행 기준금리 및 여수신금리","ITEM_CODE1":"0101000","ITEM_NAME1":"한국은행 기준금리","UNIT_NAME":"연%","WGT":null,"TIME":"20260416","DATA_VALUE":"3.25"}
+]
