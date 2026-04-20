@@ -94,7 +94,7 @@ Plans:
 - [x] 04-03-PLAN.md — Macro collector (ECOS+FRED, append-idempotent) with Wave-0 ECOS ID probe
 - [x] 04-04-PLAN.md — News collector (RSS+trafilatura, alias match, 2-paragraph cap) with edaily RSS probe
 - [x] 04-05-PLAN.md — KIND collector (hybrid KRX-MDC + KIND scrape, robots+throttle) with Wave-0 URL/selector probe
-- [ ] 04-06-PLAN.md — CLI extension (collect krx/news/macro/kind + collect all) with isolation integration test
+- [x] 04-06-PLAN.md — CLI extension (collect krx/news/macro/kind + collect all) with isolation integration test
 
 ### Phase 5: Claude-Schedule Enrichment with Korean Number Safety
 **Goal**: The ingest worker extracts `_derived` attributes (tickers, event_type, catalysts, sentiment, numeric_facts, summary) via a Claude Schedule agent that runs outside the ingest venv and commits enriched frontmatter back through git — not via a local model runner. The ingest venv's `anthropic` ban is preserved because the schedule agent is a separate process. Korean financial numbers are kept out of free-form LLM extraction — DART financials go through `dart-fss` structured accessors; narrative numbers go through regex-LLM-Pydantic-checksum. Embeddings (bge-m3, 1024-d) are computed locally via sentence-transformers directly, with no separate embedding-server dependency.
