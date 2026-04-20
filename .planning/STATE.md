@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-04-18T09:12:13.394Z"
-last_activity: 2026-04-18
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-04-20T13:22:55.892Z"
+last_activity: 2026-04-20
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 18
-  completed_plans: 14
-  percent: 78
+  completed_plans: 15
+  percent: 83
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 04 (multi-source-collector-coverage) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
-Last activity: 2026-04-18
+Last activity: 2026-04-20
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -69,6 +69,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-one-company-walking-skeleton P06 | 35min | 3 tasks | 10 files |
 | Phase 04 P01 | 568 | 4 tasks | 10 files |
 | Phase 04 P02 | 1107 | 2 tasks | 10 files |
+| Phase 04 P03 | 7min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Use entity_aliases kind='eng_name' (not 'english_name') — CHECK constraint already permits it, no migration
 - [Phase 04]: TickerRef + Observation typed Pydantic nested models (R-07) for news/macro frontmatter
 - [Phase 04]: KRX Plan 02: bundled orchestrator into writer T1 commit; promoted tenacity to collectors dep group
+- [Phase 04]: Phase 04 Plan 03: ECOS StatisticSearch needs ITEM_CODE1 filter; macro_series.yaml schema extended with item_code field
+- [Phase 04]: Phase 04 Plan 03: Append-merge reads prior observations from ProvenanceBlock.observations (D-07 structured), not body markdown — structured is source of truth
+- [Phase 04]: Phase 04 Plan 03: R-06 revisions propagate as extra={'revisions': [...]} through record_source_run — structured, not log lines
 
 ### Pending Todos
 
@@ -139,6 +143,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-18T09:12:13.361Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-04-20T13:22:55.853Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None

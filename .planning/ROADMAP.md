@@ -91,7 +91,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md — Portfolio loader + resolve_entity_by_alias + macro_series.yaml scaffold + shared conftest
 - [x] 04-02-PLAN.md — KRX collector (pykrx OHLCV+flow+short, merged per-ticker file)
-- [ ] 04-03-PLAN.md — Macro collector (ECOS+FRED, append-idempotent) with Wave-0 ECOS ID probe
+- [x] 04-03-PLAN.md — Macro collector (ECOS+FRED, append-idempotent) with Wave-0 ECOS ID probe
 - [ ] 04-04-PLAN.md — News collector (RSS+trafilatura, alias match, 2-paragraph cap) with edaily RSS probe
 - [ ] 04-05-PLAN.md — KIND collector (hybrid KRX-MDC + KIND scrape, robots+throttle) with Wave-0 URL/selector probe
 - [ ] 04-06-PLAN.md — CLI extension (collect krx/news/macro/kind + collect all) with isolation integration test
