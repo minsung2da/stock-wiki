@@ -8,7 +8,10 @@ from sqlalchemy import engine_from_config, pool
 
 config = context.config
 if config.config_file_name:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False preserves loggers already configured
+    # by callers (e.g. pytest) so caplog-based tests on non-alembic loggers
+    # keep working after migrations run inside a session fixture.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = None  # Hand-written migrations only (no autogenerate).
 
