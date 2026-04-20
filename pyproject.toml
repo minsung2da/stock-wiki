@@ -30,6 +30,7 @@ collectors = [
     "pykrx>=1.0.50",
     "finance-datareader>=0.9.94",
     "trafilatura>=1.12",
+    "feedparser>=6.0",
     "PublicDataReader",
     "fredapi>=0.5",
     "yfinance>=0.2.50",
