@@ -16,7 +16,117 @@
 - **Privacy**: 로컬/개인 vault 기반. 공유는 git 저장소 협업 수준 — 공개 배포 고려 없음
 - **Legal**: 크롤링 대상 robots.txt·이용약관 존중. 라이선스 불명확한 리포트 원문은 전문 저장 대신 요약·링크 권장
 - **Language**: 수집 문서 다수 한국어 — 임베딩 모델은 다국어 지원 필수(bge-m3, multilingual-e5 등)
+
+### Directory Layout
+
+```
+stock/
+├── src/                      # Python 소스 루트 (수집 → 인제스트 → MCP 서빙)
+│   ├── cli/                  # `stock` CLI 엔트리포인트 (commands.py = collect/ingest/serve 등 subcommand)
+│   ├── collectors/           # 외부 데이터 수집기 (LLM 의존 금지, `_derived` 생성 금지)
+│   │   ├── dart/             # DART 전자공시 (dart-fss 래퍼: client/fetcher/writer)
+│   │   ├── kind/             # KRX KIND 비정형·미공시 스크래퍼 (Option-D)
+│   │   ├── krx/              # KRX 시세·재무 (pykrx + FinanceDataReader)
+│   │   ├── macro/            # ECOS(한은) + FRED + yfinance 거시지표
+│   │   └── news/             # RSS/기사 수집 + alias matcher + trafilatura 본문 추출
+│   ├── ingest/               # vault 마크다운 → Postgres 인덱스 파이프라인
+│   │   ├── parsers/          # 원본별 프론트매터 파서 (예: dart.py)
+│   │   ├── chunking.py       # 문서 청킹
+│   │   ├── embedder.py       # sentence-transformers(bge-m3) 로컬 임베딩
+│   │   ├── tokenizer.py      # BM25용 한국어 토크나이저 (mecab-ko)
+│   │   ├── injection_defense.py  # LLM 프롬프트 인젝션 방어
+│   │   ├── heartbeat.py      # 인제스트 상태 heartbeat
+│   │   ├── rebuild.py        # 전체 재인덱싱
+│   │   └── worker.py         # 워커 루프
+│   ├── db/                   # Postgres 스키마·마이그레이션
+│   │   ├── engine.py         # SQLAlchemy 엔진/세션
+│   │   ├── entity.py         # ORM 모델 (documents/chunks/entities/aliases)
+│   │   ├── migrations/       # Alembic 마이그레이션
+│   │   ├── alembic.ini
+│   │   └── seed_name_aliases.py  # 종목 alias 시드
+│   ├── stock_mcp/            # FastMCP 2.x 기반 MCP 서버
+│   │   ├── server.py         # MCP 엔트리
+│   │   ├── tools/            # 툴 구현 (search.py 등)
+│   │   ├── search_core.py    # 하이브리드 검색 (pgvector + BM25 RRF)
+│   │   ├── models.py         # Pydantic 응답 스키마
+│   │   ├── errors.py         # MCP 에러 매핑
+│   │   └── logging.py
+│   ├── shared/               # 레이어 공용 유틸 (frontmatter, content_hash, portfolio)
+│   └── orchestration/        # (예정) 파이프라인 오케스트레이션 훅
+│
+├── vault/                    # Obsidian vault — Markdown + YAML frontmatter (single source of truth)
+│   └── notes/                # 사람/LLM이 쓰는 노트 (portfolio.md 등)
+├── notes/
+│   └── private/              # 개인 보유·평단 등 민감 메모 (gitignored 권장)
+├── dashboards/               # Dataview 기반 대시보드 노트
+├── templates/                # 노트 템플릿 (portfolio.md 등)
+│
+├── raw/                      # 수집 원본 캐시 (`raw/{source}/{YYYY}/...`, gitignored)
+│   └── dart/2026/
+├── ingested/                 # 인제스트 산출물·상태
+│   └── _status/              # heartbeat.md 등 파이프라인 상태
+├── graph/                    # graphify 산출물 (graph.json/index.html/REPORT, 재생성 가능)
+│
+├── scripts/                  # 운영 스크립트 (init-extensions.sql, migrate-to-wsl.sh)
+├── tests/                    # pytest 스위트 (collectors/e2e/fixtures + unit tests)
+├── fixtures/                 # 테스트·개발용 고정 데이터 (entities/)
+├── docs/                     # 프로젝트 문서 (robots snapshot 등)
+├── .planning/                # GSD 워크플로우 산출물 (ROADMAP/STATE/phases)
+├── .obsidian/                # Obsidian 설정 (workspace*.json은 gitignore)
+├── docker-compose.yml        # Postgres 17 + pgvector + VectorChord-BM25
+├── pyproject.toml / uv.lock  # uv 기반 의존성 관리
+├── .mcp.json                 # MCP 클라이언트 설정
+└── CLAUDE.md                 # 본 파일 — 프로젝트 컨텍스트
+```
+
+**레이어 규칙:**
+- `collectors/` → `raw/` + `vault/`에 원본 Markdown만 기록. `anthropic`/`openai` import 금지 (CI guard COLL-07).
+- `_derived` 프론트매터 추출은 외부 Claude Schedule 에이전트가 git round-trip으로 수행 (본 코드베이스는 아님).
+- `ingest/`는 `vault/` → Postgres 인덱스 단방향. DB는 캐시이며 vault에서 항상 재생성 가능해야 함.
+- `stock_mcp/`는 읽기 전용 서빙 계층 — 수집/인제스트와 분리된 프로세스.
 <!-- GSD:project-end -->
+
+## First-time Setup
+
+> Bringing a fresh clone from zero to a green `stock collect all` run.
+> These steps are idempotent — re-running them is safe.
+
+1. **Install Python deps:**
+   ```bash
+   uv sync
+   ```
+
+2. **Configure `.env`** at repo root with:
+   ```
+   DART_API_KEY=...       # https://opendart.fss.or.kr apply
+   ECOS_API_KEY=...       # https://ecos.bok.or.kr/api apply
+   FRED_API_KEY=...       # https://fred.stlouisfed.org/docs/api/api_key.html
+   DATABASE_URL=postgresql://stock:${POSTGRES_PASSWORD}@localhost:5432/stock
+   POSTGRES_PASSWORD=...  # for docker-compose postgres service
+   ```
+
+3. **Start Postgres and run migrations:**
+   ```bash
+   docker compose up -d postgres
+   uv run alembic upgrade head
+   ```
+
+4. **Seed entity aliases** (REQUIRED before `stock collect news`):
+   ```bash
+   uv run python -m src.db.seed_name_aliases
+   ```
+   Without this, `collect_news` fails fast with `NoAliasesSeededError`.
+   This is an R-09 startup guard, not a bug.
+
+5. **Verify with a live collection run:**
+   ```bash
+   uv run stock collect all
+   ```
+   Expected: exit 0 (or 1 with `{status: partial}` for any source that
+   legitimately has no data today), per-source JSON report on stderr,
+   files under `vault/raw/{krx,news,macro,kind}/`.
+
+<!-- GSD:first-run-setup-end -->
 
 <!-- GSD:stack-start source:research/STACK.md -->
 ## Technology Stack
