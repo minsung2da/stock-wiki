@@ -217,11 +217,18 @@ def _fixtures_dir() -> Path:
     return Path(__file__).resolve().parents[2] / "fixtures"
 
 
-def _ecos_fixture_to_fetcher_output(path: Path) -> list[dict]:
-    """Transform raw ECOS fixture rows into fetcher output shape."""
+def _ecos_fixture_to_fetcher_output(path: Path, item_code: str | None = None) -> list[dict]:
+    """Transform raw ECOS fixture rows into fetcher output shape.
+
+    If item_code is provided, filter rows by ITEM_CODE1 — this simulates what
+    real fetch_ecos_series does client-side (Gap-04-04 fix: that is now the
+    sole filter, no server-side kwarg). Fixtures MAY include unrelated
+    ITEM_CODE1 rows to exercise the filter."""
     rows = json.loads(path.read_text(encoding="utf-8"))
     out = []
     for r in rows:
+        if item_code is not None and str(r.get("ITEM_CODE1", "")) != item_code:
+            continue
         t = str(r["TIME"])
         date_iso = f"{t[:4]}-{t[4:6]}-{t[6:8]}"
         out.append({"date": date_iso, "value": float(r["DATA_VALUE"])})
@@ -241,8 +248,10 @@ def fixture_fetchers(monkeypatch):
     """Monkeypatch fetcher functions to return fixture data keyed by series_id."""
     fx = _fixtures_dir()
     ecos_map = {
-        "722Y001": _ecos_fixture_to_fetcher_output(fx / "ecos/base_rate_kr.json"),
-        "731Y001": _ecos_fixture_to_fetcher_output(fx / "ecos/usd_krw.json"),
+        "722Y001": _ecos_fixture_to_fetcher_output(
+            fx / "ecos/base_rate_kr.json", item_code="0101000"
+        ),
+        "731Y001": _ecos_fixture_to_fetcher_output(fx / "ecos/usd_krw.json", item_code="0000001"),
     }
     fred_map = {
         "DGS10": _fred_fixture(fx / "fred/DGS10.json"),
@@ -356,3 +365,45 @@ def test_collect_macro_logs_revisions_to_heartbeat(vault_tmp: Path, fixture_fetc
     assert hits and hits[0]["date"] == "2026-04-16"
     assert hits[0]["old_value"] == 4.32
     assert hits[0]["new_value"] == 4.40
+
+
+def test_fetch_ecos_series_client_side_filter_drops_unrelated_item_codes():
+    """Gap-04-04 regression guard: client-side ITEM_CODE1 filter is the sole
+    filter after we dropped the 통계항목코드1 server-side kwarg. Feed a
+    DataFrame with MIXED ITEM_CODE1 values; only rows matching `item_code`
+    must appear in the output."""
+    import pandas as pd
+
+    from collectors.macro.fetcher import fetch_ecos_series
+
+    rows = pd.DataFrame(
+        [
+            {"ITEM_CODE1": "0101000", "TIME": "20260414", "DATA_VALUE": "3.25"},
+            {"ITEM_CODE1": "0104000", "TIME": "20260414", "DATA_VALUE": "3.41"},  # unrelated
+            {"ITEM_CODE1": "0101000", "TIME": "20260415", "DATA_VALUE": "3.25"},
+            {"ITEM_CODE1": "0104000", "TIME": "20260415", "DATA_VALUE": "3.42"},  # unrelated
+        ]
+    )
+
+    class FakeApi:
+        def __init__(self):
+            self.kwargs_seen: dict = {}
+
+        def get_statistic_search(self, **kwargs):
+            self.kwargs_seen = kwargs
+            return rows
+
+    api = FakeApi()
+    out = fetch_ecos_series(api, series_id="722Y001", cycle="D", item_code="0101000", days_back=30)
+
+    # Only the two 0101000 rows survive
+    assert len(out) == 2
+    assert all(o["value"] == 3.25 for o in out)
+    assert {o["date"] for o in out} == {"2026-04-14", "2026-04-15"}
+
+    # Verify the fetcher did NOT pass 통계항목코드1 to the API (Gap-04-04 fix)
+    assert "통계항목코드1" not in api.kwargs_seen, (
+        "Regression: fetch_ecos_series is passing 통계항목코드1 to PublicDataReader "
+        "again. Per Gap-04-04, this kwarg is not translated into the ECOS URL "
+        "segment and produces empty responses in live runs. Use client-side filter only."
+    )

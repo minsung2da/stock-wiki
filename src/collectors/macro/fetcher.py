@@ -37,19 +37,25 @@ def fetch_ecos_series(
     end = date.today()
     start = end - timedelta(days=days_back)
     fmt = "%Y%m%d" if cycle == "D" else "%Y%m"
+    # Gap-04-04 fix: PublicDataReader does not translate the server-side
+    # item-code kwarg into the ECOS URL's item-code segment — rows come back
+    # unfiltered with mixed ITEM_CODE1 values, OR the library drops them
+    # during parsing. Direct live verification (curl
+    # ecos.bok.or.kr/api/StatisticSearch/...) confirms the data exists for
+    # the configured item_code. We drop the server-side kwarg and rely on
+    # the defensive ITEM_CODE1 filter below as the sole filter.
+    # Rationale documented in 04-HUMAN-UAT.md Gap-04-04 fix_options.A.
     df = api.get_statistic_search(
         통계표코드=series_id,
         주기=cycle,
         검색시작일자=start.strftime(fmt),
         검색종료일자=end.strftime(fmt),
-        통계항목코드1=item_code,
     )
     if df is None or len(df) == 0:
         raise MacroEmptyResultError(f"ECOS empty: {series_id}")
     out: list[dict] = []
     for _, row in df.iterrows():
-        # Defensive ITEM_CODE1 filter — StatisticSearch with 통계항목코드1 already
-        # narrows at the API layer, but double-check locally.
+        # Client-side ITEM_CODE1 filter — sole filter after Gap-04-04 fix.
         if item_code and str(row.get("ITEM_CODE1", "")) != item_code:
             continue
         raw_v = row.get("DATA_VALUE")
