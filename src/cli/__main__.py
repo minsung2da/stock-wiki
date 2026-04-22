@@ -40,8 +40,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--vault-root",
-        default=".",
-        help="Vault root directory (default: . — repo root per Phase 1 D-01)",
+        default="vault",
+        help="Vault root directory (default: vault)",
     )
     subs = parser.add_subparsers(dest="command", required=True)
 
