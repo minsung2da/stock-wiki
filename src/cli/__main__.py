@@ -58,7 +58,15 @@ def build_parser() -> argparse.ArgumentParser:
     krx.add_argument("--since", default=None, help="YYYY-MM-DD (default: today KST trading day)")
     krx.set_defaults(func=cmd_collect_krx)
 
-    news = collect_subs.add_parser("news", help="Collect 한경/이데일리 news (COLL-03)")
+    news = collect_subs.add_parser(
+        "news",
+        help="Collect 한경/이데일리 news (COLL-03)",
+        epilog=(
+            "Requires: entity_aliases table seeded before first use. "
+            "Run `uv run python -m src.db.seed_name_aliases` once. "
+            "See CLAUDE.md §First-time Setup."
+        ),
+    )
     news.add_argument("--since", default=None)
     news.add_argument("--max-per-feed", type=int, default=100)
     news.set_defaults(func=cmd_collect_news)
