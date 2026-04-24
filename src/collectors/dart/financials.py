@@ -12,12 +12,15 @@ disagreements surface via backlog.md `dart_structured_disagreement` counts.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
 
 from shared.frontmatter import NumericFact
+
+_PERIOD_COL_RE = re.compile(r"^\d{8}$")
 
 
 @dataclass(frozen=True)
@@ -79,8 +82,11 @@ def _pick_value(row: Any) -> float | None:
     """Extract a numeric 'value' from a DataFrame row.
 
     Cassette rows have a 'value' column. Live dart-fss rows have multiple
-    period columns (20250930, 20240930, ...); we take the leftmost non-null
-    numeric column other than 'label_ko'.
+    YYYYMMDD period columns (e.g. ``20250930``, ``20240930``, ...). dart-fss
+    does not contractually guarantee column order, so we sort
+    YYYYMMDD-shaped column names descending and pick the most-recent period
+    with a non-null numeric value. Non-period columns (other than
+    ``label_ko``) are used as a fallback in original order.
     """
     if "value" in row.index:
         v = row["value"]
@@ -88,8 +94,18 @@ def _pick_value(row: Any) -> float | None:
             return float(v)
         except (TypeError, ValueError):
             return None
+    period_cols = [c for c in row.index if _PERIOD_COL_RE.fullmatch(str(c))]
+    for col in sorted(period_cols, reverse=True):
+        try:
+            f = float(row[col])
+            if f == f:  # not NaN
+                return f
+        except (TypeError, ValueError):
+            continue
+    # Fallback: any other non-label numeric column (preserves prior behaviour
+    # for cassettes / shapes that don't expose YYYYMMDD period columns).
     for col, v in row.items():
-        if col == "label_ko":
+        if col == "label_ko" or _PERIOD_COL_RE.fullmatch(str(col)):
             continue
         try:
             f = float(v)
