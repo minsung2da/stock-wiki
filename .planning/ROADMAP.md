@@ -108,7 +108,7 @@ Plans:
   5. Re-running the schedule on the same unchanged document produces byte-identical `_derived` blocks; the three frontmatter zones remain non-overlapping
 **Plans**: 8 plans
 Plans:
-- [ ] 05-01-PLAN.md — Extend DerivedBlock/SentimentBlock/NumericFact schema + ReviewFlag + Literal enums (foundation)
+- [x] 05-01-PLAN.md — Extend DerivedBlock/SentimentBlock/NumericFact schema + ReviewFlag + Literal enums (foundation)
 - [ ] 05-02-PLAN.md — src/shared/units.py normalize_to_krw (pure KRW normalization)
 - [ ] 05-03-PLAN.md — src/shared/number_extraction.py Korean regex candidate extractor + fixtures
 - [ ] 05-04-PLAN.md — src/shared/number_sanity.py echo-back + SANITY_RULES magnitude validator

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-08-PLAN.md
-last_updated: "2026-04-24T14:38:40.048Z"
-last_activity: 2026-04-24 -- Phase 05 planning complete
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-04-24T14:56:51.102Z"
+last_activity: 2026-04-24
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 28
-  completed_plans: 20
-  percent: 71
+  completed_plans: 21
+  percent: 75
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Claude Code에서 보유·관심 종목을 질의했을 때, 최신 공시·뉴스·가격·본인 리서치 메모를 종합한 근거 있는 매수/매도 판단을 즉시 받을 수 있다.
-**Current focus:** Phase 04 — multi-source-collector-coverage
+**Current focus:** Phase 05 — claude-schedule-enrichment-with-korean-number-safety
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05 (claude-schedule-enrichment-with-korean-number-safety) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-04-24 -- Phase 05 planning complete
+Last activity: 2026-04-24
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -76,6 +76,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P06 | 18 | 1 tasks | 3 files |
 | Phase 04 P07 | 20 min | 3 tasks | 5 files |
 | Phase 04 P08 | 8m | 2 tasks | 2 files |
+| Phase 05 P01 | 13min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Plan 05 Option D: DART pblntf_ty='I' supersedes pykrx for exchange status events (pykrx has no get_market_status function)
 - [Phase 04]: CLI _dispatch() helper: single lazy-import boundary for collector orchestration, enables monkeypatch-based testing without DB/network
 - [Phase 04]: Exit codes: 0=all ok, 1=any source error/partial (D-20), 2=CLI misuse/unknown --sources (D-21). Report emitted on stderr to keep stdout composable
+- [Phase 05]: extra=forbid on v2 models only (ReviewFlag/SentimentBlock/NumericFact/DerivedBlock) — legacy zones preserved for Phase 3/4 compat
+- [Phase 05]: EventType exported as top-level Literal alias for downstream Wave 2+ modules to annotate without re-defining
 
 ### Pending Todos
 
@@ -156,6 +159,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-22T06:24:46.840Z
-Stopped at: Completed 04-08-PLAN.md
+Last session: 2026-04-24T14:56:51.045Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None

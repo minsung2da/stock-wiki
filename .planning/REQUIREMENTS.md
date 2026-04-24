@@ -40,7 +40,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [ ] **INGEST-02**: `_derived` 추출은 ingest venv 내부가 아닌 별도 Claude Schedule 에이전트가 수행한다 — vault raw 문서를 git round-trip으로 읽고 enriched frontmatter를 커밋해 돌려놓는 방식. ingest venv에서는 `anthropic`/`openai` import가 여전히 금지(COLL-07 CI 가드 유지).
 - [ ] **INGEST-03**: Claude Schedule 에이전트는 `vault/raw/` 하위에서 `_derived` 블록이 없는 문서를 주기적으로 감지하고 처리한다 (멱등: 이미 `_derived`가 있고 원문 content-hash가 동일하면 건너뜀).
 - [ ] **INGEST-04**: Claude Schedule 에이전트는 `_derived` 구역에만 쓰기 권한이 있으며 provenance·ingest-state 구역을 수정하면 ingest doctor가 drift로 리포트한다 (STORE-06 구역 무결성 유지).
-- [ ] **INGEST-05**: LLM이 frontmatter의 `_derived` 블록에 `tickers`, `event_type`, `catalysts`, `sentiment`, `numeric_facts`, `summary` 속성을 추출하여 쓴다
+- [x] **INGEST-05**: LLM이 frontmatter의 `_derived` 블록에 `tickers`, `event_type`, `catalysts`, `sentiment`, `numeric_facts`, `summary` 속성을 추출하여 쓴다
 - [ ] **INGEST-06**: DART 재무제표 수치는 LLM을 거치지 않고 dart-fss 구조화 접근자를 통해 직접 추출된다
 - [ ] **INGEST-07**: 뉴스·리포트 본문의 숫자 추출은 regex 후보 추출 → LLM 선택 → Pydantic 검증 → 자릿수 체크섬 단계를 거친다
 - [x] **INGEST-08**: 프롬프트 인젝션 방어: untrusted 본문은 XML 델리미터로 감싸 전달, 알려진 주입 패턴(`ignore previous`, 가짜 system 태그 등)을 사전 필터링한다
@@ -186,7 +186,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | INGEST-02 | Phase 5 | Pending |
 | INGEST-03 | Phase 5 | Pending |
 | INGEST-04 | Phase 5 | Pending |
-| INGEST-05 | Phase 5 | Pending |
+| INGEST-05 | Phase 5 | Complete |
 | INGEST-06 | Phase 5 | Pending |
 | INGEST-07 | Phase 5 | Pending |
 | INGEST-08 | Phase 3 | Complete |
