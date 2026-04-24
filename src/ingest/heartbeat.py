@@ -127,9 +127,78 @@ def record_source_run(
             if k not in _RESERVED_SOURCE_KEYS:
                 new_block[k] = v
 
+    # Phase 5: auto-populate alert_level for 'enrich' source if caller didn't
+    if source == "enrich" and "alert_level" not in new_block:
+        new_block["alert_level"] = compute_enrich_alert_level(
+            extra=new_block,  # new_block already has the extra fields merged
+            prior_block=prev,
+            now_iso=now,
+        )
+
     sources[source] = new_block
     meta["sources"] = sources
 
+    yaml_text = yaml.safe_dump(meta, sort_keys=True, allow_unicode=True)
+    content = f"---\n{yaml_text}---\n{HEARTBEAT_BODY}"
+    _atomic_write(path, content)
+
+
+# === Phase 5 additions ===
+
+
+def compute_enrich_alert_level(
+    extra: dict[str, Any] | None,
+    prior_block: dict[str, Any] | None,
+    now_iso: str | None = None,
+) -> str | None:
+    """D-24 SLA thresholds for the enrich source.
+
+    Thresholds (any triggers -> 'warn' unless specified):
+      - consecutive_failures >= 2        -> 'warn'
+      - backlog_count > 50               -> 'warn'
+      - now - last_run > 26h             -> 'warn'
+      - review_flagged ratio > 10%       -> 'info'
+    'warn' overrides 'info'. Returns None if all thresholds clear.
+    """
+    level: str | None = None
+    extra = extra or {}
+    cf = int(extra.get("consecutive_failures", 0))
+    backlog = int(extra.get("backlog_count", 0))
+    processed = int(extra.get("docs_processed", 0))
+    flagged = int(extra.get("docs_review_flagged", 0))
+
+    if processed > 0 and (flagged / processed) > 0.10:
+        level = "info"
+    if cf >= 2:
+        level = "warn"
+    if backlog > 50:
+        level = "warn"
+
+    # stale last_run check (26h)
+    if prior_block and now_iso:
+        last_run = prior_block.get("last_run")
+        if isinstance(last_run, str):
+            try:
+                lr = datetime.fromisoformat(last_run.replace("Z", "+00:00"))
+                now = datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
+                if (now - lr).total_seconds() > 26 * 3600:
+                    level = "warn"
+            except (ValueError, TypeError):
+                pass
+    return level
+
+
+def write_disk_section(
+    disk: dict[str, Any],
+    heartbeat_path: Path | None = None,
+) -> None:
+    """Atomically merge the D-23 top-level `disk` dict into heartbeat.md.
+
+    Preserves `sources` and any other top-level keys verbatim.
+    """
+    path = heartbeat_path if heartbeat_path is not None else HEARTBEAT_PATH_DEFAULT
+    meta = _read_sources(path)
+    meta["disk"] = dict(disk)  # shallow copy
     yaml_text = yaml.safe_dump(meta, sort_keys=True, allow_unicode=True)
     content = f"---\n{yaml_text}---\n{HEARTBEAT_BODY}"
     _atomic_write(path, content)
