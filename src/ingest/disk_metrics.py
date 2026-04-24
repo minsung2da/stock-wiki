@@ -29,20 +29,6 @@ def _dir_mb(path: str | Path, exclude: tuple[str, ...] = (".git",)) -> float:
     return round(total / (1024 * 1024), 2)
 
 
-def _git_mb(repo_path: str | Path) -> float:
-    g = Path(repo_path) / ".git"
-    if not g.exists():
-        return 0.0
-    total = 0
-    for f in g.rglob("*"):
-        if f.is_file():
-            try:
-                total += f.stat().st_size
-            except OSError:
-                continue
-    return round(total / (1024 * 1024), 2)
-
-
 def compute_disk_metrics(
     vault_path: str | Path = "vault",
     repo_path: str | Path = ".",
@@ -52,18 +38,25 @@ def compute_disk_metrics(
     """Compute the D-23 disk section dict.
 
     Args:
-        vault_path: root of the Obsidian vault.
-        repo_path: repo root (used to locate .git).
+        vault_path: root of the Obsidian vault. Excludes ``.git`` (so a
+            vault rooted at the repo root does not double-count git
+            objects).
+        repo_path: repo root (used to locate .git). The ``.git`` directory
+            is measured in full (no exclusion) so packed objects count.
         db_size_mb: Postgres DB size in MB; caller supplies via pg_database_size.
             None -> 0.0 (not measured).
         pgdata_path: host path to Postgres pgdata volume if measurable. None
             (the default in our Docker setup) -> 0.0.
 
+    Caller must ensure ``vault_path``, ``repo_path``, ``pgdata_path`` are
+    non-overlapping. Otherwise nested data is double-counted across keys
+    (WR-04 documented foot-gun).
+
     Returns:
         Dict with keys: vault_mb, git_mb, db_mb, pgdata_mb, alert_level.
     """
     vault_mb = _dir_mb(vault_path)
-    git_mb = _git_mb(repo_path)
+    git_mb = _dir_mb(Path(repo_path) / ".git", exclude=())
     db_mb = float(db_size_mb) if db_size_mb is not None else 0.0
     pgdata_mb = _dir_mb(pgdata_path) if pgdata_path is not None else 0.0
     metrics = {
