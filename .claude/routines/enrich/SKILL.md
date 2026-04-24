@@ -21,7 +21,25 @@ You are the daily enrichment agent for a Korean-market stock knowledge base. Eac
 1. Verify env vars: `GITHUB_TOKEN`, `DART_API_KEY`.
 2. `uv sync --extra ingest --extra collectors --extra dev` (project deps).
 3. `git checkout -b claude/enrich-$(date +%F) origin/main`.
-4. `python -c "from routines_enrich_helpers import walk; print(len(walk.find_candidates('vault')))"` to sanity-check candidate count.
+4. Bootstrap helper imports — the helpers under `.claude/routines/enrich/helpers/` are not a published package; prepend their directory (and `src/`) to `PYTHONPATH` before invoking any helper:
+
+   ```bash
+   export PYTHONPATH=".claude/routines/enrich/helpers:src:${PYTHONPATH}"
+   python -c "import walk; print(len(walk.find_candidates('vault')))"
+   ```
+
+   Equivalently, at the top of any Python entrypoint the routine spawns:
+
+   ```python
+   import sys, pathlib
+   sys.path.insert(0, str(pathlib.Path(".claude/routines/enrich/helpers").resolve()))
+   sys.path.insert(0, "src")
+   from walk import find_candidates
+   from zone_integrity import compute_zone_hash, assert_zones_unchanged
+   from facts_equal import facts_equal
+   ```
+
+   All helper references in the Per-document loop below (`walk.find_candidates`, `compute_zone_hash`, `assert_zones_unchanged`, `facts_equal`) assume this bootstrap has run.
 
 ## Per-document loop
 
