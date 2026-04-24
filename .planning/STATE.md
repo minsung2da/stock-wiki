@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-08-PLAN.md (final plan of Phase 5 coding-gate)
-last_updated: "2026-04-24T15:39:18.938Z"
+stopped_at: Completed 05-02-PLAN.md (Wave 2 kick-off)
+last_updated: "2026-04-24T16:13:07.045Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 28
-  completed_plans: 23
-  percent: 82
+  completed_plans: 24
+  percent: 86
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 05 (claude-schedule-enrichment-with-korean-number-safety) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -79,6 +79,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P01 | 13min | 2 tasks | 3 files |
 | Phase 05 P03 | 12min | 2 tasks | 4 files |
 | Phase 05 P08 | 22min | 2 tasks | 14 files |
+| Phase 05 P02 | 29min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Regex number_extraction: removed \b after Hangul (ASCII-only boundary breaks between 원을/주가 etc.), wrapped _NUM in non-capturing group for safe compound composition
 - [Phase 05]: Plan 05-08: Routines skill lives in-repo at .claude/routines/enrich/ (D-29); helpers load via importlib.util so tests reach into .claude/ without polluting pythonpath
 - [Phase 05]: Plan 05-08: Zone-integrity SHA256 over yaml.safe_dump(provenance)+yaml.safe_dump(ingest_state) — deterministic sort_keys=True payload; _derived changes correctly ignored
+- [Phase 05]: Plan 05-02: Leaf pure-util pattern for shared/units.py — no imports from shared.frontmatter or ingest.*, MappingProxyType frozen constants, defensive .get() on Literal-narrowed str input
+- [Phase 05]: Plan 05-02: normalize_to_krw explicitly returns None for non-KRW currencies (USD/EUR/JPY) — no silent FX conversion, downstream sees value_krw=None and skips KRW range checks
 
 ### Pending Todos
 
@@ -164,6 +167,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T15:39:18.740Z
-Stopped at: Completed 05-08-PLAN.md (final plan of Phase 5 coding-gate)
+Last session: 2026-04-24T16:13:07.004Z
+Stopped at: Completed 05-02-PLAN.md (Wave 2 kick-off)
 Resume file: None
