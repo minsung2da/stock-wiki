@@ -112,7 +112,7 @@ Plans:
 - [x] 05-02-PLAN.md — src/shared/units.py normalize_to_krw (pure KRW normalization)
 - [x] 05-03-PLAN.md — src/shared/number_extraction.py Korean regex candidate extractor + fixtures
 - [x] 05-04-PLAN.md — src/shared/number_sanity.py echo-back + SANITY_RULES magnitude validator
-- [ ] 05-05-PLAN.md — src/collectors/dart/financials.py LLM-free structured accessor (D-14) + cassette
+- [x] 05-05-PLAN.md — src/collectors/dart/financials.py LLM-free structured accessor (D-14) + cassette
 - [ ] 05-06-PLAN.md — src/ingest/backlog.py render_backlog (first_seen + chronic + prior preservation)
 - [ ] 05-07-PLAN.md — heartbeat enrich section + disk_metrics + D-24 SLA thresholds
 - [x] 05-08-PLAN.md — .claude/routines/enrich/ SKILL.md + 4 prompts + helpers (facts_equal/walk/zone_integrity) + README operator runbook

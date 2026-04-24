@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-04-24T16:20:29.510Z"
+stopped_at: Completed 05-05-PLAN.md
+last_updated: "2026-04-24T16:27:31.218Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 28
-  completed_plans: 25
-  percent: 89
+  completed_plans: 26
+  percent: 93
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 05 (claude-schedule-enrichment-with-korean-number-safety) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -81,6 +81,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P08 | 22min | 2 tasks | 14 files |
 | Phase 05 P02 | 29min | 2 tasks | 2 files |
 | Phase 05-claude-schedule-enrichment-with-korean-number-safety P04 | 7min | 2 tasks | 2 files |
+| Phase 05-claude-schedule-enrichment-with-korean-number-safety P05 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,8 @@ Recent decisions affecting current work:
 - [Phase 05]: Plan 05-02: Leaf pure-util pattern for shared/units.py — no imports from shared.frontmatter or ingest.*, MappingProxyType frozen constants, defensive .get() on Literal-narrowed str input
 - [Phase 05]: Plan 05-02: normalize_to_krw explicitly returns None for non-KRW currencies (USD/EUR/JPY) — no silent FX conversion, downstream sees value_krw=None and skips KRW range checks
 - [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-04: KOSPI/KOSDAQ sanity rules use unit='other' — NumericFact.unit Literal excludes 'index_pt'; promotion to Literal deferred to Phase 9
+- [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-05: LINE_ITEM_SYNONYMS covers 22 canonical KR line items; new labels graduate via explicit synonym addition (no fabricated mapping)
+- [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-05: _fs_extract is a monkeypatchable wrapper — cassette-driven tests avoid live DART API in CI
 
 ### Pending Todos
 
@@ -169,6 +172,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T16:20:29.464Z
-Stopped at: Completed 05-04-PLAN.md
+Last session: 2026-04-24T16:27:31.172Z
+Stopped at: Completed 05-05-PLAN.md
 Resume file: None
