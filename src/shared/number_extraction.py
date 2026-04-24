@@ -27,7 +27,6 @@ GuessedUnit = Literal[
     "bps",
     "multiplier",
     "shares",
-    "index_pt",
     "other",
 ]
 
@@ -66,8 +65,9 @@ _PATTERNS: list[tuple[str, str]] = [
     (rf"{_NUM}\s*주", "shares"),
     # Plain KRW
     (rf"{_NUM}\s*원", "KRW원"),
-    # Index / 포인트
-    (rf"{_NUM}\s*포인트", "index_pt"),
+    # Index / 포인트 (mapped to "other" — NumericFact.unit Literal does not
+    # include "index_pt"; SANITY_RULES for KOSPI/KOSDAQ use unit="other".)
+    (rf"{_NUM}\s*포인트", "other"),
     # Foreign currency (달러/엔/유로)
     (rf"{_NUM}\s*달러", "USD"),
     (rf"{_NUM}\s*엔", "JPY"),
