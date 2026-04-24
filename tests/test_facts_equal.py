@@ -75,8 +75,8 @@ def test_numeric_fact_value_difference_detected():
 def test_numeric_fact_rounding_tolerance():
     a = _d(numeric_facts=[NumericFact(key="r", value=1.23456789, unit="pct")])
     b = _d(
-        numeric_facts=[NumericFact(key="r", value=1.23454321, unit="pct")]
-    )  # diff in 5th decimal
+        numeric_facts=[NumericFact(key="r", value=1.23456321, unit="pct")]
+    )  # diff in 5th decimal — both round to 1.2346
     assert facts_equal(a, b)  # round(_, 4) identical
 
 
