@@ -115,7 +115,7 @@ Plans:
 - [ ] 05-05-PLAN.md — src/collectors/dart/financials.py LLM-free structured accessor (D-14) + cassette
 - [ ] 05-06-PLAN.md — src/ingest/backlog.py render_backlog (first_seen + chronic + prior preservation)
 - [ ] 05-07-PLAN.md — heartbeat enrich section + disk_metrics + D-24 SLA thresholds
-- [ ] 05-08-PLAN.md — .claude/routines/enrich/ SKILL.md + 4 prompts + helpers (facts_equal/walk/zone_integrity) + README operator runbook
+- [x] 05-08-PLAN.md — .claude/routines/enrich/ SKILL.md + 4 prompts + helpers (facts_equal/walk/zone_integrity) + README operator runbook
 
 ### Phase 6: Full MCP Tool Surface
 **Goal**: Claude Code has the full FastMCP toolbox needed for the judgment workflow: `get_ticker_overview`, `get_recent_events`, `get_portfolio_state`, `get_related`, `get_filing`, `add_note`, `health`. Each tool has a docstring written as an LLM-facing behavioral contract, enforces the write-scope rules (only `vault/notes/` is writable), and passes CI gates on response latency and token size.

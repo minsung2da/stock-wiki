@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-04-24T15:12:31.201Z"
+stopped_at: Completed 05-08-PLAN.md (final plan of Phase 5 coding-gate)
+last_updated: "2026-04-24T15:39:18.938Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 28
-  completed_plans: 22
-  percent: 79
+  completed_plans: 23
+  percent: 82
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 05 (claude-schedule-enrichment-with-korean-number-safety) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -78,6 +78,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P08 | 8m | 2 tasks | 2 files |
 | Phase 05 P01 | 13min | 2 tasks | 3 files |
 | Phase 05 P03 | 12min | 2 tasks | 4 files |
+| Phase 05 P08 | 22min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,8 @@ Recent decisions affecting current work:
 - [Phase 05]: extra=forbid on v2 models only (ReviewFlag/SentimentBlock/NumericFact/DerivedBlock) — legacy zones preserved for Phase 3/4 compat
 - [Phase 05]: EventType exported as top-level Literal alias for downstream Wave 2+ modules to annotate without re-defining
 - [Phase 05]: Regex number_extraction: removed \b after Hangul (ASCII-only boundary breaks between 원을/주가 etc.), wrapped _NUM in non-capturing group for safe compound composition
+- [Phase 05]: Plan 05-08: Routines skill lives in-repo at .claude/routines/enrich/ (D-29); helpers load via importlib.util so tests reach into .claude/ without polluting pythonpath
+- [Phase 05]: Plan 05-08: Zone-integrity SHA256 over yaml.safe_dump(provenance)+yaml.safe_dump(ingest_state) — deterministic sort_keys=True payload; _derived changes correctly ignored
 
 ### Pending Todos
 
@@ -161,6 +164,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T15:12:30.956Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-04-24T15:39:18.740Z
+Stopped at: Completed 05-08-PLAN.md (final plan of Phase 5 coding-gate)
 Resume file: None
