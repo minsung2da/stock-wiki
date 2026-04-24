@@ -62,6 +62,10 @@ updated: 2026-04-18
 | R-07 | 01 | 1 | COLL-03/COLL-04 | — | Typed TickerRef + Observation nested models reject bad patterns; round-trip preserves .value | unit | `uv run pytest tests/test_frontmatter_news_fields.py -k "typed or TickerRef or Observation" -x -q` | ❌ W0 | ⬜ pending |
 | R-08 | 04 | 2 | COLL-03 | T-04-10 | RSS via requests (bytes) + article via trafilatura (str); scheme guard on both; no cross-import | unit | `uv run pytest tests/collectors/news/ -k "rss or article or scheme or fetch_sep" -x -q` | ❌ W0 | ⬜ pending |
 | R-09 | 04 | 2 | COLL-03 | — | collect_news startup raises NoAliasesSeededError when entity_aliases lacks name rows (no HTTP issued) | unit | `uv run pytest tests/collectors/news/ -k "seeded or NoAliases" -x -q` | ❌ W0 | ⬜ pending |
+| 07-T1 | 07 | 4 | COLL-02/03/04/05 | T-04-07-01 | CLI --vault-root default=vault; default-flag integration test guards against Gap-04-03 regression | integration | `uv run pytest tests/test_cli_default_flags.py -x -q` | — | ⬜ pending (gap closure) |
+| 07-T2 | 07 | 4 | COLL-04 | T-04-07-02 | ECOS fetcher drops 통계항목코드1 kwarg; client-side ITEM_CODE1 filter is sole filter; fixture includes mixed-ITEM_CODE1 rows | unit | `uv run pytest tests/collectors/macro/test_collect_macro.py::test_fetch_ecos_series_client_side_filter_drops_unrelated_item_codes -x -q` | — | ⬜ pending (gap closure) |
+| 07-T3 | 07 | 4 | COLL-02/03/04/05 | — | Full keyword regression suite still green after Gap-04-03/04/06 fixes | regression | `uv run pytest tests/ -k "frontmatter or heartbeat or dart or portfolio or entity_alias or krx or macro or news or kind or cli or import_guard or default_flags" -x -q` | — | ⬜ pending (gap closure) |
+| 08-T1 | 08 | 4 | COLL-03 | T-04-08-01 | CLAUDE.md First-time Setup section + news --help epilog document seed precondition (Gap-04-05) | docs+help | `grep -q "^## First-time Setup$" CLAUDE.md && uv run python -m cli collect news --help 2>&1 \| grep -q seed_name_aliases` | — | ⬜ pending (gap closure) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
