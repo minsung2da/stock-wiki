@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-04-24T14:56:51.102Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-04-24T15:12:31.201Z"
 last_activity: 2026-04-24
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 28
-  completed_plans: 21
-  percent: 75
+  completed_plans: 22
+  percent: 79
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 05 (claude-schedule-enrichment-with-korean-number-safety) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-04-24
 
@@ -77,6 +77,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P07 | 20 min | 3 tasks | 5 files |
 | Phase 04 P08 | 8m | 2 tasks | 2 files |
 | Phase 05 P01 | 13min | 2 tasks | 3 files |
+| Phase 05 P03 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -138,6 +139,7 @@ Recent decisions affecting current work:
 - [Phase 04]: Exit codes: 0=all ok, 1=any source error/partial (D-20), 2=CLI misuse/unknown --sources (D-21). Report emitted on stderr to keep stdout composable
 - [Phase 05]: extra=forbid on v2 models only (ReviewFlag/SentimentBlock/NumericFact/DerivedBlock) — legacy zones preserved for Phase 3/4 compat
 - [Phase 05]: EventType exported as top-level Literal alias for downstream Wave 2+ modules to annotate without re-defining
+- [Phase 05]: Regex number_extraction: removed \b after Hangul (ASCII-only boundary breaks between 원을/주가 etc.), wrapped _NUM in non-capturing group for safe compound composition
 
 ### Pending Todos
 
@@ -159,6 +161,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-24T14:56:51.045Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-04-24T15:12:30.956Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
