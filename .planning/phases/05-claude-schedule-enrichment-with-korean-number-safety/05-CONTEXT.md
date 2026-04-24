@@ -6,11 +6,11 @@
 <domain>
 ## Phase Boundary
 
-Phase 4에서 `vault/raw/**/*.md` 로 축적된 raw 문서에 대해, **ingest venv 밖에서 실행되는 Claude Schedule agent**(Anthropic RemoteTrigger, cloud-hosted cron)가 `_derived` frontmatter 블록을 채워 git으로 push하는 파이프라인을 구축한다. 이 페이즈는 **`_derived` 추출 루프까지만** 다룬다 — Phase 6 MCP 툴 확장 · Phase 7 그래프 · Phase 8 대시보드는 이후 페이즈.
+Phase 4에서 `vault/raw/**/*.md` 로 축적된 raw 문서에 대해, **ingest venv 밖에서 실행되는 Claude Code Routines agent**(Anthropic cloud-hosted cron, 2026-04-14 GA)가 `_derived` frontmatter 블록을 채워 git으로 push하는 파이프라인을 구축한다. 이 페이즈는 **`_derived` 추출 루프까지만** 다룬다 — Phase 6 MCP 툴 확장 · Phase 7 그래프 · Phase 8 대시보드는 이후 페이즈.
 
 **핵심 경계:**
 - `src/collectors/` · `src/ingest/` 의 `anthropic`/`openai` import 금지 영구 유지(COLL-07 CI 가드).
-- Schedule agent는 **별도 프로세스** — Anthropic RemoteTrigger에서 Claude Code 세션으로 기동, 사용자 Claude Max 구독 quota 사용(API 토큰 별도 청구 0).
+- Schedule agent는 **별도 프로세스** — Claude Code Routines cloud 컨테이너에서 Claude Code 세션으로 기동, 사용자 Claude Max 구독 quota 사용(API 토큰 별도 청구 0). Container는 run당 fresh(상태 비보존, 자연 멱등).
 - Agent는 `_derived` zone에만 쓴다. `provenance` · `ingest_state` 수정 금지(STORE-06 zone integrity).
 - DART 재무제표 수치는 **LLM 무관여** — `dart-fss` 구조화 접근자 직접. 뉴스·리포트 서사 숫자만 regex→LLM→Pydantic→자릿수 체크섬 4단계 파이프라인.
 - 임베딩 계산(bge-m3 1024-d)은 Phase 3에서 이미 작동 중 — 이 페이즈에서 재설정 없음.
@@ -22,15 +22,18 @@ Phase 4에서 `vault/raw/**/*.md` 로 축적된 raw 문서에 대해, **ingest v
 
 ### Schedule Agent Execution Model (D-01 ~ D-06)
 
-- **D-01:** **Anthropic RemoteTrigger** (claude.ai 호스팅 cron) 채택. 로컬 systemd.timer / 수동 실행 옵션 탈락. 이유: 사용자가 Max 20x 구독 보유, PC 상태와 무관하게 동작 필요, 기동이 곧 Claude Code 세션 → 기존 skill·tool 생태계 재사용.
+- **D-01:** **Claude Code Routines** (Anthropic cloud-hosted cron, 2026-04-14 GA) 채택. 로컬 systemd.timer / 수동 실행 옵션 탈락. 이유: 사용자가 Max 20x 구독 보유, PC 상태와 무관하게 동작 필요, 기동이 곧 Claude Code 세션 → 기존 skill·tool 생태계 재사용. Container는 run당 fresh(상태 비보존), 최소 cron 간격 1시간.
 - **D-02:** 트리거 빈도 = **매일 1회, KST 07:00** (= 22:00 UTC 전날). 전날 수집분(Phase 4 `collect all`)의 새벽 enrichment. 주간 Claude 대화 quota 윈도우와 분리.
-- **D-03:** Git 커밋 전략:
-  - 1 run = 1 commit (배치). 커밋 메시지: `enrich: _derived for N docs (YYYY-MM-DD)`
-  - `main` 직접 push. push 실패 시 `git pull --rebase` 재시도. `_derived`만 추가하므로 3-way merge 자연 해결 가능.
-  - 권한: GitHub fine-grained PAT (`contents:write`). RemoteTrigger 콘솔에서 secret으로 주입.
-- **D-04:** 충돌 방지 — 파일 lock 없음. 운영 중 수집기가 같은 파일을 append하는 경우는 거의 없으나, 발생 시 merge-on-conflict로 자연 해결. 충돌 지속 시 agent는 해당 문서 skip + `review_flags: ["merge_conflict"]`.
+- **D-03:** Git 커밋 & push 전략 (**옵션 C — PR + auto-merge**):
+  - 매 run에 routine이 `claude/enrich-YYYY-MM-DD` 브랜치로 push. 기본 브랜치 보호는 Routines 정책("main 직접 push 불가, `claude/*` 만 허용")을 자연스럽게 준수.
+  - 1 run = 1 commit. 커밋 메시지: `enrich: _derived for N docs (YYYY-MM-DD)`.
+  - Push 직후 GitHub PR 자동 생성 (routine 내 `gh pr create --label auto-merge --base main --head claude/enrich-YYYY-MM-DD`).
+  - **GitHub auto-merge 활성화** — required checks (CI 테스트·import_guard) 통과 시 자동 병합. 리뷰 이력·CI 트레일은 PR에 보존되며 사고 시 `git revert` 1커밋으로 되돌림 가능.
+  - Push 실패 시 (예: 기본 브랜치 한도 충돌) `git pull --rebase origin main` 재시도 1회. `_derived` append-only 특성상 conflict 가능성 매우 낮음.
+  - 권한: GitHub fine-grained PAT, scope = Contents:RW + PullRequests:RW on **이 repo 단일**. Routines secrets 매니저에 주입 (주의: Routines는 아직 전용 secrets store 없음 — editor 권한자에게 env var 가시).
+- **D-04:** 충돌 방지 — 파일 lock 없음. 수집기와 agent가 같은 파일을 동시에 append하는 경우는 거의 없으나, 발생 시 merge-on-conflict로 자연 해결. 충돌 지속 시 agent는 해당 문서 skip + `review_flags: ["merge_conflict"]`.
 - **D-05:** 모델 = **Claude Sonnet 4.6**. 1 문서 = 1 호출(단일 prompt). 200K 토큰 초과 시 `_derived` null + `skip_reason: "oversize"` 기록. Haiku/Opus 대체 없음 (Sonnet 4.6의 한국어 금융 텍스트 구조화 출력이 최적점).
-- **D-06:** 실행 quota 예산: Max 20x 기준 평시 ~4% / 실적 시즌 피크 ~9% (self-consistency 더블패스 포함). 다른 Claude 대화와 윈도우 분리됨.
+- **D-06:** 실행 quota 예산: Max 20x 기준 평시 ~4% / 실적 시즌 피크 ~9% (self-consistency 더블패스 포함). 다른 Claude 대화와 윈도우 분리됨. Routines 세션 메시지는 interactive Claude Code 사용과 동일한 Max 쿼터에서 차감.
 
 ### Frontmatter Zone Safety (D-07)
 
@@ -143,9 +146,12 @@ Phase 5에서 다음 필드 추가:
   2. **LLM 선택** — Sonnet 4.6가 후보 중 "의미 있는 fact" 선택 + `key` 부여 + `source_span` 의무 echo-back
   3. **Pydantic 검증** — 스키마 타입, unit enum 유효성
   4. **자릿수 체크섬**:
-     - byte-level: `body[offset:offset+len(source_span)] == source_span` (환각 차단 zero-tolerance)
+     - **character-level echo-back**: `body[offset:offset+len(source_span)] == source_span` (환각 차단 zero-tolerance). Python `str[i:j]`는 Unicode codepoint 인덱스이므로 한글도 문자 단위 비교로 동등하게 작동.
      - magnitude sanity: `SANITY_RULES[key]` 테이블로 범위 위반 감지
-- **D-16:** **self-consistency 더블패스**: 문서당 LLM 2회 호출 (temperature=0). 두 결과 비교:
+- **D-16:** **self-consistency 더블패스**: 문서당 LLM 2회 호출 (temperature=0). 비교자는 **논리 equality**(문자열 exact 아님):
+  - `numeric_facts` 는 `(key, round(value, 4), unit)` 3-tuple 집합 equality
+  - `tickers / event_type / catalysts / sentiment.label` 은 exact match
+  - `summary / rationale` 같은 자유 산문은 비교 대상 제외 (Sonnet 4.6 temp=0도 "일부 변동 가능" 공식 인정)
   - 100% 일치 → commit
   - 불일치 → `review_flags: ["self_inconsistent"]` 기록 + F-1b 원칙대로 `_derived` 전체 null
   - 부하: Max 20x quota ~9% (허용 범위)
@@ -225,13 +231,40 @@ Phase 5에서 다음 필드 추가:
 
 - **D-28:** 임베딩 타입 = `vector(1024)` full-float32 유지 (4 byte × 1024 = 4KB/chunk). 현재 노트북 성능 허용. halfvec 전환은 retrospective 결정 사항으로 보류 — Phase 5는 용량 메트릭만 기록, 임계치 초과 시 Phase 9에서 halfvec 마이그레이션 검토.
 
-### Claude's Discretion
-- self-consistency 더블패스의 "불일치 판정" 기준 (JSON deep equality vs fuzzy) — 플래너/리서처가 구체화. 기본안: fact `(key,value,unit)` 튜플 deep equality.
-- backlog.md "Chronic items" 섹션의 연령 경계값 (3일 → 조정 가능)
+### Agent Code Location (D-29)
+
+- **D-29:** **Routines skill 위치 = repo 내 `.claude/routines/enrich/SKILL.md`** (리서처 confirm). `~/.claude/skills/` 아래는 로컬 전용이며 Routines cloud container는 repo clone 시점의 파일만 읽음. 별도 repo 옵션도 불필요 — 단일 repo 내부가 버전 관리·리뷰·PR 흐름 모두 깔끔.
+  - 디렉터리 구조:
+    ```
+    .claude/routines/enrich/
+      SKILL.md              # routine entry point (Claude Code가 읽음)
+      prompts/
+        derived_news.md     # 뉴스 전용 source 분기 프롬프트
+        derived_dart_b.md   # DART 주요사항(B) 전용
+        derived_kind.md     # KIND 이벤트 전용
+        derived_macro.md    # 거시 전용
+      helpers/
+        facts_equal.py      # self-consistency 비교자 (D-16)
+        prompt_build.py     # source별 prompt 조립
+    ```
+
+### Resolved Gray Areas (리서처 확인)
+
+다음 항목은 CONTEXT 작성 당시 Claude's Discretion이었으나 리서치 결과로 결정됨:
+
+- **self-consistency 비교자**: D-16 본문에 명시됨 — `(key, round(value,4), unit)` tuple-set equality on numeric_facts + exact match on tickers/event_type/catalysts/sentiment.label, summary/rationale 제외.
+- **character-level echo-back**: D-15 본문에 명시됨 — Python str[i:j]는 codepoint 인덱스, 한글 동등 작동 ("byte-level" 용어는 오해 — 정정됨).
+- **Routines skill 위치**: D-29로 이동 — `.claude/routines/enrich/`.
+- **Push 전략**: D-03으로 이동 — PR + auto-merge (옵션 C), `claude/enrich-YYYY-MM-DD` 브랜치 경유.
+
+### Claude's Discretion (남은 항목)
+
+- backlog.md "Chronic items" 섹션의 연령 경계값 (3일 → 관측 후 조정)
 - regex 후보 top-N 제한 — 현재 "제한 없음" (뉴스 2문단 수준에서 5-15개 후보로 충분); DART 본문이 10+ 후보 생성 시 관측 후 결정
-- LLM 프롬프트의 few-shot 예시 포함 여부 — Sonnet 4.6 한국어 금융 기본 성능 관측 후 결정
-- Agent 코드 위치 — RemoteTrigger skill 정의는 `~/.claude/` 아래 vs repo 내 `.claude/schedule/` vs 별도 repo? 리서처가 RemoteTrigger 배포 관례 확인
+- LLM 프롬프트의 few-shot 예시 포함 여부 — Sonnet 4.6 한국어 금융 기본 성능 관측 후 결정 (Wave-1 golden set으로 MVP는 zero-shot)
 - schema_version 증가 시 backlog.md migration 스크립트 필요 시점 (v1 Phase 5, v2는 필요 시)
+- DART line-item synonym map 확장 — `매출액` vs `수익(매출액)` 같은 DART 내부 동의어 관찰 후 매핑 테이블 작성 (backlog-driven growth)
+- Routines container cold-start 시간 측정 — DART corp_list 다운로드가 매 run 반복되면 skill 내부에 cache 레이어 추가 검토
 
 </decisions>
 
@@ -267,8 +300,10 @@ Phase 5에서 다음 필드 추가:
 - Phase 4 D-24 trust_level (trusted/semi_trusted) — sentiment scope 분기 기준
 
 ### External Tech
-- Claude Schedule / RemoteTrigger 배포 관례 (리서처가 `~/.claude/skills/schedule/`, `/v1/code/triggers` API 등 확인)
-- Sonnet 4.6 한국어 금융 텍스트 구조화 출력 성능 — few-shot 필요성 판단
+- **Claude Code Routines** (Anthropic cloud-hosted cron, 2026-04-14 GA) — 공식 문서: https://code.claude.com/docs/en/routines. 배포 = repo 내 SKILL.md commit (D-29). 기본 브랜치 보호 정책상 `claude/*` prefix 브랜치만 push 가능 → PR + auto-merge flow(D-03).
+- **GitHub auto-merge** — required status checks(CI 테스트·import guard) 통과 시 자동 병합. operator runbook: repo Settings → General → "Allow auto-merge" 활성, branch protection rule `main`에 required checks 지정.
+- **GitHub fine-grained PAT** — scope = Contents:RW + PullRequests:RW on 단일 repo. Routines secrets 매니저에 env var로 주입.
+- Sonnet 4.6 한국어 금융 텍스트 구조화 출력 성능 — few-shot 필요성 판단 (Wave-1 golden set 관측)
 - FastMCP 2.x — Phase 6 MCP `health` 툴과의 인터페이스 (backlog.md 파싱 규격)
 
 ### Test Fixtures
@@ -303,8 +338,8 @@ Phase 5에서 다음 필드 추가:
 - `src/shared/number_sanity.py::SANITY_RULES, check_sanity(fact: NumericFact) -> ReviewFlag | None` (신규) — 상식선 규칙
 - `src/shared/frontmatter.py` 확장 — DerivedBlock/SentimentBlock/NumericFact/ReviewFlag 새 필드
 - `src/ingest/backlog.py::BacklogManager, render_backlog(today_items, prior_backlog_path)` (신규) — backlog.md 생성 + first_seen 병합
-- **Schedule agent 코드 위치** (리서처 디스크레션) — `~/.claude/skills/stock-enrich/` or `.claude/schedule/enrich.md` or 별도 repo
-- **Agent prompt template** (신규) — source별 분기, source_span echo-back 의무, sentiment 적용 조건, review_flags 스키마
+- **Routines skill** (D-29) — `.claude/routines/enrich/SKILL.md` + `prompts/derived_{news,dart_b,kind,macro}.md` + `helpers/facts_equal.py`
+- **Agent prompt template** (신규) — source별 분기, source_span character-level echo-back 의무, sentiment 적용 조건, review_flags 스키마
 
 ### Non-Touch (절대 변경 금지)
 - `src/ingest/worker.py` — Phase 3 pipeline 그대로. Phase 5는 **별개 프로세스**. worker는 `_derived` 를 **소비**만 하지 **생성하지 않음**.
@@ -318,32 +353,44 @@ Phase 5에서 다음 필드 추가:
 ### Agent 워크플로우 (1 run 의 pseudocode)
 
 ```
-1. git clone <repo> --depth 1 && cd <repo>
-2. scan vault/raw/**/*.md:
+0. Routines container fresh start:
+   - repo clone (auth via fine-grained PAT env var)
+   - git checkout -b claude/enrich-YYYY-MM-DD origin/main
+1. scan vault/raw/**/*.md:
      - parse frontmatter
      - if _derived not null AND content_hash unchanged → skip
      - if skip_reason in ["review_required", "oversize", "merge_conflict"] AND content_hash unchanged → skip (F-4c stick)
-3. for each candidate doc:
+2. for each candidate doc:
      a. if token_count(body) > 200_000 → _derived = null, skip_reason = "oversize"; continue
      b. source_type = fm.provenance.source  (dart, news, macro, kind, krx)
-     c. choose prompt template per source
-     d. LLM call 1 (temperature=0) → derived_v1
-     e. LLM call 2 (temperature=0) → derived_v2  # self-consistency
-     f. if derived_v1 != derived_v2 → _derived=null, review_flags+=["self_inconsistent"]; continue
-     g. for each numeric_fact:
-          - byte echo-back: body[offset:offset+len(source_span)] == source_span?
+     c. if sentiment 적용 소스 아님 (D-13) → sentiment prompt 생략
+     d. load prompt template per source (prompts/derived_{news|dart_b|kind|macro}.md)
+     e. LLM call 1 (temperature=0) → derived_v1
+     f. LLM call 2 (temperature=0) → derived_v2  # self-consistency
+     g. if not facts_equal(derived_v1, derived_v2) → _derived=null, review_flags+=["self_inconsistent"]; continue
+        # facts_equal = (key, round(value,4), unit) tuple-set equality on numeric_facts
+        #             + exact match on tickers/event_type/catalysts/sentiment.label
+        #             + summary/rationale 제외
+     h. for each numeric_fact:
+          - character-level echo-back: body[offset:offset+len(source_span)] == source_span?  (Python codepoint slice)
           - sanity check: SANITY_RULES[key]
           - if DART source: compare vs dart-fss structured
           - any fail → _derived=null (F-1b all-or-nothing), review_flags+=[...]
-     h. compute value_krw via units.normalize_to_krw
-     i. check sentiment label/score mapping
-     j. check agent_zone_violation: non-_derived keys unchanged?
-     k. write frontmatter (atomic)
-4. compute stats + review_flags counters
-5. render ingested/_status/backlog.md (today's section + chronic items)
-6. render ingested/_status/heartbeat.md (enrich + disk sections, alert_level)
-7. git add -A; git commit -m "enrich: _derived for N docs (YYYY-MM-DD)"; git push
-8. if push fails: git pull --rebase; git push (1회 재시도)
+     i. compute value_krw via units.normalize_to_krw  (Python util, LLM 무관여)
+     j. check sentiment label/score mapping (D-10)
+     k. check agent_zone_violation: non-_derived keys unchanged?
+     l. write frontmatter (atomic)
+3. compute stats + review_flags counters
+4. render ingested/_status/backlog.md (today's section + chronic items)
+5. render ingested/_status/heartbeat.md (enrich + disk sections, alert_level)
+6. git add -A; git commit -m "enrich: _derived for N docs (YYYY-MM-DD)"
+7. git push origin claude/enrich-YYYY-MM-DD
+   - if push fails (main 업데이트로 base 변경): git pull --rebase origin main && git push (1회 재시도)
+8. gh pr create --base main --head claude/enrich-YYYY-MM-DD \
+     --title "enrich: _derived for N docs (YYYY-MM-DD)" \
+     --body "Auto-generated by Routines enrich skill. See heartbeat.md for details." \
+     --label auto-merge
+   → GitHub auto-merge가 required checks 통과 후 자동 병합
 ```
 
 ### DART 구조화 fact 추출 예시
@@ -481,7 +528,12 @@ schema_version: 1
 - **LLM few-shot 예시 첨부** — Sonnet 4.6의 한국어 금융 기본 성능 관측 후. MVP는 zero-shot.
 - **DART 사업보고서 map-reduce** (D oversize 대응) — Phase 9 운영 하드닝.
 - **halfvec 마이그레이션** — DB 크기 임계치 도달 시 (Phase 9).
-- **`stock enrich` 수동 CLI** — Phase 5 MVP는 RemoteTrigger만. 로컬 systemd.timer backup, `stock enrich --dry-run` 같은 편의는 Phase 9.
+- **`stock enrich` 수동 CLI** — Phase 5 MVP는 Claude Code Routines만. 로컬 systemd.timer backup, `stock enrich --dry-run` 같은 편의는 Phase 9.
+- **V2-NEWS-01: 영문 뉴스 보조 레이어** — Phase 5는 한글 primary (한경/이데일리). 영문 뉴스는 별도 backlog 항목으로 분리.
+  - 권장 소스: **Bloomberg Asia** (trust_level=trusted, 거시 글로벌 관점 · 외환 포지셔닝 · EM 자본 흐름) + **The Korea Herald Business** (trust_level=semi_trusted, 외국인 perspective)
+  - 제외 권장: Korea Times · SEDaily English · Yonhap English — 한글 원본의 **번역본**으로 속보성 1일 지연, 정보 밀도 한경·이데일리의 1/10, fidelity 손실 (K-IFRS→IFRS 번역, hedge 표현 flattening). Cross-check 가치 약함.
+  - 적용 범위: 주로 `event_type=macro_commentary` — portfolio ticker 특정이 아닌 거시 흐름. 기업 특정 뉴스는 한글 소스가 속보·보도량 모두 우위.
+  - 구현: `src/collectors/news/feeds.py` 에 `source="news_en"` 분기 추가 (signature 동일, outlet enum 확장). Phase 9 이후 시점.
 - **MCP `health` 툴 구현** — Phase 6 스코프.
 - **Obsidian Dataview 백로그 대시보드** — Phase 8 스코프.
 - **Push 알림 / 이메일 경보** — Phase 9 운영 하드닝 검토 (현재는 backlog.md / heartbeat 수동 확인).
@@ -490,7 +542,7 @@ schema_version: 1
 - **`notes/` 교정 메모 → MCP 쿼리 반영** — Phase 6 스코프. 현재 spec은 "Phase 6 MCP 툴이 쿼리 시 notes 우선" 만 약속.
 - **schema_version 2 migration** — v1 범위로 Phase 5 완결. 파일 shape 변경 필요 시 Phase 9.
 - **종목토론방 같은 adversarial source 전용 파이프라인** — INGEST-09 현재 LLM 추출 제외로 완결. Phase 5 재논의 없음.
-- **실시간 웹훅 트리거** — `vault/raw/` 변경 시 즉시 agent 기동 (RemoteTrigger의 event trigger). Phase 9 검토.
+- **실시간 웹훅 트리거** — `vault/raw/` 변경 시 즉시 agent 기동 (Claude Code Routines의 event-driven 트리거 모드). Phase 9 검토.
 
 ### Reviewed Todos (not folded)
 (없음 — Phase 5 관련 todo 0건)
