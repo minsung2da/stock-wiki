@@ -76,30 +76,117 @@ class IngestStateBlock(BaseModel):
     injection_flags: list[str] = Field(default_factory=list)
 
 
-class SentimentBlock(BaseModel):
-    """Structured sentiment scores extracted by the ingest LLM."""
+class ReviewFlag(BaseModel):
+    """D-11: structured review marker attached to DerivedBlock when validation fails."""
 
-    bullish_score: float | None = None  # 0.0–1.0
-    label: str | None = None  # bullish | bearish | neutral
+    model_config = ConfigDict(extra="forbid")
+
+    flag: Literal[
+        "numeric_echo_mismatch",
+        "numeric_sanity_violation",
+        "dart_structured_disagreement",
+        "self_inconsistent",
+        "oversize_skipped",
+        "prompt_injection_suspected",
+        "sentiment_score_label_mismatch",
+        "agent_zone_violation",
+        "merge_conflict",
+    ]
+    detail: str
+    fact_key: str | None = None
+
+
+class SentimentBlock(BaseModel):
+    """D-10: tone/outcome sentiment with Literal label."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    label: (
+        Literal[
+            "strongly_bullish",
+            "bullish",
+            "neutral",
+            "bearish",
+            "strongly_bearish",
+            "unclear",
+        ]
+        | None
+    ) = None
+    bullish_score: float | None = None  # 0.0-1.0, null allowed
+    rationale: str | None = None
+    scope: Literal["tone", "outcome"] | None = None
 
 
 class NumericFact(BaseModel):
-    """A single numeric data point extracted by the ingest LLM."""
+    """D-09: numeric fact with Literal unit, KRW normalization, source span echo-back."""
+
+    model_config = ConfigDict(extra="forbid")
 
     key: str
     value: float
-    unit: str | None = None
+    unit: Literal[
+        "KRW원",
+        "KRW백만",
+        "KRW억",
+        "KRW조",
+        "USD",
+        "EUR",
+        "JPY",
+        "pct",
+        "bps",
+        "multiplier",
+        "shares",
+        "days",
+        "other",
+    ]
+    value_krw: float | None = None
+    source_span: str | None = None
+    offset: int | None = None
+
+
+# D-08: full event_type Literal enum.
+EventType = Literal[
+    # DART 주요사항 (8)
+    "earnings_release",
+    "equity_issue",
+    "mergers_acquisitions",
+    "major_contract",
+    "board_change",
+    "ownership_change",
+    "buyback_announcement",
+    "dividend",
+    # DART 거래소공시 (4)
+    "suspension",
+    "watchlist_designation",
+    "unfaithful_disclosure",
+    "delisting",
+    # KIND (2)
+    "investment_caution",
+    "investment_risk",
+    # 뉴스·리포트 (4)
+    "analyst_upgrade",
+    "analyst_downgrade",
+    "macro_commentary",
+    "market_gossip",
+    # fallback
+    "other",
+]
 
 
 class DerivedBlock(BaseModel):
     """Zone 3: LLM-extracted attributes. Regenerable; do not hand-edit."""
 
+    model_config = ConfigDict(extra="forbid")
+
     tickers: list[str] = Field(default_factory=list)
-    event_type: str | None = None
+    event_type: EventType | None = None
     catalysts: list[str] = Field(default_factory=list)
     sentiment: SentimentBlock | None = None
     numeric_facts: list[NumericFact] = Field(default_factory=list)
     summary: str | None = None
+    # --- Phase 5 additive ---
+    review_flags: list[ReviewFlag] = Field(default_factory=list)
+    skip_reason: Literal["oversize", "review_required", "merge_conflict"] | None = None
 
 
 class FrontMatter(BaseModel):

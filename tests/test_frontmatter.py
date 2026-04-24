@@ -74,7 +74,7 @@ class TestFrontMatterRoundTrip:
             update={
                 "derived": DerivedBlock(
                     tickers=["005930"],
-                    event_type="earnings",
+                    event_type="earnings_release",
                     summary="Q4 earnings report",
                 )
             }
@@ -83,7 +83,7 @@ class TestFrontMatterRoundTrip:
         assert updated.provenance.source == "dart"
         assert updated.ingest_state.processed is False
         assert updated.derived.tickers == ["005930"]
-        assert updated.derived.event_type == "earnings"
+        assert updated.derived.event_type == "earnings_release"
 
 
 class TestProvenanceValidation:
