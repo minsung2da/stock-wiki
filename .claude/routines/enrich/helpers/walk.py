@@ -8,6 +8,7 @@ changes.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +22,14 @@ class Candidate:
     source: str
     content_hash: str
     reason: str  # 'missing_derived' | 'hash_changed'
+
+
+# Module-level list of (path, exception repr) for files whose frontmatter
+# could not be parsed during the most recent ``find_candidates`` call. The
+# Routines post-loop reads this so it can emit ``malformed_frontmatter``
+# BacklogItems instead of silently dropping poisoned files (D-25
+# observability intent — review WR-03).
+LAST_PARSE_ERRORS: list[tuple[str, str]] = []
 
 
 def _derived_is_populated(fm) -> bool:
@@ -38,16 +47,32 @@ def _derived_is_populated(fm) -> bool:
 
 
 def find_candidates(vault_root: str | Path) -> list[Candidate]:
-    """Scan vault/raw/**/*.md; return paths needing enrichment."""
+    """Scan vault/raw/**/*.md; return paths needing enrichment.
+
+    Files whose frontmatter cannot be parsed are recorded in
+    ``LAST_PARSE_ERRORS`` (path, exc-repr) and a warning is written to
+    stderr; the caller (Routines post-loop) is expected to surface them as
+    ``malformed_frontmatter`` BacklogItems rather than letting them vanish
+    from observability. Truly unexpected exceptions (KeyboardInterrupt,
+    MemoryError, ...) are not caught.
+    """
     root = Path(vault_root) / "raw"
+    LAST_PARSE_ERRORS.clear()
     if not root.exists():
         return []
     out: list[Candidate] = []
     for md_path in root.rglob("*.md"):
         try:
             fm, _body = read_frontmatter(str(md_path))
-        except Exception:
-            continue  # malformed frontmatter; human review via backlog
+        except (ValueError, OSError, TypeError, KeyError) as exc:
+            # Malformed frontmatter / unreadable file — surface for human
+            # review instead of dropping silently (WR-03).
+            LAST_PARSE_ERRORS.append((str(md_path), repr(exc)))
+            print(
+                f"[walk.find_candidates] WARN: unparseable frontmatter at {md_path}: {exc!r}",
+                file=sys.stderr,
+            )
+            continue
         stored = fm.provenance.content_hash
         actual = compute_content_hash(str(md_path))
         # D-21 F-4c: skip_reason sticky unless hash changed
