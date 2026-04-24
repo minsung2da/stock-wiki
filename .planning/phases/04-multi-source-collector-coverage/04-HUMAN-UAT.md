@@ -109,6 +109,12 @@ fix:
 status: deferred
 description: (unchanged — tracked as V2-KIND-01 backlog)
 
-### Gap-04-02 [deferred, documentation]: CONTEXT D-14 text still reflects pre-execution hybrid
-status: documentation
-description: (unchanged — recommend `/gsd-quick` CONTEXT amendment)
+### Gap-04-02 [RESOLVED]: CONTEXT D-14 text still reflects pre-execution hybrid
+status: resolved
+resolved_at: 2026-04-24
+resolved_via: quick-260424-asr-context-d14-amendment
+description: |
+  CONTEXT.md D-14 본문을 Option D 전략으로 갱신 (DART `pblntf_ty="I"` 3종 + KIND
+  스크레이핑 1종 + KRX 교차확증). pykrx 경로 폐기 근거(함수 부재, live 검증),
+  개념 축(기업평가 vs 시장가격) 재정리, 정규식 상수 위치(`sources.py`), 보조
+  교차확증 메커니즘을 모두 문서화. 04-05-SUMMARY의 Strategy Amendment 섹션과 상호 참조.

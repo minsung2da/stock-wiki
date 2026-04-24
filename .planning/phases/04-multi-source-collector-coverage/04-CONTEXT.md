@@ -50,10 +50,16 @@ DART 외 네 개 수집기(`collect_krx`, `collect_news`, `collect_macro`, `coll
 - **D-13:** 저작권 정책 = **전문 저장 금지**. body에는 trafilatura가 추출한 본문의 **첫 2문단**(문단 경계 = blank line)만 기록. frontmatter 필수 필드: `title`, `outlet`, `published`, `url`, `tickers`, `content_hash`. `license_flag: summary_only` 고정. Phase 5의 `_derived.summary`는 이 2문단 + title을 입력으로 생성(Claude Schedule 영역, 이 페이즈 밖).
 
 ### KIND Event Acquisition (D-14 ~ D-17)
-- **D-14:** 하이브리드 전략: **DART API + pykrx 상태 먼저, 비는 것만 KIND 스크레이핑**.
-  - DART API: 공시유형 B(주요사항) 중 "거래정지" 관련 사유(기재정정 제외) → `suspension` 이벤트
-  - pykrx: `stock.get_market_status_by_ticker` 또는 동등 함수로 '관리종목', '투자경고' 상태 일일 스냅샷 → `watchlist_designation`, `investment_caution`
-  - KIND 스크레이핑: 위 두 소스에 없는 **`unfaithful_disclosure`(불성실공시지정)** 만 대상
+- **D-14 (AMENDED 2026-04-20 → Option D):** **DART 거래소공시(`pblntf_ty="I"`) 중심 + KIND 스크레이핑 보조.** 원안의 pykrx 경로는 폐기 — pykrx 1.0.51 및 GitHub master에 `get_market_status_by_ticker` 같은 관리종목/투자경고 판별 함수가 존재하지 않음이 live 검증으로 확인됨(2026-04-20). 대신 DART 거래소공시에 이미 이 이벤트들이 전부 흘러들어감이 확인됐다 (30일 샘플: 거래정지 190건, 관리종목 16건, 불성실공시 23건).
+  - **DART 거래소공시(`pblntf_ty="I"`) — 3종 이벤트 분류 (주요 소스):**
+    - `suspension` ← `report_nm` 패턴 `주권매매거래정지` (기재정정 제외)
+    - `watchlist_designation` ← `report_nm` 패턴 `관리종목지정우려`
+    - `unfaithful_disclosure` ← `report_nm` 패턴 `불성실공시법인지정`
+    - 정규식 상수는 `src/collectors/kind/sources.py::DART_EXCHANGE_EVENT_PATTERNS`에 배치
+  - **KIND 스크레이핑 — `investment_caution`/`investment_risk` 전용:** `/investwarn/investattentwarnrisky.do` 페이지만 파싱. DART는 이 이벤트 타입을 별도 공시로 분리하지 않으므로 유일한 구조화 소스가 KIND임.
+  - **KRX OHLCV 교차확증(보조, INFO-only):** Plan 02 `collect_krx`가 이미 `heartbeat.extra.suspended_tickers`(거래량=0)를 기록함. Plan 05는 이를 DART-derived `suspension` 이벤트와 대조해 불일치 시 `heartbeat.extra.suspension_cross_check_mismatch`에 기록. 권위 소스는 DART.
+  - **개념 축 근거:** 거래소가 내리는 상태 지정(거래정지·관리종목·투자경고·불성실공시)은 "기업 평가(fundamental) 축"에 속함 → DART+KIND로 수집. pykrx는 "시장가격(market behavior) 축"(OHLCV·수급·공매도) 전용으로 분리.
+  - 세부 이력: `04-05-SUMMARY.md` §"Strategy Amendment (Option D)" 및 `04-HUMAN-UAT.md` Gap-04-02 참조.
 - **D-15:** KIND 스크레이핑 규약:
   - `https://kind.krx.co.kr/robots.txt` 확인 후 disallowed 경로 접근 금지(수집기 기동 시 assert)
   - Rate limit **1 req/sec 상한** (tenacity `wait_exponential` + 추가 상한)
