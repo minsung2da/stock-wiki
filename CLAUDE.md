@@ -118,6 +118,15 @@ stock/
    Without this, `collect_news` fails fast with `NoAliasesSeededError`.
    This is an R-09 startup guard, not a bug.
 
+4.5. **entities 테이블 seed** (portfolio.md 기반):
+   ```bash
+   uv run python -m src.db.seed_entities
+   ```
+   watchlist·holdings에 티커가 추가될 때마다 재실행. 신규 티커만 OpenDART 조회.
+   Seeds `entities` rows for every ticker in `vault/notes/portfolio.md` via
+   OpenDART corp lookup. Idempotent (ON CONFLICT). Without this, `stock collect
+   krx` fails soft with `missing_entity` for un-seeded watchlist tickers.
+
 5. **Verify with a live collection run:**
    ```bash
    uv run stock collect all
