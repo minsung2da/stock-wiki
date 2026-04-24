@@ -106,8 +106,16 @@ Plans:
   3. DART financial-statement numbers appearing in `_derived.numeric_facts` match values pulled directly from dart-fss structured accessors (no LLM involvement in those specific fields) on a 10-filing golden set
   4. News/report narrative numbers pass the four-stage pipeline (regex candidate extraction → Claude picks → Pydantic validates → digit-checksum compares to source); disagreements flag the doc for review instead of silent acceptance
   5. Re-running the schedule on the same unchanged document produces byte-identical `_derived` blocks; the three frontmatter zones remain non-overlapping
-**Plans**: TBD
-**Research flag**: NEEDS RESEARCH — Korean BM25 tokenizer benchmark on equity vocabulary (mecab-ko vs soynlp vs kiwipiepy), bge-m3 chunking strategy for long DART 사업보고서, VectorChord-BM25 Docker image availability (composite vs custom Dockerfile), Claude Schedule RemoteTrigger git round-trip latency for daily batch volumes
+**Plans**: 8 plans
+Plans:
+- [ ] 05-01-PLAN.md — Extend DerivedBlock/SentimentBlock/NumericFact schema + ReviewFlag + Literal enums (foundation)
+- [ ] 05-02-PLAN.md — src/shared/units.py normalize_to_krw (pure KRW normalization)
+- [ ] 05-03-PLAN.md — src/shared/number_extraction.py Korean regex candidate extractor + fixtures
+- [ ] 05-04-PLAN.md — src/shared/number_sanity.py echo-back + SANITY_RULES magnitude validator
+- [ ] 05-05-PLAN.md — src/collectors/dart/financials.py LLM-free structured accessor (D-14) + cassette
+- [ ] 05-06-PLAN.md — src/ingest/backlog.py render_backlog (first_seen + chronic + prior preservation)
+- [ ] 05-07-PLAN.md — heartbeat enrich section + disk_metrics + D-24 SLA thresholds
+- [ ] 05-08-PLAN.md — .claude/routines/enrich/ SKILL.md + 4 prompts + helpers (facts_equal/walk/zone_integrity) + README operator runbook
 
 ### Phase 6: Full MCP Tool Surface
 **Goal**: Claude Code has the full FastMCP toolbox needed for the judgment workflow: `get_ticker_overview`, `get_recent_events`, `get_portfolio_state`, `get_related`, `get_filing`, `add_note`, `health`. Each tool has a docstring written as an LLM-facing behavioral contract, enforces the write-scope rules (only `vault/notes/` is writable), and passes CI gates on response latency and token size.
@@ -170,7 +178,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 2. Canonical Entity Identity | 0/3 | Planning complete | - |
 | 3. One-Company Walking Skeleton | 0/6 | Planning complete | - |
 | 4. Multi-Source Collector Coverage | 2/6 | In Progress|  |
-| 5. Claude-Schedule Enrichment with Korean Number Safety | 0/TBD | Not started | - |
+| 5. Claude-Schedule Enrichment with Korean Number Safety | 0/8 | Planning complete | - |
 | 6. Full MCP Tool Surface | 0/TBD | Not started | - |
 | 7. Graph Layer & graphify Integration | 0/TBD | Not started | - |
 | 8. Vault Dashboards & Research Memo Templates | 0/TBD | Not started | - |
