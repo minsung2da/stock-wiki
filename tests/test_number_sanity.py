@@ -9,25 +9,26 @@ from shared.number_sanity import SANITY_RULES, check_echo_back, check_sanity
 # --- echo-back ---
 def test_hallucinated_fact_flagged():
     body = "매출액은 4조 원이다."
+    # body[5:5+len("4조 원")] == "4조 원"; claim "5조 원" is a hallucination
     fact = NumericFact(
         key="매출액",
         value=5.0,
         unit="KRW조",
         source_span="5조 원",
-        offset=4,  # offset points to "4조 원", not "5조 원"
+        offset=5,
     )
     assert check_echo_back(fact, body) == "numeric_echo_mismatch"
 
 
 def test_echo_match_passes():
     body = "매출액은 4조 원이다."
-    # body[4:4+len("4조 원")] == "4조 원"
+    # body[5:5+len("4조 원")] == "4조 원"
     fact = NumericFact(
         key="매출액",
         value=4.0,
         unit="KRW조",
         source_span="4조 원",
-        offset=4,
+        offset=5,
     )
     assert check_echo_back(fact, body) is None
 
