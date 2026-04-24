@@ -407,3 +407,33 @@ def test_fetch_ecos_series_client_side_filter_drops_unrelated_item_codes():
         "again. Per Gap-04-04, this kwarg is not translated into the ECOS URL "
         "segment and produces empty responses in live runs. Use client-side filter only."
     )
+
+
+def test_fetch_ecos_accepts_korean_column_names():
+    """Gap-04-07 regression guard: PublicDataReader returns DataFrame with Korean
+    column names (통계항목코드1 / 시점 / 값), not English (ITEM_CODE1 / TIME / DATA_VALUE).
+    The client-side filter must read either naming so both unit tests (English
+    keys, historical fixtures) and production (Korean keys) succeed.
+    Pre-fix symptom: all rows silently dropped → MacroEmptyResultError in live run."""
+    import pandas as pd
+
+    from collectors.macro.fetcher import fetch_ecos_series
+
+    rows = pd.DataFrame(
+        [
+            {"통계항목코드1": "0101000", "시점": "20260414", "값": "3.25"},
+            {"통계항목코드1": "0104000", "시점": "20260414", "값": "3.41"},
+            {"통계항목코드1": "0101000", "시점": "20260415", "값": "3.25"},
+        ]
+    )
+
+    class FakeApi:
+        def get_statistic_search(self, **kwargs):
+            return rows
+
+    out = fetch_ecos_series(
+        FakeApi(), series_id="722Y001", cycle="D", item_code="0101000", days_back=30
+    )
+    assert len(out) == 2
+    assert {o["date"] for o in out} == {"2026-04-14", "2026-04-15"}
+    assert all(o["value"] == 3.25 for o in out)

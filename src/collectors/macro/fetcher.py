@@ -53,19 +53,33 @@ def fetch_ecos_series(
     )
     if df is None or len(df) == 0:
         raise MacroEmptyResultError(f"ECOS empty: {series_id}")
+
+    # Gap-04-07 fix: PublicDataReader renames ECOS JSON keys to Korean in its
+    # DataFrame output (ITEM_CODE1 → 통계항목코드1, TIME → 시점, DATA_VALUE → 값).
+    # Accept either naming — tests mock with English keys, production uses Korean.
+    def _pick(row: dict, *keys: str) -> str:
+        for k in keys:
+            v = row.get(k)
+            if v is not None and str(v) != "":
+                return str(v)
+        return ""
+
     out: list[dict] = []
     for _, row in df.iterrows():
-        # Client-side ITEM_CODE1 filter — sole filter after Gap-04-04 fix.
-        if item_code and str(row.get("ITEM_CODE1", "")) != item_code:
+        row_item = _pick(row, "통계항목코드1", "ITEM_CODE1")
+        if item_code and row_item != item_code:
             continue
-        raw_v = row.get("DATA_VALUE")
-        if raw_v is None or str(raw_v).strip() == "":
+        raw_v = _pick(row, "값", "DATA_VALUE")
+        if raw_v == "":
             continue
         try:
             v = float(raw_v)
         except (TypeError, ValueError):
             continue
-        out.append({"date": _normalize_ecos_time(row["TIME"]), "value": v})
+        raw_t = _pick(row, "시점", "TIME")
+        if raw_t == "":
+            continue
+        out.append({"date": _normalize_ecos_time(raw_t), "value": v})
     if not out:
         raise MacroEmptyResultError(f"ECOS empty after filter: {series_id}")
     return out
