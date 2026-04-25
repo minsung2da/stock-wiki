@@ -76,10 +76,6 @@ def _search_exchange_filings(bgn_de: str, end_de: str, page_count: int = 100) ->
         if len(reports) < page_count:
             break
         page_no += 1
-        # Hard ceiling to avoid runaway pagination.
-        if page_no > 20:
-            _log.warning("dart pblntf_ty=I pagination ceiling hit")
-            break
     return collected
 
 

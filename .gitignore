@@ -1,6 +1,8 @@
 # Obsidian UI state (churn, merge conflicts)
 .obsidian/workspace*
 .obsidian/cache
+.obsidian/plugins/
+.obsidian/community-plugins.json
 .obsidian/plugins/*/data.json.bak
 
 # Private portfolio data (per D-03: local-only, never committed)
@@ -32,6 +34,13 @@ graphify-out/
 
 # Raw collected data caches
 raw_cache/
+
+# Local-only collected market data (vault/raw is collector output —
+# kept on each operator's machine, not shared via git per D-03 stance).
+vault/raw/
+
+# Machine-generated pipeline state (heartbeat updated by collectors/ingest)
+ingested/_status/
 
 # OS junk
 .DS_Store

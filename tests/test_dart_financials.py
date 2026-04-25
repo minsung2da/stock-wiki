@@ -81,6 +81,83 @@ def test_no_llm_imports():
     assert "from openai" not in src
 
 
+def test_fs_extract_live_shape_flattens_multiindex(monkeypatch):
+    """Live dart-fss returns FinancialStatement with .show(sheet) → DataFrame
+    whose columns are a MultiIndex of (sheet_descriptor, real_col_name).
+    _fs_extract must flatten to real_col_name and route to ``show()`` per
+    sheet — UAT regression for Phase 5 #2 dart-fs-extract live path."""
+    sheet_desc = "[D210000] 재무상태표, 유동/비유동법 - 연결"
+    bs_df = pd.DataFrame(
+        {(sheet_desc, "label_ko"): ["자산총계"], (sheet_desc, "20241231"): [1234567890]}
+    )
+    is_df = pd.DataFrame(
+        {(sheet_desc, "label_ko"): ["매출액"], (sheet_desc, "20241231"): [9876543210]}
+    )
+
+    class _FakeFs:
+        def show(self, sheet_key):
+            if sheet_key == "bs":
+                return bs_df
+            if sheet_key == "is":
+                return is_df
+            return pd.DataFrame()
+
+    class _FakeFsModule:
+        @staticmethod
+        def extract(corp_code, bgn_de):  # noqa: ARG004
+            return _FakeFs()
+
+    class _FakeDartFss:
+        fs = _FakeFsModule
+
+    import sys
+
+    monkeypatch.setitem(sys.modules, "dart_fss", _FakeDartFss)
+    from collectors.dart.financials import _fs_extract
+
+    out = _fs_extract("00126380", "20240101")
+    assert set(out.keys()) >= {"bs", "is"}
+    assert "label_ko" in out["bs"].columns
+    assert "20241231" in out["bs"].columns
+    assert out["bs"]["label_ko"].tolist() == ["자산총계"]
+
+
+def test_get_structured_financials_live_shape_end_to_end(monkeypatch):
+    """End-to-end with the FinancialStatement-shaped fake — verifies that
+    NumericFacts come out correctly when columns are MultiIndex."""
+    sheet_desc = "[D310000] 포괄손익계산서, 기능별 분류 - 연결"
+    is_df = pd.DataFrame(
+        {
+            (sheet_desc, "label_ko"): ["매출액", "영업이익", "당기순이익"],
+            (sheet_desc, "20241231"): [100, 20, 15],
+        }
+    )
+
+    class _FakeFs:
+        def show(self, sheet_key):
+            return is_df if sheet_key == "is" else pd.DataFrame()
+
+    class _FakeFsModule:
+        @staticmethod
+        def extract(corp_code, bgn_de):  # noqa: ARG004
+            return _FakeFs()
+
+    class _FakeDartFss:
+        fs = _FakeFsModule
+
+    import sys
+
+    monkeypatch.setitem(sys.modules, "dart_fss", _FakeDartFss)
+    facts = get_structured_financials("00126380", "20240101")
+    by_key = {f.key: f for f in facts}
+    assert by_key["매출액"].value_krw == 100
+    assert by_key["영업이익"].value_krw == 20
+    assert by_key["당기순이익"].value_krw == 15
+    for f in facts:
+        assert f.unit == "KRW원"
+        assert f.source_span is None
+
+
 def test_unmapped_labels_ignored():
     """Labels not in any synonym set are silently skipped."""
     cassette = {

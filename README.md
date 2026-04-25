@@ -52,7 +52,7 @@ Claude Code에서 매수/매도 판단의 근거를 즉시 받아볼 수 있도�
 - 수집기는 자주(매일) 돌아도 비용이 없다.
 - 인제스트는 필요할 때만(예: 하루 한번) 돌린다.
 - 파일이 중간에 끼어 있어서 수집 실패해도 기존 DB는 건드리지 않는다.
-- `_derived` LLM 추출(Phase 5 예정)은 이 **사이에** 끼어든다 — Claude Schedule agent가 `vault/raw/**/*.md`를 읽어 frontmatter에 요약·이벤트타입·숫자를 적어 commit. 인제스트는 `_derived` 있는 frontmatter만 보면 된다.
+- `_derived` LLM 추출(Phase 5)은 이 **사이에** 끼어든다 — Claude Code **Routine**(`.claude/routines/enrich/`)이 매일 `vault/raw/**/*.md`를 읽어 frontmatter에 요약·이벤트타입·숫자를 적어 PR로 올리고 auto-merge. 인제스트는 `_derived` 채워진 frontmatter만 보면 된다. 운영 가이드: §5.1.
 
 ---
 
@@ -154,7 +154,7 @@ stock/
 **핵심 속성:**
 - 전부 **멱등(idempotent)** — 같은 데이터를 두 번 받아도 파일은 한 번만 쓴다 (`content_hash` 비교).
 - **스코프 필터** — `vault/notes/portfolio.md`의 watchlist + holdings 티커만 처리.
-- **trust_level** — 출처에 따라 frontmatter에 `trusted`(공시·거래소) 또는 `semi_trusted`(언론) 표시. Phase 5 `_derived` 추출 시 delimiter wrapping 적용 여부 기준.
+- **trust_level** — 출처에 따라 frontmatter에 `trusted`(공시·거래소) 또는 `semi_trusted`(언론) 표시. `_derived` 추출 Routine(Phase 5)이 본문 wrapping(prompt-injection 방어)을 적용할지 결정하는 기준.
 - **heartbeat** — 소스별 `last_run`/`last_failure` 타임스탬프를 `ingested/_status/heartbeat.md`에 YAML로 기록. Phase 6 health 툴이 읽음.
 
 ### 4.2 `stock ingest ...` — 인제스트
@@ -186,6 +186,8 @@ uv run python -m src.db.seed_name_aliases     # entities → entity_aliases (뉴
 
 ## 5. First-time Setup (처음 clone한 뒤)
 
+### 5.1 로컬 파이프라인 부트스트랩
+
 ```bash
 # 1. Python 의존성
 uv sync
@@ -207,7 +209,42 @@ uv run python -m src.db.seed_name_aliases
 uv run stock collect all
 ```
 
-단계 6의 JSON 리포트가 4개 source 모두 `"status":"ok"` 이면 세팅 완료.
+단계 6의 JSON 리포트가 4개 source 모두 `"status":"ok"` 이면 로컬 세팅 완료.
+
+### 5.2 Routines daily run 트리거 + auto-merge PR (Phase 5 산출물)
+
+`_derived` 추출(요약·event_type·숫자·sentiment)은 로컬에서 돌리지 않고 **Claude Code Routine**이 하루 1회(22:00 UTC) 클라우드에서 돌려 PR로 vault에 커밋합니다. 본 저장소의 `.claude/routines/enrich/` 가 그 Routine의 모든 자산입니다.
+
+| 자산 | 역할 |
+|------|------|
+| `.claude/routines/enrich/SKILL.md` | Routine이 매번 읽는 16-step 메인 프롬프트 (read → injection check → regex 후보 → LLM ×2 → `facts_equal` → Pydantic → numeric sanity → zone-integrity → write → PR) |
+| `.claude/routines/enrich/prompts/derived_{dart_b,news,kind,macro}.md` | 소스별 sub-prompt |
+| `.claude/routines/enrich/helpers/{facts_equal,walk,zone_integrity}.py` | 자기일관성·idempotency·zone-violation guard 헬퍼 |
+| `.claude/routines/enrich/README.md` | **운영자 런북 — 아래의 권위있는 출처** |
+
+**최초 1회 트리거 절차** (요약 — 정확한 단계는 `.claude/routines/enrich/README.md` 따라가기):
+
+1. GitHub fine-grained PAT 생성 — `repo: stock` 단일 저장소, **Contents: RW + Pull requests: RW**, 만료 ≤ 90일.
+2. `claude.ai/code/routines` → **New routine** → 이름 `stock-enrich-daily`.
+   - Repository: 본 repo만 선택
+   - Env: `GITHUB_TOKEN`(PAT), `DART_API_KEY`
+   - Setup script: `uv sync --extra ingest --extra collectors --extra dev`
+   - Trigger: Scheduled / daily / **22:00 UTC** (= 07:00 KST 다음날, D-02 cutoff 이후)
+   - Allowed tools: Bash, Read, Edit, Write
+   - Network allowlist: `api.dart.fss.or.kr`, `github.com`, `api.github.com`
+3. 저장 후 **Run now** 1회 — 로그에서 PR 생성 확인.
+4. GitHub repo 1회 설정:
+   - Settings → General → Pull Requests → **Allow auto-merge** 체크
+   - Settings → Branches → `main` rule: PR 필수 + status check 필수 + linear history 필수
+   - Settings → Labels → `auto-merge` 라벨 신설
+5. 첫 PR이 `auto-merge` 라벨로 올라오고, CI(import_guard + pytest) 통과 후 자동 merge되는지 확인.
+
+상세(보안 caveat, 실패 대응표, PAT/DART 키 회전 일정)는 `.claude/routines/enrich/README.md`.
+
+**확인 신호:**
+- `vault/raw/**/*.md` 의 `_derived:` 블록이 비어있던 문서에 `tickers/event_type/catalysts/numeric_facts/summary/sentiment` 가 채워진다.
+- `ingested/_status/heartbeat.md` 의 `enrich.last_success` 가 갱신된다.
+- Routine 실패가 `consecutive_failures ≥ 2` 가 되면 `backlog.md` 가 갱신되어 사람 리뷰로 빠진다.
 
 ---
 
@@ -290,9 +327,9 @@ DB가 아니라 `vault/` 가 원본이다. 따라서:
 | 1 | Load-Bearing Foundation | ✅ 완료 — repo · DB · vault · schema · 비용 가드 |
 | 2 | Canonical Entity Identity | ✅ 완료 — corp_code PK · alias 히스토리 |
 | 3 | One-Company Walking Skeleton | ✅ 완료 — 삼성전자로 end-to-end 증명 |
-| 4 | **Multi-Source Collector Coverage** | ✅ 완료 — KRX · 뉴스 · 거시 · KIND 수집기 + `stock collect all` |
-| 5 | Claude-Schedule Enrichment + Korean Number Safety | 📋 다음 |
-| 6 | Full MCP Tool Surface | 대기 |
+| 4 | Multi-Source Collector Coverage | ✅ 완료 — KRX · 뉴스 · 거시 · KIND 수집기 + `stock collect all` |
+| 5 | Claude-Schedule Enrichment + Korean Number Safety | ✅ 코드 완료 — `.claude/routines/enrich/` Routine 트리(SKILL+4 prompts+3 helpers). **운영자 1회 deploy 필요** (§5.2) |
+| 6 | **Full MCP Tool Surface** | 📋 다음 |
 | 7 | Graph Layer & graphify Integration | 대기 |
 | 8 | Vault Dashboards & Research Memo Templates | 대기 |
 | 9 | Judgment Prompt Conventions & Ops Hardening | 대기 |
@@ -323,7 +360,7 @@ docker exec -it stock-postgres psql -U stockwiki -d stockwiki
 
 ## 10. 현재 한계 · 알려진 이슈
 
-- **Phase 5 전**: `_derived.summary`·`_derived.event_type` 같은 LLM 추출 frontmatter가 아직 없음. 따라서 Claude가 뉴스를 검색할 때 첫 2문단 원문만 얻음.
+- **Phase 5 Routine 미배포 시**: `_derived.summary`·`_derived.event_type` 같은 LLM 추출 frontmatter가 비어 있어, Claude는 뉴스에서 첫 2문단 원문만 얻음. §5.2 Routine을 트리거하면 자동으로 채워진다.
 - **graphify 미적용**: 티커 ↔ 필링 ↔ 이벤트 엣지 시각화는 Phase 7 예정.
 - **투자경고/투자위험 event_type**: KIND에서 픽스처는 확보했으나 파서 구현 미완. 백로그 V2-KIND-01.
 - **entities seed 범위**: portfolio.md 기반 — watchlist 확장 시 `seed_entities` 재실행 필요 (CLAUDE.md §First-time Setup 4단계 참조).

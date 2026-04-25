@@ -66,15 +66,39 @@ def _fs_extract(corp_code: str, bgn_de: str) -> dict[str, pd.DataFrame]:
     """Thin wrapper around dart_fss.fs.extract — monkeypatchable in tests.
 
     Returns dict mapping sheet_key ("bs"|"is"|"cis"|"cf") to DataFrame. Each
-    frame must have a 'label_ko' column and a 'value' (or last numeric) column.
+    frame must have a 'label_ko' column and a 'value' (or YYYYMMDD period)
+    column (see ``_pick_value``).
+
+    Two return shapes are accepted:
+
+    1. ``dict[str, DataFrame]`` — used by recorded cassettes (tests/fixtures/
+       dart_financial_responses/*.json) where each DataFrame is constructed
+       from a flat list of ``{"label_ko": ..., "value": ...}`` dicts.
+    2. dart-fss ``FinancialStatement`` object — live API return. Each sheet
+       is obtained via ``fs.show(sheet_key)`` and the MultiIndex columns
+       (level-0 is the sheet descriptor like ``"[D210000] 재무상태표 ..."``,
+       level-1 is the real column name like ``label_ko`` / ``20241231``)
+       are flattened to level-1 only.
     """
     import dart_fss as dart  # lazy import; COLL-07 safe (not anthropic/openai)
 
     fs = dart.fs.extract(corp_code=corp_code, bgn_de=bgn_de)
     if isinstance(fs, dict):
         return fs
-    if hasattr(fs, "to_dict"):
-        return {k: pd.DataFrame(v) for k, v in fs.to_dict().items()}
+    if hasattr(fs, "show"):
+        out: dict[str, pd.DataFrame] = {}
+        for sheet_key in ("bs", "is", "cis", "cf"):
+            try:
+                df = fs.show(sheet_key)
+            except Exception:
+                continue
+            if df is None or getattr(df, "empty", True):
+                continue
+            if isinstance(df.columns, pd.MultiIndex):
+                df = df.copy()
+                df.columns = [c[-1] if isinstance(c, tuple) else c for c in df.columns]
+            out[sheet_key] = df
+        return out
     raise TypeError(f"Unexpected dart-fss extract return type: {type(fs)!r}")
 
 
