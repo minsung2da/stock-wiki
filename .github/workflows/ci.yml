@@ -11,6 +11,23 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: tensorchord/vchord-suite:pg17-latest
+        env:
+          POSTGRES_DB: stockwiki
+          POSTGRES_USER: stockwiki
+          POSTGRES_PASSWORD: stockwiki
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stockwiki"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_PASSWORD: stockwiki
+      DATABASE_URL: postgresql+psycopg://stockwiki:stockwiki@localhost:5432/stockwiki
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +40,22 @@ jobs:
         run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv sync --group collectors --group ingest --group mcp --group dev
+        run: uv sync --group collectors --group ingest --group mcp --group db --group dev
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -U stockwiki && break
+            sleep 1
+          done
+
+      - name: Initialize Postgres extensions
+        run: |
+          PGPASSWORD=stockwiki psql -h localhost -U stockwiki -d stockwiki \
+            -f scripts/init-extensions.sql
+
+      - name: Run Alembic migrations
+        run: uv run alembic -c src/db/alembic.ini upgrade head
 
       - name: COLL-07 import guard
         run: uv run pytest tests/test_import_guard.py -q
