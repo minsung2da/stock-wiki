@@ -3,7 +3,7 @@ status: partial
 phase: 05-claude-schedule-enrichment-with-korean-number-safety
 source: [05-VERIFICATION.md]
 started: 2026-04-24T23:57:10Z
-updated: 2026-04-24T23:57:10Z
+updated: 2026-04-25T01:00:00Z
 ---
 
 ## Current Test
@@ -19,7 +19,8 @@ why_human: Requires Anthropic Routines cloud container, Max subscription quota, 
 
 ### 2. DART golden-set parity (Success Criterion #3)
 expected: All 10 filings show byte-equal numeric values between `_derived` (set by `financials.py`) and dart-fss accessors
-result: [pending]
+result: partial
+note: 2026-04-25 — Code path verified against cassette `tests/fixtures/dart_financial_responses/samsung_2025q4.json` (6 facts, `unit='KRW원'`, `value_krw` populated, `source_span=None` — matches Plan 05-05 contract). Live 10-filing run blocked: dart-fss raised `NotFoundConsolidated` and repeated `RemoteDisconnected` against Samsung 사업보고서 (network instability + possible 2024 report layout drift). Operator should retry on stable network and curate the 10-filing set.
 why_human: Requires live OpenDART API key, network access, and human curation of the 10-filing set; CI runs against cassette only
 
 ### 3. Korean number 4-stage pipeline on real Korean news article (Success Criterion #4)
@@ -42,8 +43,9 @@ why_human: Helper unit tests pass but the actual enforcement happens inside SKIL
 total: 5
 passed: 0
 issues: 0
-pending: 5
+pending: 4
 skipped: 0
 blocked: 0
+partial: 1
 
 ## Gaps
