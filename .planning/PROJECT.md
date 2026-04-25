@@ -12,7 +12,9 @@
 
 ### Validated
 
-(아직 없음 — 첫 밀스톤 출하 후 검증)
+- [x] 수집된 raw 문서에서 `_derived` 속성(tickers, event_type, catalysts, sentiment, numeric_facts, summary)을 자동 추출 — *Validated in Phase 5 (Claude Schedule + Korean number safety)*
+- [x] DART 재무 수치는 dart-fss 구조화 접근자로 추출(LLM 미사용) — *Validated in Phase 5*
+- [x] 내러티브 숫자는 regex → LLM → Pydantic → 디지트 체크섬 4단계 파이프라인으로 안전하게 처리 — *Validated in Phase 5*
 
 ### Active
 
@@ -101,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-17 after initialization*
+*Last updated: 2026-04-25 after Phase 5 completion*
