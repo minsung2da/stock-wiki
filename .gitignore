@@ -35,12 +35,22 @@ graphify-out/
 # Raw collected data caches
 raw_cache/
 
-# Local-only collected market data (vault/raw is collector output —
-# kept on each operator's machine, not shared via git per D-03 stance).
-vault/raw/
-
 # Machine-generated pipeline state (heartbeat updated by collectors/ingest)
 ingested/_status/
+
+# Belt-and-suspenders: keep binary/dump artifacts out of vault/raw even if
+# something writes there by mistake. vault/raw/**.md (text) is the vault's
+# committed source of truth (PROJECT.md §9.2). Binaries belong in raw/ or
+# raw_cache/ which are already gitignored above.
+vault/raw/**/*.html
+vault/raw/**/*.htm
+vault/raw/**/*.pdf
+vault/raw/**/*.json
+vault/raw/**/*.gz
+vault/raw/**/*.zip
+vault/raw/**/*.png
+vault/raw/**/*.jpg
+vault/raw/**/*.jpeg
 
 # OS junk
 .DS_Store
