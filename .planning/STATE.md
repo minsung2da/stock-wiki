@@ -88,6 +88,10 @@ Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 10 added: Decision-context coverage: peer/historical valuation + supply-demand + private notes scaffold
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.

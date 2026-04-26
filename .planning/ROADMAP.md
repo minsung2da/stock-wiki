@@ -184,6 +184,16 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Vault Dashboards & Research Memo Templates | 0/TBD | Not started | - |
 | 9. Judgment Prompt Conventions & Operations Hardening | 0/TBD | Not started | - |
 
+### Phase 10: Decision-context coverage: peer/historical valuation + supply-demand + private notes scaffold
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 9
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 10 to break down)
+
 ---
 *Roadmap created: 2026-04-17*
 *Granularity: fine (9 phases, derived from walking-skeleton-first research skeleton)*
