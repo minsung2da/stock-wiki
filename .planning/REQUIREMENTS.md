@@ -68,12 +68,12 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 - [x] **MCP-01**: FastMCP 2.x 기반 `stock-mcp` 서버가 stdio 전송으로 Claude Code에 등록된다
 - [x] **MCP-02**: `search(query, ticker?, date_range?, source?, mode='hybrid'|'semantic'|'bm25')` 툴
-- [ ] **MCP-03**: `get_ticker_overview(ticker)` 툴 — 재무·수급·최근 이벤트·관련 메모 통합 뷰
+- [ ] **MCP-03**: `get_ticker_overview(ticker)` 툴 — 재무·수급·최근 이벤트·관련 메모 통합 뷰. **AMENDED (2026-04-26 by Phase 10):** 응답에 `valuation`(get_valuation_context summary), `supply_demand`(활성 신호 강조), `private_thesis`(notes/private/{ticker} 본문) 4축 섹션 자동 포함 — JUDGE-01 단일 호출 답변 정합. 상세는 `.planning/phases/10-.../10-CONTEXT.md` D-23·D-24.
 - [ ] **MCP-04**: `get_recent_events(ticker, since)` 툴 — DART 공시·뉴스·KIND 이벤트 타임라인
-- [ ] **MCP-05**: `get_portfolio_state()` 툴 — `dashboards/portfolio.md`의 보유 종목·상태 반환
+- [ ] **MCP-05**: `get_portfolio_state()` 툴 — **`notes/private/portfolio.md`**의 보유 종목·상태 반환. **AMENDED (2026-04-26 by Phase 10 P-01):** SoT 경로를 `dashboards/portfolio.md`(현행 wording 오류) → `notes/private/portfolio.md`(Phase 1 D-03/D-05 원칙 복구)로 통일. Dataview 대시보드(DASH-01)는 동일 파일을 참조 source로 사용.
 - [ ] **MCP-06**: `get_related(document_id, depth?)` 툴 — 그래프 엣지 이웃 조회
 - [ ] **MCP-07**: `get_filing(id)` 툴 — 특정 문서 전체 본문 반환 (ID 기반 two-step 패턴)
-- [ ] **MCP-08**: `add_note(path, body, frontmatter?)` 툴 — `vault/notes/`에만 쓰기 허용 (raw/ingested는 write-protected)
+- [ ] **MCP-08**: `add_note(path, body, frontmatter?)` 툴 — **`vault/notes/` 및 `notes/private/`에 쓰기 허용** (raw/ingested는 write-protected 유지). **AMENDED (2026-04-26 by Phase 10 D-21):** 화이트리스트에 `notes/private/` 추가 — 세션 중 'X 종목 메모해줘'·'오늘 일기로 남겨줘' 자동 적재. 상세는 `.planning/phases/10-.../10-CONTEXT.md` D-21.
 - [ ] **MCP-09**: `health()` 툴 — 마지막 배치 성공 시각, DB 연결, 각 소스별 스테일니스 반환
 - [ ] **MCP-10**: 툴 docstring이 LLM-facing 행동 계약으로 작성되어 있고 CI 테스트로 레이턴시·토큰 크기를 검증한다
 
@@ -92,8 +92,8 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 ### 메모·리서치 (Notes)
 
-- [ ] **NOTE-01**: `notes/theses/` 아래에 thesis(투자 논리·kill criteria) 템플릿이 있고 새 노트가 템플릿으로 생성된다
-- [ ] **NOTE-02**: `notes/journal/` 아래에 일지·의사결정 로그 템플릿이 있다
+- [ ] **NOTE-01**: `templates/notes/thesis.md` 템플릿이 있고 새 thesis 노트가 `notes/private/{ticker}/thesis.md`로 생성된다 (투자 논리·kill criteria). **AMENDED (2026-04-26 by Phase 10 D-19):** Phase 8 = 템플릿/스키마, 콘텐츠는 `notes/private/` overlay. `notes/theses/` 디렉토리 폐기.
+- [ ] **NOTE-02**: `templates/notes/journal.md` 템플릿이 있고 새 journal entry가 `notes/private/journal/YYYY-MM-DD.md`로 생성된다 (일지·의사결정 로그). **AMENDED (2026-04-26 by Phase 10 D-19):** `notes/journal/` 디렉토리 폐기.
 - [ ] **NOTE-03**: 메모 frontmatter가 `tickers[]`, `tags[]`, `created`, `author`를 포함해 DB에 인덱싱된다
 
 ### Claude 판단 보조 (Judgment Support)
