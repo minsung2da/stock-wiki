@@ -19,6 +19,7 @@ from shared.frontmatter import (
     FrontMatter,
     IngestStateBlock,
     ProvenanceBlock,
+    read_existing_derived,
     read_frontmatter,
     write_frontmatter,
 )
@@ -168,3 +169,37 @@ class TestFileReadWrite:
         assert model.provenance.source == "dart"
         assert model.provenance.source_id == "20260416000523"
         assert "Samsung Electronics" in body
+
+
+class TestReadExistingDerived:
+    """Quick task 260426-k8h: helper that lets collectors carry _derived forward."""
+
+    def test_round_trip_returns_populated_block(self, tmp_vault: Path) -> None:
+        """Populated _derived block is returned verbatim."""
+        path = tmp_vault / "doc.md"
+        populated = DerivedBlock(tickers=["005930"], summary="hi")
+        model = FrontMatter(
+            provenance=ProvenanceBlock(source="dart", content_hash="x"),
+            derived=populated,
+        )
+        write_frontmatter(str(path), model, "body")
+
+        got = read_existing_derived(path)
+        assert got == populated
+
+    def test_missing_file_returns_none(self, tmp_path: Path) -> None:
+        """Absent path returns None (first-time write)."""
+        assert read_existing_derived(tmp_path / "nope.md") is None
+
+    def test_malformed_frontmatter_returns_none(self, tmp_path: Path) -> None:
+        """Malformed YAML returns None silently (no exception)."""
+        path = tmp_path / "bad.md"
+        path.write_text("---\nnot: [valid yaml\n---\nbody")
+        assert read_existing_derived(path) is None
+
+    def test_default_empty_derived_returns_none(self, tmp_vault: Path) -> None:
+        """Default empty DerivedBlock is treated as absent (returns None)."""
+        path = tmp_vault / "no_d.md"
+        model = FrontMatter(provenance=ProvenanceBlock(source="dart", content_hash="x"))
+        write_frontmatter(str(path), model, "body")
+        assert read_existing_derived(path) is None

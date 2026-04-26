@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from datetime import date as date_type
 from datetime import datetime
+from pathlib import Path
 from typing import Literal
 
 import frontmatter as fm
@@ -258,3 +259,50 @@ def write_frontmatter(path: str, model: FrontMatter, body: str) -> None:
         with contextlib.suppress(OSError):
             os.unlink(tmp_path)
         raise
+
+
+def _derived_is_populated(derived: DerivedBlock) -> bool:
+    """Return True if any DerivedBlock field is non-default.
+
+    Mirrors the heuristic used by ``.claude/routines/enrich/helpers/walk.py``;
+    duplicated here intentionally to avoid an ``src/`` ↔ ``.claude/routines/``
+    import (layering smell).
+    """
+    return bool(
+        derived.tickers
+        or derived.event_type
+        or derived.catalysts
+        or derived.sentiment is not None
+        or derived.numeric_facts
+        or derived.summary
+        or derived.review_flags
+        or derived.skip_reason is not None
+    )
+
+
+def read_existing_derived(path: Path) -> DerivedBlock | None:
+    """Return the prior ``_derived`` block from a vault file, or None.
+
+    Quick task 260426-k8h: collectors call this BEFORE constructing a fresh
+    ``FrontMatter`` so the Phase 5 Routine-enriched ``_derived`` block is
+    carried forward verbatim across collector rewrites. ``walk.find_candidates``
+    remains the single freshness gate (CONTEXT.md D-01).
+
+    Returns ``None`` when:
+      - the file does not exist (first-time collection),
+      - frontmatter cannot be parsed (malformed YAML / schema fail),
+      - or the ``_derived`` block is structurally empty (default).
+
+    NOTE: callers must NOT feed the returned block into content_hash
+    computation. The new content_hash MUST be computed solely from the new
+    body — no hash poisoning from carried-over enrichment.
+    """
+    if not path.exists():
+        return None
+    try:
+        model, _body = read_frontmatter(str(path))
+    except (ValueError, OSError):
+        return None
+    if not _derived_is_populated(model.derived):
+        return None
+    return model.derived
