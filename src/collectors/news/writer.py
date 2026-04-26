@@ -14,7 +14,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from shared.content_hash import normalize_body
-from shared.frontmatter import FrontMatter, ProvenanceBlock, TickerRef, write_frontmatter
+from shared.frontmatter import (
+    FrontMatter,
+    ProvenanceBlock,
+    TickerRef,
+    read_existing_derived,
+    write_frontmatter,
+)
 
 _OUTLET_RE = re.compile(r"^(hankyung|edaily)$")
 _YYYYMM_RE = re.compile(r"^\d{6}$")
@@ -75,6 +81,8 @@ def write_news_doc(
         )
         for t in tickers
     ]
+    # Quick task 260426-k8h: carry prior _derived block forward verbatim.
+    prior_derived = read_existing_derived(path)
     fm = FrontMatter(
         provenance=ProvenanceBlock(
             source="news",
@@ -91,7 +99,8 @@ def write_news_doc(
             tickers=ticker_refs,
             outlet=outlet,
             license_flag="summary_only",
-        )
+        ),
+        **({"derived": prior_derived} if prior_derived is not None else {}),
     )
     write_frontmatter(str(path), fm, md_body)
     return path, content_hash

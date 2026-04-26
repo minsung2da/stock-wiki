@@ -16,7 +16,12 @@ from pathlib import Path
 
 from collectors.kind.sources import KindEventType
 from shared.content_hash import normalize_body
-from shared.frontmatter import FrontMatter, ProvenanceBlock, write_frontmatter
+from shared.frontmatter import (
+    FrontMatter,
+    ProvenanceBlock,
+    read_existing_derived,
+    write_frontmatter,
+)
 
 _TICKER_RE = re.compile(r"^[0-9]{6}$")
 _EVENT_DATE_RE = re.compile(r"^\d{8}$")
@@ -119,6 +124,8 @@ def write_kind_event(
         return path, new_hash, False
 
     date_iso = f"{event_date[0:4]}-{event_date[4:6]}-{event_date[6:8]}"
+    # Quick task 260426-k8h: carry prior _derived block forward verbatim.
+    prior_derived = read_existing_derived(path)
     fm = FrontMatter(
         provenance=ProvenanceBlock(
             source="kind",
@@ -132,7 +139,8 @@ def write_kind_event(
             company_name=company_name,
             lang="ko",
             trust_level="trusted",
-        )
+        ),
+        **({"derived": prior_derived} if prior_derived is not None else {}),
     )
     write_frontmatter(str(path), fm, body)
     return path, new_hash, True

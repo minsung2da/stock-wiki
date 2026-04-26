@@ -17,7 +17,12 @@ from pathlib import Path
 from typing import Any
 
 from shared.content_hash import normalize_body
-from shared.frontmatter import FrontMatter, ProvenanceBlock, write_frontmatter
+from shared.frontmatter import (
+    FrontMatter,
+    ProvenanceBlock,
+    read_existing_derived,
+    write_frontmatter,
+)
 
 DART_FILING_URL_TMPL = "https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept_no}"
 
@@ -66,6 +71,8 @@ def write_filing(
     date_iso = f"{rcept_dt[0:4]}-{rcept_dt[4:6]}-{rcept_dt[6:8]}"
     content_hash = compute_body_hash(body)
 
+    # Quick task 260426-k8h: carry prior _derived block forward verbatim.
+    prior_derived = read_existing_derived(path)
     fm = FrontMatter(
         provenance=ProvenanceBlock(
             source="dart",
@@ -79,7 +86,8 @@ def write_filing(
             company_name=company_name,
             lang="ko",
             trust_level="trusted",
-        )
+        ),
+        **({"derived": prior_derived} if prior_derived is not None else {}),
     )
     write_frontmatter(str(path), fm, body)
     return path, content_hash

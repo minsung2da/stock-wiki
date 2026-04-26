@@ -25,6 +25,7 @@ from shared.content_hash import normalize_body
 from shared.frontmatter import (
     FrontMatter,
     ProvenanceBlock,
+    read_existing_derived,
     read_frontmatter,
     write_frontmatter,
 )
@@ -134,6 +135,9 @@ def write_macro_doc(
     if existing_hash == content_hash:
         return path, content_hash, False, revisions
 
+    # Quick task 260426-k8h: carry prior _derived block forward verbatim so
+    # collector rewrite does not wipe Routine-enriched enrichment.
+    prior_derived = read_existing_derived(path)
     fm = FrontMatter(
         provenance=ProvenanceBlock(
             source=source,
@@ -148,7 +152,8 @@ def write_macro_doc(
             lang="ko" if source == "ecos" else "en",
             trust_level="trusted",
             observations=merged,  # D-07
-        )
+        ),
+        **({"derived": prior_derived} if prior_derived is not None else {}),
     )
     write_frontmatter(str(path), fm, body)
     return path, content_hash, True, revisions
