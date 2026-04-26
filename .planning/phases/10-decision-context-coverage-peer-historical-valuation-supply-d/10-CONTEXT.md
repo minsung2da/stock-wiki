@@ -24,33 +24,33 @@ Claude Code의 "X 매수해야 하나?" 통합 4축 질의(밸류에이션 + 수
 </domain>
 
 <prerequisites>
-## Cross-Phase Prerequisites (Phase 10 진입 전·중에 반드시 해소)
+## Cross-Phase Prerequisites
 
-이 페이즈가 시작되기 전 또는 plan 단계에서 다음 결정이 선행 또는 동기화되어야 한다. 단순 deferred가 아닌 **차단 항목**.
+| ID | 영역 | 상태 | 잔여 작업 |
+|---|---|---|---|
+| **P-01** | Phase 1 ↔ Phase 4 portfolio 경로 단일화 | ✅ **결정·문서 갱신 완료 (2026-04-26)** | Phase 6 plan 첫 task: `vault/notes/portfolio.md` → `notes/private/portfolio.md` atomic cutover (파일 이동 + Portfolio.load 인자 변경 + fixture/테스트 갱신) |
+| **P-02** | REQUIREMENTS MCP-03/MCP-05/MCP-08 wording | ✅ **갱신 완료 (2026-04-26)** | 없음 — REQUIREMENTS.md AMENDED 표시 |
+| **P-03** | REQUIREMENTS NOTE-01/NOTE-02 wording | ✅ **갱신 완료 (2026-04-26)** | Phase 8 plan에서 `templates/notes/` 디렉토리 생성 + 템플릿 파일 작성 |
+| **P-04** | Frontmatter 스키마 zone-safe 확장 | 📌 Phase 10 plan 첫 task | `ProvenanceBlock`에 `valuation_caveats`, `computed_by` 추가 / `IngestStateBlock`에 `valuation_restated_at`, `review_flags` 추가 / `ReviewFlag.flag` Literal에 `"restatement"` 추가 / Alembic 마이그레이션 동반 |
 
-- **P-01 (Phase 1 ↔ Phase 4 portfolio 경로 모순 해소, Phase 6 진입 전):**
-  - Phase 1 D-03/D-05는 `notes/private/portfolio.md`(gitignored) + `get_portfolio_state()`가 여기서 읽음
-  - Phase 4 D-03은 `vault/notes/portfolio.md`(commit) + `Portfolio.load(vault_root)` 가 여기서 읽음
-  - 두 경로 중 하나로 단일화 필요. 본 페이즈는 Phase 4 D-03을 따르나, MCP-05·MCP-08·get_portfolio_state·get_private_thesis 모두 동일 SoT 가리켜야 함.
-  - 권장: Phase 1 D-03을 우선(개인 vault 본질) — `notes/private/portfolio.md`로 이동, Phase 4 D-03·D-04 plan 갱신 필요.
+### P-01 결정 (resolved 2026-04-26)
 
-- **P-02 (REQUIREMENTS.md MCP-08 wording 갱신, Phase 6 진입 전):**
-  - 현행 MCP-08: "`vault/notes/`에만 쓰기 허용"
-  - 본 페이즈 D-21: 화이트리스트를 `vault/notes/` ∪ `notes/private/` 으로 확장
-  - REQUIREMENTS.md MCP-08 본문을 "`vault/notes/` 및 `notes/private/`에 쓰기 허용 (raw/ingested write-protected 유지)"로 갱신.
+- **SoT = `notes/private/portfolio.md`** (gitignored, Phase 1 D-03/D-05 원칙 복구). 사유: 개인 vault 본질, avg_cost 등 민감 데이터 git 미노출.
+- 영향 받는 결정 (이미 갱신):
+  - REQUIREMENTS MCP-05 wording (AMENDED) — `dashboards/portfolio.md` 오기 → `notes/private/portfolio.md`
+  - Phase 4 CONTEXT D-01/D-03/D-04 (AMENDED) — `vault/notes/portfolio.md` → `notes/private/portfolio.md`, `Portfolio.load(vault_root)` → `Portfolio.load(repo_root)`
+- **Migration 책임:** Phase 6 plan 첫 task (atomic). 현행 `vault/notes/portfolio.md`는 sample data만 들어있어 Phase 6 cutover 시 손실 위험 낮음.
 
-- **P-03 (Phase 8 NOTE-01 디렉토리 재배치, Phase 8 진입 전):**
-  - 현행 NOTE-01: "`notes/theses/` 아래에 thesis 템플릿"
-  - 본 페이즈 D-19: Phase 8은 템플릿·스키마(at `templates/notes/{thesis,journal,conviction}.md`)만 책임, 콘텐츠는 `notes/private/{ticker}/*` overlay
-  - REQUIREMENTS.md NOTE-01 wording을 "`templates/notes/`에 thesis 템플릿이 있고 새 노트가 `notes/private/{ticker}/thesis.md`로 생성된다"로 갱신.
-  - 동일 갱신: NOTE-02(`templates/notes/journal.md` + `notes/private/journal/YYYY-MM-DD.md`), NOTE-03(스키마 정의는 Phase 8 그대로).
+### P-04 스키마 확장 상세 (Phase 10 plan에서 실행)
 
-- **P-04 (Frontmatter 스키마 확장, Phase 10 plan 단계):**
-  - `ProvenanceBlock`에 `valuation_caveats: list[str]`, `computed_by: str | None` 추가 (collector-time 결정)
-  - `IngestStateBlock`에 `valuation_restated_at: datetime | None`, `review_flags: list[ReviewFlag]` 추가 (ingest worker가 기록하는 비-LLM 메타)
-    - ※ Phase 5 D-11이 정의한 `DerivedBlock.review_flags`와 **분리** — `_derived.review_flags`는 LLM/agent 단계 신호, `ingest_state.review_flags`는 ingest worker가 기록. ReviewFlag 모델은 공유.
-  - `ReviewFlag.flag` Literal에 `"restatement"` 추가 (Phase 5 D-11 enum 확장).
-  - Pydantic 모델 변경은 새 Alembic 마이그레이션 동반 (zone 분리 강제).
+- `ProvenanceBlock`에 추가:
+  - `valuation_caveats: list[str] = Field(default_factory=list)` — `["negative_eps", "financial_sector_per_invalid", "fy_carry_forward"]` 등
+  - `computed_by: str | None = None` — `"dart_fss"` / `"naver_scrape"`
+- `IngestStateBlock`에 추가:
+  - `valuation_restated_at: datetime | None = None` — 분기 재무 정정 시 기록
+  - `review_flags: list[ReviewFlag] = Field(default_factory=list)` — `_derived.review_flags`(Phase 5 D-11)와 zone 분리, 모델은 공유
+- `ReviewFlag.flag` Literal: 기존 enum + `"restatement"` 추가 (Phase 5 D-11 enum 확장)
+- Alembic 마이그레이션: zone 분리 enforce. 기존 문서에 신규 필드 default 적용은 backward-compat 유지.
 
 </prerequisites>
 

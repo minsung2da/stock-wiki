@@ -14,7 +14,7 @@ DART 외 네 개 수집기(`collect_krx`, `collect_news`, `collect_macro`, `coll
 ## Implementation Decisions
 
 ### Ticker Scope (D-01 ~ D-04)
-- **D-01:** Watchlist·Portfolio 원본은 `vault/notes/portfolio.md` 프론트매터(Dataview-ready). Phase 8 대시보드가 같은 파일을 재사용.
+- **D-01 (AMENDED 2026-04-26 by Phase 10 P-01):** Watchlist·Portfolio 원본은 **`notes/private/portfolio.md`** 프론트매터(Dataview-ready, gitignored). Phase 1 D-03/D-05 원칙 복구. Phase 8 대시보드(DASH-01)가 동일 파일을 Dataview source로 참조. ~~원안: `vault/notes/portfolio.md`~~ 폐기.
 - **D-02:** 프론트매터 스키마(Phase 8 선행 확정):
   ```yaml
   ---
@@ -28,8 +28,8 @@ DART 외 네 개 수집기(`collect_krx`, `collect_news`, `collect_macro`, `coll
   ---
   ```
   Pydantic 모델 `src/shared/portfolio.py::Portfolio` (새로 생성)로 로드·검증. 필드 누락·형식 오류는 수집 실패(fail-fast).
-- **D-03:** `vault/notes/portfolio.md`는 **전체 git commit**(개인 프로젝트 가정). `.gitignore` 제외 규칙 추가하지 않음. CLAUDE.md의 "Portfolio specifics → 별도 private 폴더" 지침은 현재 페이즈에서 적용하지 않고, 팀 규모 확장 시 Phase 8에서 재설계한다(Deferred 참조).
-- **D-04:** 모든 수집기는 `Portfolio.load(vault_root)` 한 번 호출해 `watchlist + holdings.ticker` 합집합을 스코프로 사용. holdings는 Phase 4 수집에서 watchlist와 동일하게 취급(qty/avg_cost 미사용).
+- **D-03 (AMENDED 2026-04-26 by Phase 10 P-01):** `notes/private/portfolio.md`는 **gitignored 로컬-only**. `.gitignore`의 `notes/private/` 규칙으로 자연 제외(Phase 1 D-03 일관). `templates/portfolio.md`(Phase 1 D-04)는 git clone 후 사용자가 `notes/private/`에 복사. **Migration:** Phase 6 plan 첫 task에서 atomic cutover — `vault/notes/portfolio.md` 콘텐츠를 `notes/private/portfolio.md`로 이동 + Portfolio.load 인자 변경 + 테스트 fixture 업데이트. ~~원안: vault/notes/portfolio.md 전체 git commit~~ 폐기.
+- **D-04 (AMENDED 2026-04-26 by Phase 10 P-01):** 모든 수집기는 **`Portfolio.load(repo_root)`** 한 번 호출해 `watchlist + holdings.ticker` 합집합을 스코프로 사용 (헬퍼는 `notes/private/portfolio.md`에서 읽음). holdings는 Phase 4 수집에서 watchlist와 동일하게 취급(qty/avg_cost 미사용 — Phase 10 D-22에서 private_thesis가 활용).
 
 ### Vault Layout per Source (D-05 ~ D-08)
 - **D-05:** KRX = `raw/krx/YYYY-MM-DD/{ticker}.md` (로드맵 명시). 한 파일 frontmatter에 OHLCV + 투자자 수급(외국인·기관·개인) + 공매도 잔고 **병합**. 세 섹션 분리 파일 생성하지 않음.
