@@ -28,6 +28,7 @@ from cli.commands import (
     cmd_collect_news,
     cmd_ingest_rebuild,
     cmd_ingest_run,
+    cmd_sync,
 )
 
 __all__ = ["main", "build_parser"]
@@ -116,6 +117,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip TTY confirmation prompt (D-28; for CI/cron)",
     )
     ing_rebuild.set_defaults(func=cmd_ingest_rebuild)
+
+    # sync (Phase 5.1)
+    sync = subs.add_parser(
+        "sync",
+        help="Pull Routine enrichment commits from origin/main into local vault",
+        description=(
+            "Fast-forward only `git pull` (refuses dirty tree, refuses divergence). "
+            "Optional --reingest re-indexes the updated vault into Postgres so "
+            "stock-mcp serves the latest _derived blocks."
+        ),
+    )
+    sync.add_argument("--remote", default="origin", help="Remote name (default: origin)")
+    sync.add_argument("--branch", default="main", help="Branch name (default: main)")
+    sync.add_argument(
+        "--reingest",
+        action="store_true",
+        help="After pulling, run `stock ingest run` to refresh chunks/embeddings",
+    )
+    sync.add_argument("--quiet", action="store_true", help="Suppress stdout JSON report")
+    sync.set_defaults(func=cmd_sync)
 
     return parser
 

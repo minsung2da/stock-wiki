@@ -164,7 +164,17 @@ stock/
 | `stock ingest run` | `vault/raw/**/*.md` 스캔 → frontmatter 읽고 body 정규화 → sha256 dedup → parser → chunker → bge-m3 임베딩 → mecab-ko BM25 토큰 → Postgres에 upsert. 소스별 heartbeat(`source='ingest'`) 기록 |
 | `stock ingest rebuild [--force-reembed] [--yes]` | documents + chunks 테이블 전체 wipe 후 재구축 |
 
-### 4.3 `stock-mcp` — FastMCP 서버
+### 4.3 `stock sync` — Routine 결과 로컬 반영 (Phase 5.1)
+
+| 명령 | 하는 일 |
+|------|---------|
+| `stock sync` | `git fetch origin main` 후 fast-forward only pull. 작업 트리 dirty 거나 diverged 면 거부 (수동 해결). |
+| `stock sync --reingest` | pull 직후 `stock ingest run` 도 함께 — Postgres 가 새 `_derived` 블록을 반영. |
+| `stock sync --quiet` | stdout JSON 리포트 생략 (cron/timer 용). |
+
+상세 운영 가이드 (systemd timer, launchd, divergence 복구 등): [docs/local-sync.md](docs/local-sync.md). 30분~1시간 주기 자동 sync 권장.
+
+### 4.4 `stock-mcp` — FastMCP 서버
 
 ```bash
 uv run stock-mcp    # stdio 모드로 실행. Claude Code가 이걸 자기 MCP server list에 등록해서 씀.
@@ -173,7 +183,7 @@ uv run stock-mcp    # stdio 모드로 실행. Claude Code가 이걸 자기 MCP s
 Claude Code에 MCP server로 등록하면 `search`, `get_ticker_overview` 등의 툴이 Claude 쪽 toolbox에 나타난다.
 시작 시 Postgres 연결 헬스체크 — 실패하면 stderr JSON 에러 + exit 1.
 
-### 4.4 Python 모듈 진입점 (시드 스크립트)
+### 4.5 Python 모듈 진입점 (시드 스크립트)
 
 ```bash
 uv run python -m src.db.seed_entities         # portfolio.md → DART 조회 → entities 테이블 upsert
@@ -215,12 +225,12 @@ uv run stock collect all
 
 `_derived` 추출(요약·event_type·숫자·sentiment)은 로컬에서 돌리지 않고 **Claude Code Routine**이 하루 1회(22:00 UTC) 클라우드에서 돌려 PR로 vault에 커밋합니다. 본 저장소의 `.claude/routines/enrich/` 가 그 Routine의 모든 자산입니다.
 
-| 자산 | 역할 |
-|------|------|
-| `.claude/routines/enrich/SKILL.md` | Routine이 매번 읽는 16-step 메인 프롬프트 (read → injection check → regex 후보 → LLM ×2 → `facts_equal` → Pydantic → numeric sanity → zone-integrity → write → PR) |
-| `.claude/routines/enrich/prompts/derived_{dart_b,news,kind,macro}.md` | 소스별 sub-prompt |
-| `.claude/routines/enrich/helpers/{facts_equal,walk,zone_integrity}.py` | 자기일관성·idempotency·zone-violation guard 헬퍼 |
-| `.claude/routines/enrich/README.md` | **운영자 런북 — 아래의 권위있는 출처** |
+| 자산                                                                     | 역할                                                                                                                                                    |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.claude/routines/enrich/SKILL.md`                                     | Routine이 매번 읽는 16-step 메인 프롬프트 (read → injection check → regex 후보 → LLM ×2 → `facts_equal` → Pydantic → numeric sanity → zone-integrity → write → PR) |
+| `.claude/routines/enrich/prompts/derived_{dart_b,news,kind,macro}.md`  | 소스별 sub-prompt                                                                                                                                        |
+| `.claude/routines/enrich/helpers/{facts_equal,walk,zone_integrity}.py` | 자기일관성·idempotency·zone-violation guard 헬퍼                                                                                                             |
+| `.claude/routines/enrich/README.md`                                    | **운영자 런북 — 아래의 권위있는 출처**                                                                                                                              |
 
 **최초 1회 트리거 절차** (요약 — 정확한 단계는 `.claude/routines/enrich/README.md` 따라가기):
 

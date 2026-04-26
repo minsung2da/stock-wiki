@@ -31,6 +31,7 @@ __all__ = [
     "cmd_collect_all",
     "cmd_ingest_run",
     "cmd_ingest_rebuild",
+    "cmd_sync",
 ]
 
 # D-18: default `collect all` source set excludes dart (Phase 3 kept standalone).
@@ -231,4 +232,113 @@ def cmd_ingest_rebuild(args) -> int:  # noqa: ANN001
     print(json.dumps(report, ensure_ascii=False, default=str))
     if report.get("aborted"):
         return 2
+    return 0
+
+
+# ---------- sync (Phase 5.1) ----------
+
+
+def _git(*args: str) -> tuple[int, str, str]:
+    """Run a git command, return (returncode, stdout, stderr).
+
+    Kept thin so cmd_sync can be unit-tested by monkeypatching this symbol.
+    """
+    import subprocess
+
+    result = subprocess.run(["git", *args], capture_output=True, text=True, check=False)
+    return result.returncode, result.stdout.strip(), result.stderr.strip()
+
+
+def cmd_sync(args) -> int:  # noqa: ANN001
+    """Handle ``stock sync [--reingest] [--remote NAME] [--branch NAME]``.
+
+    Brings the local clone up to date with the Routine's enrichment pushes.
+    Default: fast-forward only — refuses to merge or rebase.
+
+    Exit codes:
+    - 0 : already up-to-date OR fast-forwarded successfully (and reingest, if
+          requested, returned 0)
+    - 1 : pull failed (network, conflict, divergence, dirty tree). Reason on stderr.
+    - 2 : reingest step failed.
+    """
+    remote = getattr(args, "remote", "origin")
+    branch = getattr(args, "branch", "main")
+    reingest = getattr(args, "reingest", False)
+    quiet = getattr(args, "quiet", False)
+
+    report: dict[str, Any] = {"remote": remote, "branch": branch}
+
+    # 1. Working tree must be clean — refuse to pull on top of dirty edits.
+    rc, status, err = _git("status", "--porcelain")
+    if rc != 0:
+        report["status"] = "error"
+        report["error"] = f"git status failed: {err}"
+        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
+        return 1
+    if status:
+        report["status"] = "dirty"
+        report["dirty_files"] = status.splitlines()[:10]
+        report["error"] = "working tree has uncommitted changes — commit or stash before sync"
+        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
+        return 1
+
+    # 2. Fetch remote.
+    rc, _, err = _git("fetch", remote, branch)
+    if rc != 0:
+        report["status"] = "error"
+        report["error"] = f"git fetch failed: {err}"
+        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
+        return 1
+
+    # 3. Compare HEAD vs FETCH_HEAD.
+    rc, counts, _ = _git("rev-list", "--left-right", "--count", "HEAD...FETCH_HEAD")
+    if rc != 0 or "\t" not in counts:
+        report["status"] = "error"
+        report["error"] = "could not compute ahead/behind counts"
+        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
+        return 1
+    ahead_str, behind_str = counts.split("\t")
+    ahead, behind = int(ahead_str), int(behind_str)
+    report["ahead"] = ahead
+    report["behind"] = behind
+
+    if behind == 0 and ahead == 0:
+        report["status"] = "up_to_date"
+    elif ahead > 0 and behind > 0:
+        report["status"] = "diverged"
+        report["error"] = (
+            f"local is {ahead} ahead and {behind} behind {remote}/{branch} — "
+            f"resolve manually (rebase or merge)"
+        )
+        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
+        return 1
+    elif ahead > 0:
+        report["status"] = "ahead_only"
+        # nothing to pull; still allow reingest if requested
+    else:
+        # behind only — safe fast-forward
+        rc, _, err = _git("merge", "--ff-only", "FETCH_HEAD")
+        if rc != 0:
+            report["status"] = "error"
+            report["error"] = f"fast-forward failed: {err}"
+            print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
+            return 1
+        report["status"] = "fast_forwarded"
+
+    # 4. Optional re-ingest.
+    if reingest:
+        try:
+            from db.engine import get_engine
+            from ingest.worker import ingest_run
+
+            stats = ingest_run(Path(args.vault_root), get_engine(), force_reembed=False)
+            report["ingest"] = stats
+        except Exception as exc:  # noqa: BLE001
+            report["status"] = "ingest_failed"
+            report["ingest_error"] = repr(exc)
+            print(json.dumps(report, ensure_ascii=False, default=str), file=sys.stderr)
+            return 2
+
+    if not quiet:
+        print(json.dumps(report, ensure_ascii=False, default=str))
     return 0
