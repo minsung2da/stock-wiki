@@ -1,51 +1,18 @@
 ---
 _derived:
+  catalysts: []
+  numeric_facts: []
+  review_flags: []
   tickers: []
-  event_type: news_macro
-  catalysts:
-    - WTI 유가 급등 후 변동성 확대
-    - 2026년 3~4월 유가 100달러 돌파
-  sentiment: mixed
-  numeric_facts:
-    - metric: WTI 유가
-      value: 63.55
-      unit: USD/배럴
-      period: "2025-04-24"
-    - metric: WTI 유가
-      value: 59.55
-      unit: USD/배럴
-      period: "2025-04-30"
-    - metric: WTI 유가
-      value: 55.44
-      unit: USD/배럴
-      period: "2025-12-16"
-    - metric: WTI 유가
-      value: 114.58
-      unit: USD/배럴
-      period: "2026-04-07"
-    - metric: WTI 유가
-      value: 85.91
-      unit: USD/배럴
-      period: "2026-04-17"
-    - metric: WTI 유가
-      value: 91.06
-      unit: USD/배럴
-      period: "2026-04-20"
-  summary: "WTI 유가는 2025년 말 55달러대 저점에서 2026년 3~4월 최고 114.58달러까지 급등하였다. 이후 4월 중순 85~91달러 수준으로 급락하며 높은 변동성을 보이고 있다."
-  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false
 provenance:
-  content_hash: 265473b06a20e3897017ae33c2966d251951188c040fe0e402e5dd426ad43c9e
-  date: '2026-04-24'
-  fetched_at: 2026-04-24 00:22:48.394420+00:00
+  content_hash: ac6e95f37c122c85c7f0e62ea954dffe05e7a23b4db5d52ef7734267d575854a
+  date: '2026-04-26'
+  fetched_at: 2026-04-26 05:28:56.119478+00:00
   lang: en
   observations:
-  - date: 2025-04-24
-    value: 63.55
-  - date: 2025-04-25
-    value: 63.85
   - date: 2025-04-28
     value: 63.3
   - date: 2025-04-29
@@ -544,8 +511,6 @@ provenance:
 
 | date | value |
 |---|---|
-| 2025-04-24 | 63.55 |
-| 2025-04-25 | 63.85 |
 | 2025-04-28 | 63.3 |
 | 2025-04-29 | 61.84 |
 | 2025-04-30 | 59.55 |

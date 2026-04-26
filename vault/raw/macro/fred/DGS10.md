@@ -1,43 +1,18 @@
 ---
 _derived:
+  catalysts: []
+  numeric_facts: []
+  review_flags: []
   tickers: []
-  event_type: news_macro
-  catalysts:
-    - 미국 10년물 국채금리 상승
-    - 금리 고점 유지 지속
-  sentiment: bearish
-  numeric_facts:
-    - metric: DGS10
-      value: 4.32
-      unit: '%'
-      period: "2025-04-24"
-    - metric: DGS10
-      value: 4.17
-      unit: '%'
-      period: "2025-04-30"
-    - metric: DGS10
-      value: 4.58
-      unit: '%'
-      period: "2025-05-21"
-    - metric: DGS10
-      value: 4.34
-      unit: '%'
-      period: "2026-04-23"
-  summary: "미국 10년물 국채금리(DGS10)는 2025년 4~5월 4.17~4.58% 구간에서 고점을 형성한 후 하락 전환하였다. 2026년 4월 23일 기준 4.34% 수준으로 2025년 초 수준 부근을 유지하고 있다."
-  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false
 provenance:
-  content_hash: d23365590eb47d98e5ec503c71d4ac06f0dfdc2a6bd832663a843c5348a5afea
-  date: '2026-04-25'
-  fetched_at: 2026-04-25 01:18:37.894560+00:00
+  content_hash: fd15a51b6ecbb225c0ceaf1c5c2c3b60f352c585aa29895be758d3a1855c5cdb
+  date: '2026-04-26'
+  fetched_at: 2026-04-26 05:28:55.744022+00:00
   lang: en
   observations:
-  - date: 2025-04-24
-    value: 4.32
-  - date: 2025-04-25
-    value: 4.29
   - date: 2025-04-28
     value: 4.23
   - date: 2025-04-29
@@ -544,8 +519,6 @@ provenance:
 
 | date | value |
 |---|---|
-| 2025-04-24 | 4.32 |
-| 2025-04-25 | 4.29 |
 | 2025-04-28 | 4.23 |
 | 2025-04-29 | 4.19 |
 | 2025-04-30 | 4.17 |
