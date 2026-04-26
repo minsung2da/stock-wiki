@@ -268,17 +268,24 @@ def cmd_sync(args) -> int:  # noqa: ANN001
 
     report: dict[str, Any] = {"remote": remote, "branch": branch}
 
-    # 1. Working tree must be clean — refuse to pull on top of dirty edits.
+    # 1. Working tree must be clean — refuse to pull on top of dirty TRACKED
+    # edits. Untracked files (lines starting with '??') are tolerated: a
+    # fast-forward merge can't write through them, and git's own merge will
+    # refuse if a remote-incoming file would clobber an untracked local one.
+    # Common case: Obsidian canvas / .claude/worktrees/ / scratch files.
     rc, status, err = _git("status", "--porcelain")
     if rc != 0:
         report["status"] = "error"
         report["error"] = f"git status failed: {err}"
         print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
         return 1
-    if status:
+    tracked_dirty = [line for line in status.splitlines() if line and not line.startswith("??")]
+    if tracked_dirty:
         report["status"] = "dirty"
-        report["dirty_files"] = status.splitlines()[:10]
-        report["error"] = "working tree has uncommitted changes — commit or stash before sync"
+        report["dirty_files"] = tracked_dirty[:10]
+        report["error"] = (
+            "working tree has uncommitted tracked changes — commit or stash before sync"
+        )
         print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
         return 1
 

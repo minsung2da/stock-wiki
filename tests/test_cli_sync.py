@@ -72,10 +72,11 @@ def test_sync_fast_forward(monkeypatch, capsys):
 # ---- 3. dirty tree → refuse ----
 
 
-def test_sync_dirty_tree_refused(monkeypatch, capsys):
+def test_sync_dirty_tracked_tree_refused(monkeypatch, capsys):
+    """Tracked modifications block sync (could conflict on FF merge)."""
     fake = _git_responder(
         {
-            ("status", "--porcelain"): (0, " M README.md\n?? new.txt", ""),
+            ("status", "--porcelain"): (0, " M README.md", ""),
         }
     )
     monkeypatch.setattr(cli_commands, "_git", fake)
@@ -83,7 +84,45 @@ def test_sync_dirty_tree_refused(monkeypatch, capsys):
     assert rc == 1
     err = capsys.readouterr().err
     assert "dirty" in err
-    assert "uncommitted" in err
+    assert "tracked" in err
+
+
+def test_sync_untracked_only_allowed(monkeypatch, capsys):
+    """Untracked files (Obsidian canvas, scratch dirs) must NOT block sync — git's
+    own FF merge refuses if a remote file would overwrite an untracked local one,
+    so we don't need to be more conservative than git itself."""
+    fake = _git_responder(
+        {
+            ("status", "--porcelain"): (0, "?? scratch.md\n?? .claude/worktrees/", ""),
+            ("fetch", "origin", "main"): (0, "", ""),
+            ("rev-list", "--left-right", "--count", "HEAD...FETCH_HEAD"): (0, "0\t0", ""),
+        }
+    )
+    monkeypatch.setattr(cli_commands, "_git", fake)
+    rc = cli_commands.cmd_sync(_make_args())
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert '"status": "up_to_date"' in out
+
+
+def test_sync_mixed_tracked_and_untracked_refused(monkeypatch, capsys):
+    """If tracked dirt exists, untracked alongside doesn't make it OK."""
+    fake = _git_responder(
+        {
+            ("status", "--porcelain"): (
+                0,
+                " M src/foo.py\n?? scratch.txt\nM  staged.py",
+                "",
+            ),
+        }
+    )
+    monkeypatch.setattr(cli_commands, "_git", fake)
+    rc = cli_commands.cmd_sync(_make_args())
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "dirty" in err
+    # Only tracked lines should appear in dirty_files
+    assert "scratch.txt" not in err
 
 
 # ---- 4. diverged → refuse ----
