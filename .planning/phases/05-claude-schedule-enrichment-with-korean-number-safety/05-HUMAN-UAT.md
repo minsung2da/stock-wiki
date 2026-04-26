@@ -1,15 +1,14 @@
 ---
-status: partial
+status: ok
 phase: 05-claude-schedule-enrichment-with-korean-number-safety
 source: [05-VERIFICATION.md]
 started: 2026-04-24T23:57:10Z
-updated: 2026-04-26T04:30:00Z
+updated: 2026-04-26T05:10:00Z
 ---
 
 ## Current Test
 
-Test #4 (idempotency on repeat run) — awaiting second Routine "Run now"
-trigger from operator.
+All 5 UAT items resolved. Phase 5 success criteria met.
 
 ## Tests
 
@@ -96,8 +95,22 @@ why_human: End-to-end Sonnet invocation completed by Routine on 2026-04-26.
 
 ### 4. Idempotency on repeat run (Success Criterion #5)
 expected: Identical `_derived` block; provenance and ingest_state zones unchanged; `zone_hash` matches
-result: [pending]
-why_human: Requires running the routine twice with state stable across runs (Routines container is fresh per run); needs operator to trigger and diff
+result: ok
+note: |
+  2026-04-26 — Second Routine "Run now" invocation. Container reported
+  on stdout: "All 8 documents in vault/raw/ already have a populated
+  _derived block — they were enriched by the previous run (commit bc09c08).
+  The candidate count is 0. ... No documents required enrichment. ...
+  No branch was created, no commit was made, and no PR was opened —
+  exiting cleanly as specified."
+
+  This is the expected D-19 behavior: `walk.find_candidates` skips when
+  `_derived` is populated AND `provenance.content_hash` is unchanged. The
+  Routine container's idempotency check held end-to-end:
+  - 0 new branches on origin (`gh pr list --state open --limit 5` returns nothing)
+  - HEAD on main is still bc09c08 (no second enrich commit landed)
+  - All 8 vault/raw markdowns byte-identical to the prior commit
+why_human: Required a second Routine container invocation — completed by operator on 2026-04-26.
 
 ### 5. Schedule agent zone integrity (Success Criterion #2)
 expected: `compute_zone_hash` mismatch triggers `review_flags=['agent_zone_violation']` and skip; provenance/ingest_state remain untouched
@@ -122,29 +135,37 @@ why_human: Runtime enforcement observed in actual Routine container — complete
 ## Summary
 
 total: 5
-passed: 4
+passed: 5
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 partial: 0
 
 ## Gaps
 
-- Test #4 (idempotency) — needs a second Routine run after the first PR
-  merged. The second run should observe content_hash unchanged on all 8
-  docs, skip enrichment for each, and either produce no PR or a no-op PR.
-  Operator action: trigger "Run now" again at claude.ai/code/routines;
-  check that the resulting branch / PR contains zero modifications to
-  vault/raw/**/*.md (or no branch is created at all).
+None. All 5 UAT items resolved with operator-witnessed Routine runs and
+re-runnable verification scripts (scripts/uat_dart_parity.py,
+scripts/uat_zone_integrity.py).
 
-## Minor observations (not UAT failures — backlog candidates)
+## Phase 5.1 follow-up (deployed, not yet re-exercised)
 
-- D-13 says macro and kind sources MUST set sentiment=null; observed
-  sentiment values on macro docs (722Y001=neutral, DCOILWTICO=mixed,
-  DGS10=bearish). Only one macro doc (731Y001) correctly returned null.
-  Tighten prompts/derived_macro.md echo-back wording.
-- KRX docs (000660.md, 005930.md) have tickers=[] in _derived even though
-  the filename and frontmatter expose the ticker. Consider seeding
-  `_derived.tickers` from `provenance.ticker` for KRX-source docs (cheap
-  deterministic step that bypasses LLM extraction).
+Two minor data-quality observations were surfaced by the first Routine
+run and addressed in commit 3f53b25 ("feat(phase-05.1): source-aware
+normalize + krx prompt + stock sync CLI"):
+
+- D-13 macro/kind sentiment=null — Sonnet ignored the prompt directive
+  on 3 of 4 macro docs; now enforced deterministically by
+  `helpers/source_normalize.py::normalize_derived_for_source` (called
+  from SKILL.md step 14.5).
+- KRX `_derived.tickers` was empty despite `provenance.ticker` being
+  set; the same normalizer now seeds `_derived.tickers =
+  [provenance.ticker]` for KRX docs.
+- Bonus: `prompts/derived_krx.md` was missing entirely — added.
+
+These fixes are live in the current `.claude/routines/enrich/` tree.
+They will not re-trigger on the existing 8 enriched docs because D-19
+idempotency skips them (verified via UAT #4 second-run behaviour). The
+fixes will exercise on the next vault/raw doc that lacks `_derived` —
+expected when the operator runs `stock collect all` to add fresh
+documents.
