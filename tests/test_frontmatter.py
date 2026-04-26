@@ -20,6 +20,7 @@ from shared.frontmatter import (
     IngestStateBlock,
     ProvenanceBlock,
     read_existing_derived,
+    read_existing_injection_flags,
     read_frontmatter,
     write_frontmatter,
 )
@@ -203,3 +204,37 @@ class TestReadExistingDerived:
         model = FrontMatter(provenance=ProvenanceBlock(source="dart", content_hash="x"))
         write_frontmatter(str(path), model, "body")
         assert read_existing_derived(path) is None
+
+
+class TestReadExistingInjectionFlags:
+    """Quick task 260426-mic: collectors carry ingest_state.injection_flags forward."""
+
+    def test_round_trip_returns_populated_flags(self, tmp_vault: Path) -> None:
+        """Populated injection_flags list is returned verbatim."""
+        path = tmp_vault / "doc.md"
+        flags = ["HIDDEN_INSTRUCTION", "ROLE_REASSIGNMENT"]
+        model = FrontMatter(
+            provenance=ProvenanceBlock(source="dart", content_hash="x"),
+            ingest_state=IngestStateBlock(injection_flags=flags),
+        )
+        write_frontmatter(str(path), model, "body")
+
+        got = read_existing_injection_flags(path)
+        assert got == flags
+
+    def test_missing_file_returns_none(self, tmp_path: Path) -> None:
+        """Absent path returns None (first-time write)."""
+        assert read_existing_injection_flags(tmp_path / "nope.md") is None
+
+    def test_malformed_frontmatter_returns_none(self, tmp_path: Path) -> None:
+        """Malformed YAML returns None silently (no exception)."""
+        path = tmp_path / "bad.md"
+        path.write_text("---\nnot: [valid yaml\n---\nbody")
+        assert read_existing_injection_flags(path) is None
+
+    def test_default_empty_flags_returns_none(self, tmp_vault: Path) -> None:
+        """Default empty injection_flags list is treated as absent (returns None)."""
+        path = tmp_vault / "no_flags.md"
+        model = FrontMatter(provenance=ProvenanceBlock(source="dart", content_hash="x"))
+        write_frontmatter(str(path), model, "body")
+        assert read_existing_injection_flags(path) is None

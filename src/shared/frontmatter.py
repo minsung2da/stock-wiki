@@ -306,3 +306,41 @@ def read_existing_derived(path: Path) -> DerivedBlock | None:
     if not _derived_is_populated(model.derived):
         return None
     return model.derived
+
+
+def read_existing_injection_flags(path: Path) -> list[str] | None:
+    """Return prior ``ingest_state.injection_flags`` from a vault file, or None.
+
+    Quick task 260426-mic: collectors call this BEFORE constructing a fresh
+    ``FrontMatter`` so the D-18 prompt-injection security marker
+    (``ingest_state.injection_flags``) is carried forward verbatim across
+    collector rewrites. Without this, a previously-flagged adversarial doc
+    becomes silently re-eligible for LLM extraction the next time the routine
+    sees it (security regression — k8h REVIEW WR-01).
+
+    Returns ``None`` when:
+      - the file does not exist (first-time collection),
+      - frontmatter cannot be parsed (malformed YAML / schema fail),
+      - or ``injection_flags`` is empty (default).
+
+    NOTE: Call BEFORE computing the new content_hash. Must NOT feed into hash
+    computation. The new ``content_hash`` MUST be computed solely from the new
+    body — no hash poisoning from carried-over markers.
+
+    SCOPE: ONLY ``injection_flags`` is preserved. Other ``ingest_state`` fields
+    (``processed``, ``processed_at``, ``embedding_model``, ``ingest_model``,
+    ``ingest_version``) are pipeline-state markers owned by the ingest worker;
+    they MUST reset on collector rewrite so re-processing is correctly
+    triggered. ``injection_flags`` is the sole security marker that must
+    survive.
+    """
+    if not path.exists():
+        return None
+    try:
+        model, _body = read_frontmatter(str(path))
+    except (ValueError, OSError):
+        return None
+    flags = model.ingest_state.injection_flags
+    if not flags:
+        return None
+    return list(flags)
