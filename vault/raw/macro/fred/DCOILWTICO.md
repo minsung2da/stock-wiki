@@ -1,9 +1,49 @@
 ---
 _derived:
-  catalysts: []
-  numeric_facts: []
-  review_flags: []
   tickers: []
+  event_type: news_macro
+  catalysts: []
+  sentiment: mixed
+  numeric_facts:
+  - metric: wti
+    value: 63.3
+    unit: USD/bbl
+    period: '2025-04-28'
+  - metric: wti
+    value: 59.55
+    unit: USD/bbl
+    period: '2025-04-30'
+  - metric: wti
+    value: 58.5
+    unit: USD/bbl
+    period: '2025-05-05'
+  - metric: wti
+    value: 73.87
+    unit: USD/bbl
+    period: '2025-08-01'
+  - metric: wti
+    value: 74.92
+    unit: USD/bbl
+    period: '2026-01-02'
+  - metric: wti
+    value: 85.93
+    unit: USD/bbl
+    period: '2026-04-01'
+  - metric: wti
+    value: 114.58
+    unit: USD/bbl
+    period: '2026-04-07'
+  - metric: wti
+    value: 96.17
+    unit: USD/bbl
+    period: '2026-04-08'
+  - metric: wti
+    value: 91.06
+    unit: USD/bbl
+    period: '2026-04-20'
+  summary: null
+  _uncertain:
+  - summary
 ingest_state:
   injection_flags: []
   processed: false

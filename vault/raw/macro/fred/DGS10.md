@@ -1,9 +1,130 @@
 ---
 _derived:
-  catalysts: []
-  numeric_facts: []
-  review_flags: []
   tickers: []
+  event_type: news_macro
+  catalysts:
+  - 미국 10년물 국채금리 변동
+  sentiment: neutral
+  numeric_facts:
+  - metric: us_10y
+    value: 4.23
+    unit: '%'
+    period: '2025-04-28'
+  - metric: us_10y
+    value: 4.19
+    unit: '%'
+    period: '2025-04-29'
+  - metric: us_10y
+    value: 4.17
+    unit: '%'
+    period: '2025-04-30'
+  - metric: us_10y
+    value: 4.25
+    unit: '%'
+    period: '2025-05-01'
+  - metric: us_10y
+    value: 4.33
+    unit: '%'
+    period: '2025-05-02'
+  - metric: us_10y
+    value: 4.37
+    unit: '%'
+    period: '2025-05-08'
+  - metric: us_10y
+    value: 4.49
+    unit: '%'
+    period: '2025-05-13'
+  - metric: us_10y
+    value: 4.53
+    unit: '%'
+    period: '2025-05-14'
+  - metric: us_10y
+    value: 4.41
+    unit: '%'
+    period: '2025-06-02'
+  - metric: us_10y
+    value: 4.32
+    unit: '%'
+    period: '2025-07-01'
+  - metric: us_10y
+    value: 4.16
+    unit: '%'
+    period: '2025-08-01'
+  - metric: us_10y
+    value: 4.18
+    unit: '%'
+    period: '2025-09-01'
+  - metric: us_10y
+    value: 3.98
+    unit: '%'
+    period: '2025-10-01'
+  - metric: us_10y
+    value: 4.38
+    unit: '%'
+    period: '2025-11-03'
+  - metric: us_10y
+    value: 4.25
+    unit: '%'
+    period: '2025-12-01'
+  - metric: us_10y
+    value: 4.63
+    unit: '%'
+    period: '2026-01-02'
+  - metric: us_10y
+    value: 4.51
+    unit: '%'
+    period: '2026-02-02'
+  - metric: us_10y
+    value: 4.23
+    unit: '%'
+    period: '2026-03-02'
+  - metric: us_10y
+    value: 4.19
+    unit: '%'
+    period: '2026-04-01'
+  - metric: us_10y
+    value: 4.31
+    unit: '%'
+    period: '2026-04-10'
+  - metric: us_10y
+    value: 4.3
+    unit: '%'
+    period: '2026-04-13'
+  - metric: us_10y
+    value: 4.26
+    unit: '%'
+    period: '2026-04-14'
+  - metric: us_10y
+    value: 4.29
+    unit: '%'
+    period: '2026-04-15'
+  - metric: us_10y
+    value: 4.32
+    unit: '%'
+    period: '2026-04-16'
+  - metric: us_10y
+    value: 4.26
+    unit: '%'
+    period: '2026-04-17'
+  - metric: us_10y
+    value: 4.26
+    unit: '%'
+    period: '2026-04-20'
+  - metric: us_10y
+    value: 4.3
+    unit: '%'
+    period: '2026-04-21'
+  - metric: us_10y
+    value: 4.3
+    unit: '%'
+    period: '2026-04-22'
+  - metric: us_10y
+    value: 4.34
+    unit: '%'
+    period: '2026-04-23'
+  summary: null
+  _uncertain:
+  - summary
 ingest_state:
   injection_flags: []
   processed: false
