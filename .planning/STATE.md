@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 Phase: 6
 Plan: Not started
 Status: Phase 5 complete (UAT 5/5 passed 2026-04-26) — ready to discuss/plan Phase 6
-Last activity: 2026-04-26 - Completed quick task 260426-k8h: preserve _derived block when collectors re-write a doc
+Last activity: 2026-04-26 - Completed quick task 260426-mic: preserve injection_flags in ingest_state on collector rewrite
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -176,6 +176,7 @@ None yet.
 | 260418-bwv | Fix D-1: ingest worker re-seeds entities from frontmatter so `stock ingest rebuild` restores ticker resolution from vault alone | 2026-04-17 | 85efe29 | | [260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro](./quick/260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro/) |
 | 260424-asr | Seed `entities` from portfolio.md so `stock collect krx` no longer fails_soft on watchlist tickers (e.g., 000660 SK하이닉스). New `src/db/seed_entities.py` CLI + 3 unit tests + CLAUDE.md setup step. | 2026-04-24 | pending | | [260424-asr-entities-seed-expansion](./quick/260424-asr-entities-seed-expansion/) |
 | 260426-k8h | Preserve `_derived` block when collectors re-write a doc with new observations. New `read_existing_derived()` helper in src/shared/frontmatter.py + wired into all 5 collector writers (macro/krx/news/dart/kind). | 2026-04-26 | 5eb3a79 | Verified | [260426-k8h-preserve-derived-block-when-collectors-r](./quick/260426-k8h-preserve-derived-block-when-collectors-r/) |
+| 260426-mic | Preserve `ingest_state.injection_flags` (D-18 prompt-injection markers) on collector rewrite. New `read_existing_injection_flags()` helper + wired into all 5 collector writers. Scope-locked to injection_flags only; other ingest_state fields still reset (pipeline-state markers). | 2026-04-26 | 45cbf36 |  | [260426-mic-preserve-injection-flags-in-ingest-state](./quick/260426-mic-preserve-injection-flags-in-ingest-state/) |
 
 ## Session Continuity
 
