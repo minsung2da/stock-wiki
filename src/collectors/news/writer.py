@@ -16,9 +16,11 @@ from pathlib import Path
 from shared.content_hash import normalize_body
 from shared.frontmatter import (
     FrontMatter,
+    IngestStateBlock,
     ProvenanceBlock,
     TickerRef,
     read_existing_derived,
+    read_existing_injection_flags,
     write_frontmatter,
 )
 
@@ -82,7 +84,9 @@ def write_news_doc(
         for t in tickers
     ]
     # Quick task 260426-k8h: carry prior _derived block forward verbatim.
+    # Quick task 260426-mic: also carry ingest_state.injection_flags (D-18).
     prior_derived = read_existing_derived(path)
+    prior_injection_flags = read_existing_injection_flags(path)
     fm = FrontMatter(
         provenance=ProvenanceBlock(
             source="news",
@@ -99,6 +103,11 @@ def write_news_doc(
             tickers=ticker_refs,
             outlet=outlet,
             license_flag="summary_only",
+        ),
+        **(
+            {"ingest_state": IngestStateBlock(injection_flags=prior_injection_flags)}
+            if prior_injection_flags is not None
+            else {}
         ),
         **({"derived": prior_derived} if prior_derived is not None else {}),
     )

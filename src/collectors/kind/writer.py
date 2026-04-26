@@ -18,8 +18,10 @@ from collectors.kind.sources import KindEventType
 from shared.content_hash import normalize_body
 from shared.frontmatter import (
     FrontMatter,
+    IngestStateBlock,
     ProvenanceBlock,
     read_existing_derived,
+    read_existing_injection_flags,
     write_frontmatter,
 )
 
@@ -125,7 +127,9 @@ def write_kind_event(
 
     date_iso = f"{event_date[0:4]}-{event_date[4:6]}-{event_date[6:8]}"
     # Quick task 260426-k8h: carry prior _derived block forward verbatim.
+    # Quick task 260426-mic: also carry ingest_state.injection_flags (D-18).
     prior_derived = read_existing_derived(path)
+    prior_injection_flags = read_existing_injection_flags(path)
     fm = FrontMatter(
         provenance=ProvenanceBlock(
             source="kind",
@@ -139,6 +143,11 @@ def write_kind_event(
             company_name=company_name,
             lang="ko",
             trust_level="trusted",
+        ),
+        **(
+            {"ingest_state": IngestStateBlock(injection_flags=prior_injection_flags)}
+            if prior_injection_flags is not None
+            else {}
         ),
         **({"derived": prior_derived} if prior_derived is not None else {}),
     )

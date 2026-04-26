@@ -24,8 +24,10 @@ from pathlib import Path
 from shared.content_hash import normalize_body
 from shared.frontmatter import (
     FrontMatter,
+    IngestStateBlock,
     ProvenanceBlock,
     read_existing_derived,
+    read_existing_injection_flags,
     read_frontmatter,
     write_frontmatter,
 )
@@ -137,7 +139,11 @@ def write_macro_doc(
 
     # Quick task 260426-k8h: carry prior _derived block forward verbatim so
     # collector rewrite does not wipe Routine-enriched enrichment.
+    # Quick task 260426-mic: also carry ingest_state.injection_flags (D-18
+    # security marker). Other ingest_state fields reset by design — they're
+    # pipeline-state markers owned by the ingest worker.
     prior_derived = read_existing_derived(path)
+    prior_injection_flags = read_existing_injection_flags(path)
     fm = FrontMatter(
         provenance=ProvenanceBlock(
             source=source,
@@ -152,6 +158,11 @@ def write_macro_doc(
             lang="ko" if source == "ecos" else "en",
             trust_level="trusted",
             observations=merged,  # D-07
+        ),
+        **(
+            {"ingest_state": IngestStateBlock(injection_flags=prior_injection_flags)}
+            if prior_injection_flags is not None
+            else {}
         ),
         **({"derived": prior_derived} if prior_derived is not None else {}),
     )
