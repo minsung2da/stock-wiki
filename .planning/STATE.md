@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: ready_for_phase_6
-stopped_at: Phase 5 UAT 5/5 passed; Phase 5.1 quick-fix shipped (3f53b25)
-last_updated: "2026-04-26T05:15:00Z"
-last_activity: 2026-04-26
+status: completed
+stopped_at: Phase 10 context gathered
+last_updated: "2026-04-26T11:08:50.030Z"
+last_activity: "2026-04-26 - Completed quick task 260426-mic: preserve injection_flags in ingest_state on collector rewrite"
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 5
   total_plans: 28
   completed_plans: 28
@@ -184,6 +184,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-26T05:35:00Z
-Stopped at: Completed quick task 260426-k8h: preserve _derived block when collectors re-write a doc
-Resume file: None
+Last session: 2026-04-26T11:08:49.984Z
+Stopped at: Phase 10 context gathered
+Resume file: .planning/phases/10-decision-context-coverage-peer-historical-valuation-supply-d/10-CONTEXT.md
