@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 Phase: 6
 Plan: Not started
 Status: Phase 5 complete (UAT 5/5 passed 2026-04-26) — ready to discuss/plan Phase 6
-Last activity: 2026-04-26
+Last activity: 2026-04-26 - Completed quick task 260426-k8h: preserve _derived block when collectors re-write a doc
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -169,15 +169,16 @@ None yet.
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260417-q3h | Replace local LLM (Ollama/Qwen/EXAONE) stack with Claude schedule + bge-m3-only embeddings | 2026-04-17 | be8c15e | [260417-q3h-replace-local-llm-ollama-qwen-exaone-sta](./quick/260417-q3h-replace-local-llm-ollama-qwen-exaone-sta/) |
-| 260418-asr | Fix Phase 3 E2E bugs: collector vault path (A), DART retry hardening (B), auto-seed entities (C) | 2026-04-17 | e23cbc1 | [260418-asr-fix-phase-3-bugs-a-collector-vault-path-](./quick/260418-asr-fix-phase-3-bugs-a-collector-vault-path-/) |
-| 260418-bwv | Fix D-1: ingest worker re-seeds entities from frontmatter so `stock ingest rebuild` restores ticker resolution from vault alone | 2026-04-17 | 85efe29 | [260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro](./quick/260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro/) |
-| 260424-asr | Seed `entities` from portfolio.md so `stock collect krx` no longer fails_soft on watchlist tickers (e.g., 000660 SK하이닉스). New `src/db/seed_entities.py` CLI + 3 unit tests + CLAUDE.md setup step. | 2026-04-24 | pending | [260424-asr-entities-seed-expansion](./quick/260424-asr-entities-seed-expansion/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260417-q3h | Replace local LLM (Ollama/Qwen/EXAONE) stack with Claude schedule + bge-m3-only embeddings | 2026-04-17 | be8c15e | | [260417-q3h-replace-local-llm-ollama-qwen-exaone-sta](./quick/260417-q3h-replace-local-llm-ollama-qwen-exaone-sta/) |
+| 260418-asr | Fix Phase 3 E2E bugs: collector vault path (A), DART retry hardening (B), auto-seed entities (C) | 2026-04-17 | e23cbc1 | | [260418-asr-fix-phase-3-bugs-a-collector-vault-path-](./quick/260418-asr-fix-phase-3-bugs-a-collector-vault-path-/) |
+| 260418-bwv | Fix D-1: ingest worker re-seeds entities from frontmatter so `stock ingest rebuild` restores ticker resolution from vault alone | 2026-04-17 | 85efe29 | | [260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro](./quick/260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro/) |
+| 260424-asr | Seed `entities` from portfolio.md so `stock collect krx` no longer fails_soft on watchlist tickers (e.g., 000660 SK하이닉스). New `src/db/seed_entities.py` CLI + 3 unit tests + CLAUDE.md setup step. | 2026-04-24 | pending | | [260424-asr-entities-seed-expansion](./quick/260424-asr-entities-seed-expansion/) |
+| 260426-k8h | Preserve `_derived` block when collectors re-write a doc with new observations. New `read_existing_derived()` helper in src/shared/frontmatter.py + wired into all 5 collector writers (macro/krx/news/dart/kind). | 2026-04-26 | 5eb3a79 | Verified | [260426-k8h-preserve-derived-block-when-collectors-r](./quick/260426-k8h-preserve-derived-block-when-collectors-r/) |
 
 ## Session Continuity
 
-Last session: 2026-04-24T16:56:02.812Z
-Stopped at: Completed 05-07-PLAN.md
+Last session: 2026-04-26T05:35:00Z
+Stopped at: Completed quick task 260426-k8h: preserve _derived block when collectors re-write a doc
 Resume file: None
