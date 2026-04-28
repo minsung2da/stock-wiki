@@ -82,7 +82,9 @@ def collect_kind(
     start = time.monotonic()
     bgn_de, end_de = _default_window(since)
 
-    portfolio = Portfolio.load(vault_root)
+    # repo_root = vault_root.parent (Phase 6 P-01: portfolio moved to notes/private/)
+    repo_root = vault_root.parent
+    portfolio = Portfolio.load(repo_root)
     scope = set(portfolio.scope_tickers())
 
     stats: dict[str, Any] = {

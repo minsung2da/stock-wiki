@@ -58,7 +58,9 @@ def collect_news(
     # R-09: refuse to run when aliases are not seeded (BEFORE any HTTP call).
     matcher.assert_aliases_seeded(engine)
 
-    portfolio = Portfolio.load(vault_root)
+    # repo_root = vault_root.parent (Phase 6 P-01: portfolio moved to notes/private/)
+    repo_root = vault_root.parent
+    portfolio = Portfolio.load(repo_root)
     scope = portfolio.scope_tickers()
     # R-01: single DB round-trip for the scoped alias inventory.
     alias_map = matcher.load_scoped_aliases(engine, scope)

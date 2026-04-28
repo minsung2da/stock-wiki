@@ -62,7 +62,9 @@ def collect_krx(
     start = time.monotonic()
     date_iso = since or _today_iso_krx()
     date_str = date_iso.replace("-", "")
-    portfolio = Portfolio.load(vault_root)
+    # repo_root = vault_root.parent (Phase 6 P-01: portfolio moved to notes/private/)
+    repo_root = vault_root.parent
+    portfolio = Portfolio.load(repo_root)
     scope = portfolio.scope_tickers()
 
     stats: dict[str, Any] = {
