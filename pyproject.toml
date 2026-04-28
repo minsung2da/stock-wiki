@@ -68,6 +68,7 @@ dev = [
     "pre-commit",
     "mypy",
     "testcontainers[postgres]>=4.8",
+    "tiktoken>=0.8,<1",
 ]
 
 [tool.pytest.ini_options]
