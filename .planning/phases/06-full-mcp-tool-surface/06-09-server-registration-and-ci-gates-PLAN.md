@@ -85,7 +85,7 @@ Per-tool budgets per UI-SPEC "Token Budget — Per-Tool Targets":
 | get_recent_events | 5.0s | 8000 |
 | get_portfolio_state | 1.0s | 4000 |
 | get_related | 2.0s | 4000 |
-| get_filing | 3.0s | 50000 |
+| get_filing | 3.0s | 50000 (ROADMAP Phase 6 SC#5 documented exception per CONTEXT D-07 / UI-SPEC) |
 | add_note | 1.0s | 1000 |
 | health | 2.0s | 2000 |
 | search | 5.0s | 8000 |
@@ -294,6 +294,10 @@ Per-tool budgets per UI-SPEC "Token Budget — Per-Tool Targets":
            ("get_related", lambda **kw: __import__("src.stock_mcp.tools.related", fromlist=["get_related"]).get_related(**kw),
                 {"document_id": None, "depth": 1}, 2000, 4000),  # document_id filled at runtime
            ("get_filing", lambda **kw: __import__("src.stock_mcp.tools.filing", fromlist=["get_filing"]).get_filing(**kw),
+                # get_filing: 50000 tokens (ROADMAP Phase 6 success criterion #5
+                # documented exception per CONTEXT D-07 / UI-SPEC — single-doc bodies
+                # may legitimately exceed the 8k tool-response budget; truncated
+                # at 200K chars by the tool itself).
                 {"id": None}, 3000, 50000),  # id filled at runtime
            ("add_note", lambda **kw: __import__("src.stock_mcp.tools.notes", fromlist=["add_note"]).add_note(**kw),
                 {"path": "vault/notes/perf-test.md", "body": "perf body", "frontmatter": {"type": "note"}}, 1000, 1000),
@@ -340,6 +344,7 @@ Per-tool budgets per UI-SPEC "Token Budget — Per-Tool Targets":
     - `grep -n "tiktoken" tests/perf/conftest.py` returns ≥1 hit; `grep -n "cl100k_base" tests/perf/conftest.py` returns ≥1 hit.
     - `grep -n "n=20\|n: int = 20" tests/perf/conftest.py` returns ≥1 hit.
     - `grep -cE "search|get_ticker_overview|get_recent_events|get_portfolio_state|get_related|get_filing|add_note|health" tests/perf/test_mcp_perf_gates.py` returns ≥8 (one per tool in PERF_BUDGETS list).
+    - `grep -nE "ROADMAP.*exception|ROADMAP.*SC#5|SC#5.*exception" tests/perf/test_mcp_perf_gates.py` returns ≥1 hit (documented `get_filing` token-budget exception cited next to its PERF_BUDGETS entry).
     - After running: `find tests/perf -name '*.json' | wc -l` returns ≥8 (one per tool).
     - Verify command exits 0; all 8 parametrized tests pass under the budgets.
   </acceptance_criteria>

@@ -3,7 +3,7 @@ phase: 06-full-mcp-tool-surface
 plan: 08
 type: execute
 wave: 3
-depends_on: [04, 05, 07]
+depends_on: [02, 04, 05, 07]
 files_modified:
   - src/stock_mcp/tools/overview.py
   - tests/stock_mcp/test_get_ticker_overview.py
@@ -59,7 +59,7 @@ Output: 1 tool module + 1 test module.
 
 <interfaces>
 From Plan 06-04: `from .events import get_recent_events` returns EventTimeline | dict.
-From Plan 06-05: `from .portfolio import get_portfolio_state` returns PortfolioState | dict; also reuse `_repo_root`.
+From Plan 06-05: `from .portfolio import get_portfolio_state` returns PortfolioState | dict. Plan 06-02 provides `from stock_mcp.repo_root import repo_root` for any direct path resolution; this plan does NOT define a local `_repo_root`.
 search_core.hybrid_search: `hybrid_search(engine, query, ticker, source, top_k, mode='hybrid') -> list[dict]` — used to fetch related_notes (source='note', top_k=5).
 Plan 06-02 OverviewResponse model has all required fields including the truncation_applied list.
 
@@ -73,7 +73,7 @@ Token budget per D-19: p95 < 8000 tokens. Use tiktoken cl100k_base for any inter
   <name>Task 1: get_ticker_overview composite + truncation logic (MCP-03, D-01..D-04, D-22)</name>
   <read_first>
     - src/stock_mcp/tools/events.py (Plan 06-04 output)
-    - src/stock_mcp/tools/portfolio.py (Plan 06-05 _repo_root + Portfolio.load usage)
+    - src/stock_mcp/tools/portfolio.py (Plan 06-05 — uses public repo_root from stock_mcp.repo_root + Portfolio.load(root))
     - src/stock_mcp/search_core.py (hybrid_search signature)
     - src/stock_mcp/models.py (OverviewResponse, EventRow, PortfolioRow, SearchHit, Phase 10 placeholder models)
     - .planning/phases/06-full-mcp-tool-surface/06-CONTEXT.md D-01..D-04, D-22, D-23

@@ -24,7 +24,8 @@ must_haves:
     - "tiktoken is added to dev dependency group"
     - "Alembic migration 0003 widens the edges.edge_type CHECK so non-supersedes edges insert successfully"
     - "tests/fixtures/mcp-vault/ contains ≥10 tickers and ≥100 documents (DART + news + KIND + notes)"
-    - "tests/stock_mcp/conftest.py provides session-scoped fixture that brings up testcontainers Postgres, runs alembic upgrade head, ingests the fixture vault, and yields (engine, vault_root)"
+    - "tests/stock_mcp/conftest.py provides session-scoped fixture (mcp_vault_engine) that brings up testcontainers Postgres, runs alembic upgrade head, ingests the fixture vault, and yields (engine, vault_root, repo_root)"
+    - "tests/stock_mcp/conftest.py provides function-scoped fixture (mcp_vault_isolated) that copies the session vault into tmp_path and sets STOCK_REPO_ROOT so write-test mutations stay isolated"
     - "Fixture build script is reproducible: deleting tests/fixtures/mcp-vault/ and re-running the script reproduces the same file set"
   artifacts:
     - path: "pyproject.toml"
@@ -269,7 +270,38 @@ Phase 6 fixture must insert edge_type values for `mentions`, `references`, `prec
     7. Inserts a few `ingest_runs` rows with realistic `started_at`/`finished_at` for testing health() — one row per source (dart, krx, news, macro, kind), with at least one stale (>26h ago) row to exercise stale path. (Pitfall 3: `ingest_runs` is otherwise empty in production; tests must seed.)
     8. Yields `(engine, vault_root, repo_root)` so downstream tool tests can construct paths cleanly.
 
-    The fixture is `scope="session"` to amortize ingest cost (Pitfall 6). Add a function-scoped helper `mcp_vault_isolated` that creates a writable per-test copy when add_note tests need to write without polluting siblings.
+    The fixture is `scope="session"` to amortize ingest cost (Pitfall 6).
+
+    9. **REQUIRED — Add `mcp_vault_isolated` function-scoped fixture** for tests that mutate the vault (Plan 06-06 add_note tests). Implementation:
+       ```python
+       @pytest.fixture(scope="function")
+       def mcp_vault_isolated(mcp_vault_engine, tmp_path):
+           """Per-test writable copy of the mcp-vault fixture.
+
+           Returns a tuple (engine, vault_root, repo_root) where vault_root and
+           repo_root point to a freshly-copied tree under tmp_path. The DB engine
+           is shared with the session fixture (read tests don't conflict with
+           writes in this isolated tree).
+           """
+           import shutil
+           # Source: the session-scoped tmp copy yielded by mcp_vault_engine
+           session_engine, session_vault_root, session_repo_root = mcp_vault_engine
+           dst_repo = tmp_path / "repo"
+           shutil.copytree(session_repo_root, dst_repo)
+           # Set STOCK_REPO_ROOT for the duration of the test so tools that call
+           # repo_root() (Plan 06-02) see the isolated copy.
+           import os
+           prev = os.environ.get("STOCK_REPO_ROOT")
+           os.environ["STOCK_REPO_ROOT"] = str(dst_repo)
+           try:
+               yield (session_engine, dst_repo / "vault", dst_repo)
+           finally:
+               if prev is None:
+                   os.environ.pop("STOCK_REPO_ROOT", None)
+               else:
+                   os.environ["STOCK_REPO_ROOT"] = prev
+       ```
+       The fixture explicitly sets `STOCK_REPO_ROOT` so tool code (which calls `repo_root()` from `stock_mcp.repo_root`) resolves to the isolated copy automatically.
 
     Add a smoke test `tests/stock_mcp/test_conftest_smoke.py::test_session_fixture_yields_engine_with_documents` that asserts:
     - `SELECT COUNT(*) FROM documents` ≥ 90.
@@ -284,9 +316,12 @@ Phase 6 fixture must insert edge_type values for `mentions`, `references`, `prec
     - `grep -n "scope=\"session\"" tests/stock_mcp/conftest.py` returns ≥1 hit.
     - `grep -n "mcp_vault_engine" tests/stock_mcp/conftest.py` returns ≥1 hit (fixture name).
     - `grep -nE "ingest_runs|seed_test_edges" tests/stock_mcp/conftest.py` returns ≥2 hits.
+    - `grep -E "^def mcp_vault_isolated" tests/stock_mcp/conftest.py` returns 1 hit (function-scoped fixture defined).
+    - `grep -n "scope=\"function\"" tests/stock_mcp/conftest.py` returns ≥1 hit (mcp_vault_isolated marker).
+    - `grep -n "STOCK_REPO_ROOT" tests/stock_mcp/conftest.py` returns ≥1 hit (env override for isolated tests).
     - Smoke test exits 0; all four assertions in the smoke test pass.
   </acceptance_criteria>
-  <done>Session fixture brings up Postgres + ingests fixture vault + seeds edges + ingest_runs; smoke test green.</done>
+  <done>Session + function-scoped fixtures defined; per-test isolated tree honors STOCK_REPO_ROOT; smoke test green.</done>
 </task>
 
 </tasks>
