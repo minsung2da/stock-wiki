@@ -70,7 +70,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [x] **MCP-02**: `search(query, ticker?, date_range?, source?, mode='hybrid'|'semantic'|'bm25')` 툴
 - [ ] **MCP-03**: `get_ticker_overview(ticker)` 툴 — 재무·수급·최근 이벤트·관련 메모 통합 뷰. **AMENDED (2026-04-26 by Phase 10):** 응답에 `valuation`(get_valuation_context summary), `supply_demand`(활성 신호 강조), `private_thesis`(notes/private/{ticker} 본문) 4축 섹션 자동 포함 — JUDGE-01 단일 호출 답변 정합. 상세는 `.planning/phases/10-.../10-CONTEXT.md` D-23·D-24.
 - [ ] **MCP-04**: `get_recent_events(ticker, since)` 툴 — DART 공시·뉴스·KIND 이벤트 타임라인
-- [ ] **MCP-05**: `get_portfolio_state()` 툴 — **`notes/private/portfolio.md`**의 보유 종목·상태 반환. **AMENDED (2026-04-26 by Phase 10 P-01):** SoT 경로를 `dashboards/portfolio.md`(현행 wording 오류) → `notes/private/portfolio.md`(Phase 1 D-03/D-05 원칙 복구)로 통일. Dataview 대시보드(DASH-01)는 동일 파일을 참조 source로 사용.
+- [x] **MCP-05**: `get_portfolio_state()` 툴 — **`notes/private/portfolio.md`**의 보유 종목·상태 반환. **AMENDED (2026-04-26 by Phase 10 P-01):** SoT 경로를 `dashboards/portfolio.md`(현행 wording 오류) → `notes/private/portfolio.md`(Phase 1 D-03/D-05 원칙 복구)로 통일. Dataview 대시보드(DASH-01)는 동일 파일을 참조 source로 사용.
 - [ ] **MCP-06**: `get_related(document_id, depth?)` 툴 — 그래프 엣지 이웃 조회
 - [ ] **MCP-07**: `get_filing(id)` 툴 — 특정 문서 전체 본문 반환 (ID 기반 two-step 패턴)
 - [ ] **MCP-08**: `add_note(path, body, frontmatter?)` 툴 — **`vault/notes/` 및 `notes/private/`에 쓰기 허용** (raw/ingested는 write-protected 유지). **AMENDED (2026-04-26 by Phase 10 D-21):** 화이트리스트에 `notes/private/` 추가 — 세션 중 'X 종목 메모해줘'·'오늘 일기로 남겨줘' 자동 적재. 상세는 `.planning/phases/10-.../10-CONTEXT.md` D-21.
@@ -207,7 +207,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | MCP-02 | Phase 3 | Complete |
 | MCP-03 | Phase 6 | Pending |
 | MCP-04 | Phase 6 | Pending |
-| MCP-05 | Phase 6 | Pending |
+| MCP-05 | Phase 6 | Complete |
 | MCP-06 | Phase 6 | Pending |
 | MCP-07 | Phase 6 | Pending |
 | MCP-08 | Phase 6 | Pending |
