@@ -127,8 +127,19 @@ Plans:
   3. `add_note` writes only under `vault/notes/` and is rejected with a clear error if the caller passes a `raw/` or `ingested/` target path
   4. `health()` reports last batch success per source, DB connectivity, and staleness indicators derived from the heartbeat file
   5. CI tests assert every tool's p95 latency < 5s and p95 response size < 8k tokens on the fixture corpus; docstrings render as coherent LLM-facing contracts in the MCP inspector
-**Plans**: TBD
+**Plans**: 9 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 06-01-portfolio-path-cutover-PLAN.md -- P-01 atomic cutover: Portfolio.load(repo_root) reads notes/private/portfolio.md across 9 source/test sites
+- [ ] 06-02-models-errors-helpers-PLAN.md -- Pydantic response models (Phase 10 placeholders typed T|None) + 5 new ErrorCode constants + snippets/paths/NoteFrontmatter helpers
+- [ ] 06-03-fixture-vault-and-deps-PLAN.md -- tiktoken dev dep + Alembic 0003 (relax edges CHECK) + tests/fixtures/mcp-vault corpus + session conftest
+- [ ] 06-04-get-filing-and-events-PLAN.md -- get_filing (sha256 keyed, 200K-char truncate) + get_recent_events (id+snippet two-step)
+- [ ] 06-05-get-related-and-portfolio-PLAN.md -- get_related (recursive CTE BFS depth<=2) + get_portfolio_state (notes/private meta-only, no prices)
+- [ ] 06-06-add-note-PLAN.md -- add_note (whitelist + symlink-resolve + frontmatter validation + append-only with idempotency + atomic write)
+- [ ] 06-07-health-PLAN.md -- health (ingest_runs primary + heartbeat fallback + staleness thresholds + DB-down graceful)
+- [ ] 06-08-get-ticker-overview-PLAN.md -- get_ticker_overview composite (3 axes + Phase 10 None placeholders + priority-ordered truncation)
+- [ ] 06-09-server-registration-and-ci-gates-PLAN.md -- server.py wiring + docstring contract test + N=20 perf gates (tiktoken cl100k_base) per D-19/D-20
 
 ### Phase 7: Graph Layer & graphify Integration
 **Goal**: The edges that ingest populates (`ticker→filing`, `filing→event`, `note→ticker`, `event→event`, `ticker→sector`, `supersedes`) become queryable through `get_related`, and graphify produces a periodic vault-wide interactive snapshot. Before any graphify run, 3–5 canonical subgraph queries are defined so the output answers real questions instead of producing a supernova.
@@ -179,7 +190,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 3. One-Company Walking Skeleton | 0/6 | Planning complete | - |
 | 4. Multi-Source Collector Coverage | 2/6 | In Progress|  |
 | 5. Claude-Schedule Enrichment with Korean Number Safety | 0/8 | Planning complete | - |
-| 6. Full MCP Tool Surface | 0/TBD | Not started | - |
+| 6. Full MCP Tool Surface | 0/9 | Planning complete | - |
 | 7. Graph Layer & graphify Integration | 0/TBD | Not started | - |
 | 8. Vault Dashboards & Research Memo Templates | 0/TBD | Not started | - |
 | 9. Judgment Prompt Conventions & Operations Hardening | 0/TBD | Not started | - |
