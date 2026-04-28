@@ -1,5 +1,5 @@
 """One-shot seeder: insert an entities row for every ticker in
-vault/notes/portfolio.md (holdings ∪ watchlist) via OpenDART corp lookup.
+notes/private/portfolio.md (holdings ∪ watchlist) via OpenDART corp lookup.
 
 Runs once per new machine / once per new watchlist addition. Idempotent:
 `upsert_entity` uses ON CONFLICT. Missing DART corp for a ticker is logged
@@ -7,7 +7,7 @@ and skipped (doesn't abort the batch).
 
 Operational command:
     uv run python -m src.db.seed_entities              # reads DATABASE_URL + DART_API_KEY
-    uv run python -m src.db.seed_entities --vault vault
+    uv run python -m src.db.seed_entities --repo .
 """
 
 from __future__ import annotations
@@ -26,13 +26,13 @@ from shared.portfolio import Portfolio
 log = logging.getLogger(__name__)
 
 
-def seed_entities_from_portfolio(engine: Engine, vault_root: Path) -> tuple[int, list[str]]:
+def seed_entities_from_portfolio(engine: Engine, repo_root: Path) -> tuple[int, list[str]]:
     """Seed entities for every ticker in portfolio scope.
 
     Returns (upserted_count, failed_tickers). Failures are tickers with no
     matching DART corp; they do not abort the batch.
     """
-    portfolio = Portfolio.load(vault_root)
+    portfolio = Portfolio.load(repo_root)
     tickers = sorted(set(portfolio.scope_tickers()))
 
     import dart_fss
@@ -69,9 +69,9 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser(description="Seed entities from portfolio.md via OpenDART.")
-    parser.add_argument("--vault", default="vault", help="Vault root (default: vault)")
+    parser.add_argument("--repo", default=".", help="Repo root (default: .)")
     args = parser.parse_args()
 
-    up, failed = seed_entities_from_portfolio(get_engine(), Path(args.vault))
+    up, failed = seed_entities_from_portfolio(get_engine(), Path(args.repo))
     print(f"seed_entities: upserted {up} rows; failed {len(failed)}: {failed}")
     sys.exit(0 if not failed else 1)

@@ -1,10 +1,10 @@
 """Portfolio model + loader (D-01..D-04).
 
 Single scope source for Phase 4 collectors: every collector calls
-`Portfolio.load(vault_root)` and uses `scope_tickers()` (holdings ∪ watchlist)
+`Portfolio.load(repo_root)` and uses `scope_tickers()` (holdings ∪ watchlist)
 to decide which tickers to fetch this run.
 
-The vault file `vault/notes/portfolio.md` is the source of truth — a YAML
+The repo-relative file ``notes/private/portfolio.md`` is the source of truth — a YAML
 frontmatter document parsed via python-frontmatter-compatible fence detection.
 Validation is strict (extra='forbid') so typos surface as Pydantic errors
 rather than silent scope bugs (T-04-01).
@@ -22,7 +22,7 @@ _TICKER_RE = re.compile(r"^[0-9]{6}$")
 
 
 class PortfolioLoadError(RuntimeError):
-    """Raised when vault/notes/portfolio.md cannot be located or parsed."""
+    """Raised when notes/private/portfolio.md cannot be located or parsed."""
 
 
 class Holding(BaseModel):
@@ -63,14 +63,14 @@ class Portfolio(BaseModel):
         return sorted({h.ticker for h in self.holdings} | set(self.watchlist))
 
     @classmethod
-    def load(cls, vault_root: Path) -> Portfolio:
-        """Load and validate portfolio.md from `<vault_root>/notes/portfolio.md`.
+    def load(cls, repo_root: Path) -> Portfolio:
+        """Load and validate portfolio.md from `<repo_root>/notes/private/portfolio.md`.
 
         Raises:
             PortfolioLoadError: file missing or frontmatter fences absent.
             pydantic.ValidationError: schema violation (bad ticker, extra key, etc.).
         """
-        p = Path(vault_root) / "notes" / "portfolio.md"
+        p = Path(repo_root) / "notes" / "private" / "portfolio.md"
         if not p.exists():
             raise PortfolioLoadError(f"portfolio.md not found at {p}")
         text = p.read_text(encoding="utf-8")
