@@ -167,7 +167,9 @@ def test_collect_krx_heartbeat_has_last_success(
 def test_collect_krx_missing_entity_option_a(vault_tmp: Path, seeded_engine, monkeypatch) -> None:
     """R-03: unknown ticker → no file, stats['failed'] + heartbeat.extra.missing_entity."""
     # Rewrite portfolio to scope [005930, 999999] — 999999 has NO entities row.
-    (vault_tmp / "notes" / "portfolio.md").write_text(
+    # Phase 6 P-01: portfolio lives at <repo_root>/notes/private/portfolio.md
+    # where repo_root = vault_tmp.parent.
+    (vault_tmp.parent / "notes" / "private" / "portfolio.md").write_text(
         "---\n"
         "holdings:\n"
         '  - ticker: "005930"\n'

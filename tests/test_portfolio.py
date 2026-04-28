@@ -14,9 +14,11 @@ _SEED_YAML = (
 )
 
 
-def _write_portfolio(vault: Path, yaml_body: str, body: str = "# Portfolio\n") -> None:
-    (vault / "notes").mkdir(parents=True, exist_ok=True)
-    (vault / "notes" / "portfolio.md").write_text(f"---\n{yaml_body}---\n{body}", encoding="utf-8")
+def _write_portfolio(repo_root: Path, yaml_body: str, body: str = "# Portfolio\n") -> None:
+    (repo_root / "notes" / "private").mkdir(parents=True, exist_ok=True)
+    (repo_root / "notes" / "private" / "portfolio.md").write_text(
+        f"---\n{yaml_body}---\n{body}", encoding="utf-8"
+    )
 
 
 def test_load_seed_file_returns_expected_holdings_and_watchlist(tmp_path: Path) -> None:

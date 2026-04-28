@@ -16,7 +16,9 @@ import pytest
 
 def _seed_vault(root: Path) -> None:
     (root / "vault" / "notes").mkdir(parents=True)
-    (root / "vault" / "notes" / "portfolio.md").write_text(
+    # Phase 6 P-01: portfolio at <repo_root>/notes/private/portfolio.md
+    (root / "notes" / "private").mkdir(parents=True)
+    (root / "notes" / "private" / "portfolio.md").write_text(
         "---\nwatchlist:\n  - ticker: '005930'\n    name: Samsung\nholdings: []\n---\n",
         encoding="utf-8",
     )
