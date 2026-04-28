@@ -132,7 +132,7 @@ Plans:
 
 Plans:
 - [x] 06-01-portfolio-path-cutover-PLAN.md -- P-01 atomic cutover: Portfolio.load(repo_root) reads notes/private/portfolio.md across 9 source/test sites
-- [ ] 06-02-models-errors-helpers-PLAN.md -- Pydantic response models (Phase 10 placeholders typed T|None) + 5 new ErrorCode constants + snippets/paths/NoteFrontmatter helpers
+- [x] 06-02-models-errors-helpers-PLAN.md -- Pydantic response models (Phase 10 placeholders typed T|None) + 5 new ErrorCode constants + snippets/paths/NoteFrontmatter helpers
 - [ ] 06-03-fixture-vault-and-deps-PLAN.md -- tiktoken dev dep + Alembic 0003 (relax edges CHECK) + tests/fixtures/mcp-vault corpus + session conftest
 - [ ] 06-04-get-filing-and-events-PLAN.md -- get_filing (sha256 keyed, 200K-char truncate) + get_recent_events (id+snippet two-step)
 - [ ] 06-05-get-related-and-portfolio-PLAN.md -- get_related (recursive CTE BFS depth<=2) + get_portfolio_state (notes/private meta-only, no prices)
