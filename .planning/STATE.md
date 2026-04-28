@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-portfolio-path-cutover-PLAN.md
-last_updated: "2026-04-28T14:55:50.140Z"
+stopped_at: Completed 06-02-models-errors-helpers-PLAN.md
+last_updated: "2026-04-28T15:08:32.102Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 37
-  completed_plans: 29
-  percent: 78
+  completed_plans: 30
+  percent: 81
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 06 (full-mcp-tool-surface) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-04-28
 
@@ -86,6 +86,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-claude-schedule-enrichment-with-korean-number-safety P06 | 5min | 2 tasks | 2 files |
 | Phase 05-claude-schedule-enrichment-with-korean-number-safety P07 | 13min | 2 tasks | 4 files |
 | Phase 06-full-mcp-tool-surface P01 | 27min | 2 tasks | 13 files |
+| Phase 06-full-mcp-tool-surface P02 | 12min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,8 @@ Recent decisions affecting current work:
 - [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-07: alert_level auto-populated only when source=='enrich' (COLL-08 per-source isolation preserved for dart/krx/news/macro)
 - [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-07: disk_metrics module has zero DB deps — Routines skill injects db_size_mb via pg_database_size query
 - [Phase 06-full-mcp-tool-surface]: Phase 6 P-01: Portfolio.load signature cutover (vault_root -> repo_root); SoT moved to notes/private/portfolio.md (gitignored, local-only)
+- [Phase 06-full-mcp-tool-surface]: Plan 06-02: build_snippet uses inline <vault_excerpt> wrap (not wrap_untrusted) — wrap_untrusted requires source/trust/doc_id triple unavailable for portfolio rows; existing E2E test accepts both forms
+- [Phase 06-full-mcp-tool-surface]: Plan 06-02: ErrorCode additions are append-only — Phase 3 ordering preserved verbatim, six new Phase 6 codes appended
 
 ### Pending Todos
 
@@ -186,6 +189,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-28T14:55:50.089Z
-Stopped at: Completed 06-01-portfolio-path-cutover-PLAN.md
+Last session: 2026-04-28T15:08:32.067Z
+Stopped at: Completed 06-02-models-errors-helpers-PLAN.md
 Resume file: None
