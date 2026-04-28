@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-02-models-errors-helpers-PLAN.md
-last_updated: "2026-04-28T15:08:32.102Z"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-04-28T22:01:42.192Z"
 last_activity: 2026-04-28
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 37
-  completed_plans: 30
-  percent: 81
+  completed_plans: 31
+  percent: 84
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 06 (full-mcp-tool-surface) — EXECUTING
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
 Last activity: 2026-04-28
 
@@ -87,6 +87,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-claude-schedule-enrichment-with-korean-number-safety P07 | 13min | 2 tasks | 4 files |
 | Phase 06-full-mcp-tool-surface P01 | 27min | 2 tasks | 13 files |
 | Phase 06-full-mcp-tool-surface P02 | 12min | 3 tasks | 14 files |
+| Phase 06 P03 | 45 | 3 tasks | 109 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,9 @@ Recent decisions affecting current work:
 - [Phase 06-full-mcp-tool-surface]: Phase 6 P-01: Portfolio.load signature cutover (vault_root -> repo_root); SoT moved to notes/private/portfolio.md (gitignored, local-only)
 - [Phase 06-full-mcp-tool-surface]: Plan 06-02: build_snippet uses inline <vault_excerpt> wrap (not wrap_untrusted) — wrap_untrusted requires source/trust/doc_id triple unavailable for portfolio rows; existing E2E test accepts both forms
 - [Phase 06-full-mcp-tool-surface]: Plan 06-02: ErrorCode additions are append-only — Phase 3 ordering preserved verbatim, six new Phase 6 codes appended
+- [Phase 06]: Migration 0003 drops ck_edge_type_phase2 entirely (Phase 7 GRAPH-01 will redefine taxonomy)
+- [Phase 06]: Fixture corpus uses Random(seed=42) for byte-deterministic regeneration
+- [Phase 06]: Stub embedder + tokenizer in tests/stock_mcp/conftest.py — bge-m3 / mecab-ko never load in CI
 
 ### Pending Todos
 
@@ -189,6 +193,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-28T15:08:32.067Z
-Stopped at: Completed 06-02-models-errors-helpers-PLAN.md
+Last session: 2026-04-28T22:01:42.141Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
