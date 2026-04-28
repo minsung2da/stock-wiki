@@ -19,6 +19,16 @@ class ErrorCode(str, Enum):
     EMBEDDING_FAILED = "EMBEDDING_FAILED"
     BM25_FAILED = "BM25_FAILED"
     INTERNAL = "INTERNAL"
+    # Phase 6 additions (Plan 06-02): tool-surface error codes consumed by
+    # add_note (WRITE_FORBIDDEN, INVALID_FRONTMATTER), get_filing
+    # (NOT_FOUND, PATH_NOT_FOUND), health (STALE_DATA), and
+    # get_recent_events (INVALID_DATE).
+    WRITE_FORBIDDEN = "WRITE_FORBIDDEN"
+    INVALID_FRONTMATTER = "INVALID_FRONTMATTER"
+    NOT_FOUND = "NOT_FOUND"
+    PATH_NOT_FOUND = "PATH_NOT_FOUND"
+    STALE_DATA = "STALE_DATA"
+    INVALID_DATE = "INVALID_DATE"
 
 
 class StructuredError(Exception):
