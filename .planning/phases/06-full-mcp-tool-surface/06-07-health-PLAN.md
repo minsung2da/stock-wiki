@@ -246,9 +246,9 @@ Models from Plan 06-02: SourceHealth, HealthResponse.
     def health() -> HealthResponse | dict:
         """4-section docstring: behavior contract / response shape / errors / perf budget."""
         t0 = time.perf_counter()
-        # locate repo root similar to portfolio tool
-        from .portfolio import _repo_root  # reuse helper
-        repo_root = _repo_root()
+        # locate repo root via public helper from Plan 06-02
+        from stock_mcp.repo_root import repo_root as _resolve_repo_root
+        repo_root_path = _resolve_repo_root()
         try:
             db_status = SourceHealth(
                 status="ok", last_success=None, age_hours=None, last_error=None
@@ -264,13 +264,13 @@ Models from Plan 06-02: SourceHealth, HealthResponse.
                     sources = ingest_runs_data
                 else:
                     # ingest_runs empty (Pitfall 3) — fall back to heartbeat
-                    sources = _from_heartbeat(repo_root) or _empty_sources_response()
+                    sources = _from_heartbeat(repo_root_path) or _empty_sources_response()
             except Exception as e:  # noqa: BLE001
                 db_status = SourceHealth(
                     status="down", last_success=None, age_hours=None,
                     last_error=str(e)[:200],
                 )
-                sources = _from_heartbeat(repo_root) or _empty_sources_response()
+                sources = _from_heartbeat(repo_root_path) or _empty_sources_response()
             # Ensure all 5 expected sources are present (fill missing with 'down')
             for expected in STALENESS_THRESHOLDS_HOURS:
                 if expected not in sources:
@@ -312,6 +312,8 @@ Models from Plan 06-02: SourceHealth, HealthResponse.
     - `grep -n "def health" src/stock_mcp/tools/health.py` returns 1 hit.
     - `grep -n "STALENESS_THRESHOLDS_HOURS" src/stock_mcp/tools/health.py` returns ≥1 hit (with values dart=26, krx=26, news=12, macro=26, kind=26).
     - `grep -n "from src.ingest.heartbeat import read_sources" src/stock_mcp/tools/health.py` returns 1 hit.
+    - `grep -n "from stock_mcp.repo_root import repo_root" src/stock_mcp/tools/health.py` returns 1 hit.
+    - `grep -nE "^def _repo_root|^    def _repo_root" src/stock_mcp/tools/health.py` returns 0 hits (no local helper).
     - `grep -n "_from_ingest_runs\|_from_heartbeat" src/stock_mcp/tools/health.py` returns ≥2 hits.
     - `grep -n "mcp.tool()(health)" src/stock_mcp/tools/health.py` returns 1 hit.
     - `grep -nE "### Behavior contract|### Response shape|### Errors|### Performance budget" src/stock_mcp/tools/health.py` returns 4 hits.

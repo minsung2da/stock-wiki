@@ -106,9 +106,9 @@ Existing atomic write pattern (src/shared/frontmatter.py:243-261, write_frontmat
     ```
 
     Flow:
-    1. Resolve repo_root via the same `_repo_root()` helper as Plan 06-05 (consider extracting to a shared module). Inline-duplicate is acceptable for now; refactor in Phase 7.
+    1. Resolve repo_root via the public helper from Plan 06-02: `from stock_mcp.repo_root import repo_root` then call `root = repo_root()`. Do NOT inline a local `_repo_root()` — single source of truth.
     2. `aliased = resolve_path_alias(path)` — converts journal/today, ticker/kind, auto .md.
-    3. `target = safe_join(repo_root, aliased)` — raises WRITE_FORBIDDEN if outside whitelist (after symlink resolve).
+    3. `target = safe_join(root, aliased)` — raises WRITE_FORBIDDEN if outside whitelist (after symlink resolve).
     4. Build NoteFrontmatter:
        ```python
        fm_dict = dict(frontmatter or {})
@@ -145,7 +145,7 @@ Existing atomic write pattern (src/shared/frontmatter.py:243-261, write_frontmat
          {body}
          ```
          Use `tempfile.mkstemp(dir=target.parent)` + write + `os.replace(temp, target)`. Auto-mkdir parent: `target.parent.mkdir(parents=True, exist_ok=True)`.
-         Return `AddNoteResponse(vault_path=str(target.relative_to(repo_root)), action="created", idempotent=False)`.
+         Return `AddNoteResponse(vault_path=str(target.relative_to(root)), action="created", idempotent=False)`.
        - **YES**: defer to Task 2 (append flow). For Task 1, returning a sentinel error like NotImplementedError is acceptable — but since both tasks are in the same plan, structure the code so Task 1 implements the FULL `add_note` with both paths; Task 2 adds the test and verification for the append branch + idempotency.
 
     Actually — since this is one plan with 2 tasks, Task 1 implements the **complete** `add_note` (both create and append branches) and Task 2 only adds the append-specific tests. This avoids dead code between tasks. Make this the structure.
@@ -169,6 +169,8 @@ Existing atomic write pattern (src/shared/frontmatter.py:243-261, write_frontmat
     - `grep -nE "safe_join|resolve_path_alias" src/stock_mcp/tools/notes.py` returns 2+ hits.
     - `grep -n "NoteFrontmatter" src/stock_mcp/tools/notes.py` returns ≥1 hit.
     - `grep -n "tempfile.mkstemp\|os.replace" src/stock_mcp/tools/notes.py` returns ≥2 hits (atomic write).
+    - `grep -n "from stock_mcp.repo_root import repo_root" src/stock_mcp/tools/notes.py` returns 1 hit.
+    - `grep -nE "^def _repo_root|^    def _repo_root" src/stock_mcp/tools/notes.py` returns 0 hits (no local helper duplication).
     - `grep -n "mcp.tool()(add_note)" src/stock_mcp/tools/notes.py` returns 1 hit.
     - `grep -nE "### Behavior contract|### Response shape|### Errors|### Performance budget" src/stock_mcp/tools/notes.py` returns 4 hits.
     - Test command exits 0; all 11 tests pass (P1-P6 + F1-F4 + D1).

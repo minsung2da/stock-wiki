@@ -177,25 +177,11 @@ If the user has extended portfolio.md schema with tags/notes per holding, adapt 
   <action>
     Create `src/stock_mcp/tools/portfolio.py`:
 
-    The tool must locate `repo_root` at runtime. Pattern (similar to other places that need repo root):
+    The tool locates the project root via the public helper produced by Plan 06-02:
     ```python
-    import os
-    from pathlib import Path
-
-    def _repo_root() -> Path:
-        # Honor STOCK_REPO_ROOT env var (test override); else walk up from cwd
-        env = os.environ.get("STOCK_REPO_ROOT")
-        if env:
-            return Path(env).resolve()
-        # Default: parent of vault/ if running under repo; else cwd.
-        cwd = Path.cwd().resolve()
-        # Walk up looking for a directory containing 'pyproject.toml' AND 'vault'
-        for parent in [cwd, *cwd.parents]:
-            if (parent / "pyproject.toml").exists() and (parent / "vault").exists():
-                return parent
-        return cwd
+    from stock_mcp.repo_root import repo_root
     ```
-    The fixture conftest sets `STOCK_REPO_ROOT` to the per-session vault copy so tests pick the fixture path deterministically.
+    Do NOT define a local `_repo_root()` — the helper is the single source of truth (env override `STOCK_REPO_ROOT` + walk-up fallback already implemented). The fixture conftest (Plan 06-03) sets `STOCK_REPO_ROOT` to the per-session vault copy so tests pick the fixture path deterministically.
 
     Tool body:
     ```python
@@ -204,8 +190,8 @@ If the user has extended portfolio.md schema with tags/notes per holding, adapt 
         t0 = time.perf_counter()
         args_log = {}
         try:
-            repo_root = _repo_root()
-            portfolio_path = repo_root / "notes" / "private" / "portfolio.md"
+            root = repo_root()  # imported from stock_mcp.repo_root (Plan 06-02)
+            portfolio_path = root / "notes" / "private" / "portfolio.md"
             if not portfolio_path.exists():
                 raise StructuredError(
                     ErrorCode.PATH_NOT_FOUND,
@@ -213,7 +199,7 @@ If the user has extended portfolio.md schema with tags/notes per holding, adapt 
                     details={"resolved_path": str(portfolio_path)},
                 )
             from src.shared.portfolio import Portfolio
-            portfolio = Portfolio.load(repo_root)
+            portfolio = Portfolio.load(root)
             engine = get_engine()
             holdings_rows = []
             for h in portfolio.holdings:
@@ -274,7 +260,9 @@ If the user has extended portfolio.md schema with tags/notes per holding, adapt 
   </verify>
   <acceptance_criteria>
     - `grep -n "def get_portfolio_state" src/stock_mcp/tools/portfolio.py` returns 1 hit.
-    - `grep -n "Portfolio.load(repo_root)" src/stock_mcp/tools/portfolio.py` returns 1 hit.
+    - `grep -n "from stock_mcp.repo_root import repo_root" src/stock_mcp/tools/portfolio.py` returns 1 hit.
+    - `grep -nE "^def _repo_root|^    def _repo_root" src/stock_mcp/tools/portfolio.py` returns 0 hits (no local helper duplication).
+    - `grep -n "Portfolio.load(root)" src/stock_mcp/tools/portfolio.py` returns 1 hit (uses imported helper output).
     - `grep -n "notes/private/portfolio.md" src/stock_mcp/tools/portfolio.py` returns ≥1 hit.
     - `grep -nE "price|evaluation_value|pnl" src/stock_mcp/tools/portfolio.py` returns 0 hits (no price-related code paths).
     - `grep -nE "### Behavior contract|### Response shape|### Errors|### Performance budget" src/stock_mcp/tools/portfolio.py` returns 4 hits.

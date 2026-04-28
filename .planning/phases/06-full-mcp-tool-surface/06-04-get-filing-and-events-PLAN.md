@@ -260,6 +260,8 @@ documents schema (Phase 2 migration 0001): `id` (sha256 PK), `body` (text), `vau
     - Test 6: Events with `_derived.summary` use the summary; events without it use body[:200].
     - Test 7: Docstring 4 sections present.
     - Test 8: At most 50 events returned (D-05 cap).
+    - Test 9: `tests/stock_mcp/test_get_recent_events.py::test_since_parses_iso_date` — `get_recent_events(ticker="005930", since="not-a-date")` returns dict with `error.code="INVALID_DATE"` and `error.details.since == "not-a-date"`. Equivalent: `since="2026/04/01"` (wrong separator) also returns INVALID_DATE.
+    - Test 10: `get_recent_events(ticker="005930", since="2026-01-01")` — verify the SQL bind receives a `datetime.date` object, not a string (introspect via `mock.patch` on `engine.connect` or via SQLAlchemy event listener that captures bound params).
   </behavior>
   <action>
     Create `src/stock_mcp/tools/events.py`:
@@ -288,7 +290,32 @@ documents schema (Phase 2 migration 0001): `id` (sha256 PK), `body` (text), `vau
 
     For each row, build snippet via `build_snippet(body, frontmatter['_derived']['summary'])` (defensive `.get` for missing keys).
 
-    Date validation: parse `since` via `date.fromisoformat(since)` — on ValueError, raise `StructuredError(INVALID_TICKER, ...)` with detail `"since must be ISO YYYY-MM-DD"` — actually use a new code or reuse? Use existing `INVALID_TICKER` is wrong. Use `INTERNAL` with explicit detail, OR introduce no new code and surface via INTERNAL. **Decision:** Use `INTERNAL` with explicit message; if a more specific code is needed Phase 7 can add `INVALID_DATE`.
+    Date validation (uses `ErrorCode.INVALID_DATE` added in Plan 06-02):
+    ```python
+    from datetime import date
+    try:
+        since_date = date.fromisoformat(since)
+    except (ValueError, TypeError) as e:
+        raise StructuredError(
+            ErrorCode.INVALID_DATE,
+            "since must be ISO YYYY-MM-DD",
+            details={"since": since, "parse_error": str(e)[:120]},
+        )
+    ```
+    Bind the typed `date` object directly (NOT the raw string) to the SQL `:since` parameter so Postgres receives a real DATE/TIMESTAMP value:
+    ```python
+    rows = conn.execute(
+        sa.text(
+            "SELECT d.id, d.source, d.vault_path, d.first_seen_at, d.body, d.frontmatter "
+            "FROM documents d "
+            "WHERE d.corp_code = :corp_code "
+            "AND d.source IN (\'dart\', \'news\', \'kind\') "
+            "AND d.first_seen_at >= :since "
+            "ORDER BY d.first_seen_at DESC LIMIT 50"
+        ),
+        {"corp_code": corp_code, "since": since_date},  # typed date binding
+    ).mappings().all()
+    ```
 
     Ticker resolve:
     ```python
@@ -300,7 +327,7 @@ documents schema (Phase 2 migration 0001): `id` (sha256 PK), `body` (text), `vau
 
     Full tool follows search.py error-envelope pattern. Register via `mcp.tool()(get_recent_events)`.
 
-    Docstring follows the worked example in UI-SPEC §"Typography" verbatim.
+    Docstring follows the worked example in UI-SPEC §"Typography" verbatim, BUT update the `### Errors` section to enumerate exactly four codes: `INVALID_TICKER`, `INVALID_DATE`, `DB_UNAVAILABLE`, `INTERNAL` (Plan 06-02 added `INVALID_DATE`; the UI-SPEC worked example pre-dated that addition).
 
     Create `tests/stock_mcp/test_get_recent_events.py` covering Tests 1-8.
   </action>
@@ -314,9 +341,12 @@ documents schema (Phase 2 migration 0001): `id` (sha256 PK), `body` (text), `vau
     - `grep -n "resolve_entity" src/stock_mcp/tools/events.py` returns ≥1 hit.
     - `grep -nE "### Behavior contract|### Response shape|### Errors|### Performance budget" src/stock_mcp/tools/events.py` returns 4 hits.
     - `grep -nE "\\bbody\\b|\\bcontent\\b" src/stock_mcp/tools/events.py` — body field is queried but NOT inserted into EventRow; verify by inspecting the tool's response construction.
-    - Test command exits 0; all 8 tests pass.
+    - `grep -n "ErrorCode.INVALID_DATE" src/stock_mcp/tools/events.py` returns ≥1 hit (date parse failure path).
+    - `grep -nE "from datetime import date|date\.fromisoformat" src/stock_mcp/tools/events.py` returns ≥1 hit (typed parsing).
+    - `grep -n "\"since\": since_date" src/stock_mcp/tools/events.py` returns 1 hit (typed bind, NOT the raw string).
+    - Test command exits 0; all 10 tests pass (including Test 9 `test_since_parses_iso_date` and Test 10 typed-bind verification).
   </acceptance_criteria>
-  <done>get_recent_events tool registered with snippet wrapping + 50-cap + 6/8-digit ticker normalization; tests green.</done>
+  <done>get_recent_events tool registered with snippet wrapping + 50-cap + 6/8-digit ticker normalization + INVALID_DATE on bad `since` + typed `date` SQL binding; tests green.</done>
 </task>
 
 </tasks>

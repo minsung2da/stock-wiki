@@ -9,18 +9,21 @@ files_modified:
   - src/stock_mcp/errors.py
   - src/stock_mcp/snippets.py
   - src/stock_mcp/paths.py
+  - src/stock_mcp/repo_root.py
   - src/shared/frontmatter.py
   - tests/stock_mcp/__init__.py
   - tests/stock_mcp/test_models.py
   - tests/stock_mcp/test_errors.py
   - tests/stock_mcp/test_snippets.py
   - tests/stock_mcp/test_paths.py
+  - tests/stock_mcp/test_repo_root.py
 autonomous: true
 requirements: [MCP-03, MCP-04, MCP-05, MCP-06, MCP-07, MCP-08, MCP-09]
 must_haves:
   truths:
     - "All Phase 6 Pydantic response models are defined with extra='forbid' and Phase-10 placeholders typed `T | None = None`"
-    - "Phase 6 ErrorCode constants (WRITE_FORBIDDEN, INVALID_FRONTMATTER, NOT_FOUND, PATH_NOT_FOUND, STALE_DATA) exist"
+    - "Phase 6 ErrorCode constants (WRITE_FORBIDDEN, INVALID_FRONTMATTER, NOT_FOUND, PATH_NOT_FOUND, STALE_DATA, INVALID_DATE) exist"
+    - "src/stock_mcp/repo_root.py exports public repo_root() function used by all tools needing the project root path (no per-tool _repo_root duplication)"
     - "build_snippet() helper wraps text in <vault_excerpt> delimiters and prefers _derived.summary"
     - "safe_join() rejects paths outside vault/notes/ ∪ notes/private/ after symlink+`..` resolution"
     - "NoteFrontmatter Pydantic model in src/shared/frontmatter.py validates type/tickers/tags/created/updated/author/conviction_score"
@@ -40,6 +43,9 @@ must_haves:
     - path: "src/shared/frontmatter.py"
       provides: "NoteFrontmatter Pydantic model (extends existing module)"
       contains: "class NoteFrontmatter"
+    - path: "src/stock_mcp/repo_root.py"
+      provides: "Public repo_root() helper resolving project root for tool modules"
+      contains: "def repo_root"
   key_links:
     - from: "src/stock_mcp/snippets.py"
       to: "src/ingest/injection_defense.py wrap_untrusted"
@@ -113,18 +119,19 @@ Existing injection wrapper (src/ingest/injection_defense.py): function `wrap_unt
     - Test 3: HealthResponse with overall='down' and one source SourceHealth(status='down') round-trips via model_dump_json.
     - Test 4: PortfolioRow accepts qty=None and avg_cost=None (watchlist case).
     - Test 5: FilingResponse with body_chars=300_000 and truncated=True is valid; body field length ≤ 200_001.
-    - Test 6: ErrorCode.WRITE_FORBIDDEN, INVALID_FRONTMATTER, NOT_FOUND, PATH_NOT_FOUND, STALE_DATA exist as enum members and serialize to their literal string names via .value.
+    - Test 6: ErrorCode.WRITE_FORBIDDEN, INVALID_FRONTMATTER, NOT_FOUND, PATH_NOT_FOUND, STALE_DATA, INVALID_DATE exist as enum members and serialize to their literal string names via .value.
   </behavior>
   <action>
-    1. **Extend src/stock_mcp/errors.py** — Append five new members to the `ErrorCode` enum (PRESERVE existing 6):
+    1. **Extend src/stock_mcp/errors.py** — Append six new members to the `ErrorCode` enum (PRESERVE existing 6):
        ```python
        WRITE_FORBIDDEN = "WRITE_FORBIDDEN"
        INVALID_FRONTMATTER = "INVALID_FRONTMATTER"
        NOT_FOUND = "NOT_FOUND"
        PATH_NOT_FOUND = "PATH_NOT_FOUND"
        STALE_DATA = "STALE_DATA"
+       INVALID_DATE = "INVALID_DATE"
        ```
-       Do NOT renumber or reorder existing members.
+       Do NOT renumber or reorder existing members. `INVALID_DATE` is consumed by `get_recent_events` (Plan 06-04) when `since` parameter fails ISO-8601 parsing.
 
     2. **Extend src/stock_mcp/models.py** — Add the following classes (all with `model_config = ConfigDict(extra="forbid")`). Use Python 3.12 type hints, `Literal` from `typing`, `datetime` from stdlib, `Field` from pydantic.
 
@@ -242,12 +249,12 @@ Existing injection wrapper (src/ingest/injection_defense.py): function `wrap_unt
   </verify>
   <acceptance_criteria>
     - `grep -n "class OverviewResponse" src/stock_mcp/models.py` returns 1 hit.
-    - `grep -nE "WRITE_FORBIDDEN|INVALID_FRONTMATTER|NOT_FOUND|PATH_NOT_FOUND|STALE_DATA" src/stock_mcp/errors.py` returns 5 hits.
+    - `grep -nE "WRITE_FORBIDDEN|INVALID_FRONTMATTER|NOT_FOUND|PATH_NOT_FOUND|STALE_DATA|INVALID_DATE" src/stock_mcp/errors.py` returns 6 hits.
     - `grep -cE "model_config = ConfigDict\(extra=\"forbid\"\)" src/stock_mcp/models.py` returns ≥14 (one per Phase 6 model added).
     - `grep -E "valuation: ValuationContext \| None = None|supply_demand: SupplyDemandSignals \| None = None|private_thesis: PrivateThesis \| None = None" src/stock_mcp/models.py` returns 3 hits.
-    - Test command exits 0; ≥6 tests pass.
+    - Test command exits 0; ≥7 tests pass (6 model behaviors + INVALID_DATE enum check).
   </acceptance_criteria>
-  <done>All Phase 6 response models + 5 new error codes defined; tests green.</done>
+  <done>All Phase 6 response models + 6 new error codes (incl. INVALID_DATE) defined; tests green.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -392,6 +399,74 @@ Existing injection wrapper (src/ingest/injection_defense.py): function `wrap_unt
   <done>snippets.py + paths.py created; NoteFrontmatter added to frontmatter.py; all helpers + model unit-tested.</done>
 </task>
 
+<task type="auto" tdd="true">
+  <name>Task 3: Add public repo_root() helper module (eliminates per-tool _repo_root duplication)</name>
+  <read_first>
+    - src/shared/portfolio.py (Portfolio.load(repo_root) signature post-cutover from Plan 06-01 — repo_root convention)
+    - .planning/phases/06-full-mcp-tool-surface/06-CONTEXT.md P-01 (repo_root signature contract)
+    - .planning/phases/06-full-mcp-tool-surface/06-RESEARCH.md "code_context" §"Reusable Assets" (avoid invention; expose existing-pattern as helper)
+    - pyproject.toml (confirm project root marker file exists)
+  </read_first>
+  <behavior>
+    - Test R1: `repo_root()` from a cwd inside the project returns a Path containing both `pyproject.toml` and `vault/` as direct children.
+    - Test R2: `STOCK_REPO_ROOT` env var, when set to an absolute path, overrides the auto-walk and returns that exact resolved path.
+    - Test R3: `STOCK_REPO_ROOT` set to a non-existent path still returns the resolved Path (caller is responsible for existence checks; helper is path-only).
+    - Test R4: When invoked from a cwd OUTSIDE the project (e.g. `/tmp`) and no env override, returns Path(cwd) as fallback (documented behavior — caller surfaces PATH_NOT_FOUND on missing files).
+    - Test R5: Function signature is `def repo_root() -> Path` (no parameters); module exports `__all__ = ["repo_root"]`.
+  </behavior>
+  <action>
+    Create `src/stock_mcp/repo_root.py`:
+
+    ```python
+    """Public helper resolving the project repo root for stock_mcp tools.
+
+    Single source of truth — replaces per-tool ``_repo_root()`` duplications.
+    Plans 06-05 (portfolio), 06-06 (notes), 06-07 (health), and 06-08 (overview)
+    all import this function instead of redefining it.
+
+    Resolution order:
+    1. ``STOCK_REPO_ROOT`` env var (test/CI override) → resolved absolute Path.
+    2. Walk up from ``Path.cwd()`` looking for a directory containing both
+       ``pyproject.toml`` AND ``vault/`` (project root markers).
+    3. Fallback: ``Path.cwd().resolve()`` (caller handles missing files).
+    """
+    from __future__ import annotations
+
+    import os
+    from pathlib import Path
+
+    __all__ = ["repo_root"]
+
+
+    def repo_root() -> Path:
+        env = os.environ.get("STOCK_REPO_ROOT")
+        if env:
+            return Path(env).resolve()
+        cwd = Path.cwd().resolve()
+        for parent in [cwd, *cwd.parents]:
+            if (parent / "pyproject.toml").exists() and (parent / "vault").exists():
+                return parent
+        return cwd
+    ```
+
+    Create `tests/stock_mcp/test_repo_root.py` covering R1-R5. For R2, use `monkeypatch.setenv("STOCK_REPO_ROOT", str(tmp_path))`. For R4, use `monkeypatch.chdir(tmp_path)` + `monkeypatch.delenv("STOCK_REPO_ROOT", raising=False)`.
+
+    **Downstream contract:** Plans 06-05, 06-06, 06-07, 06-08 MUST `from stock_mcp.repo_root import repo_root` and call `repo_root()` instead of defining a local `_repo_root()`. Their plan files reference this contract; this task is the producer.
+  </action>
+  <verify>
+    <automated>cd /mnt/c/Users/minsu/workspace/stock &amp;&amp; uv run pytest tests/stock_mcp/test_repo_root.py -x -q</automated>
+  </verify>
+  <acceptance_criteria>
+    - `grep -E "^def repo_root\(" src/stock_mcp/repo_root.py` returns 1 hit.
+    - `grep -n "__all__ = \[\"repo_root\"\]" src/stock_mcp/repo_root.py` returns 1 hit.
+    - `grep -n "STOCK_REPO_ROOT" src/stock_mcp/repo_root.py` returns ≥1 hit (env override).
+    - `grep -n "pyproject.toml" src/stock_mcp/repo_root.py` returns ≥1 hit (root marker).
+    - `python3 -c "from src.stock_mcp.repo_root import repo_root; r=repo_root(); assert r.is_absolute()"` exits 0.
+    - Test command exits 0; all 5 tests pass.
+  </acceptance_criteria>
+  <done>Public repo_root() helper available; all downstream tool plans (06-05, 06-06, 06-07, 06-08) may import it.</done>
+</task>
+
 </tasks>
 
 <threat_model>
@@ -417,7 +492,7 @@ Existing injection wrapper (src/ingest/injection_defense.py): function `wrap_unt
 </verification>
 
 <success_criteria>
-- `uv run pytest tests/stock_mcp/test_models.py tests/stock_mcp/test_errors.py tests/stock_mcp/test_snippets.py tests/stock_mcp/test_paths.py tests/shared/test_note_frontmatter.py -x -q` exits 0.
+- `uv run pytest tests/stock_mcp/test_models.py tests/stock_mcp/test_errors.py tests/stock_mcp/test_snippets.py tests/stock_mcp/test_paths.py tests/stock_mcp/test_repo_root.py tests/shared/test_note_frontmatter.py -x -q` exits 0.
 - All grep acceptance criteria satisfied.
 </success_criteria>
 
