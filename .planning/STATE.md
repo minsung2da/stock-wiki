@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-04-26T13:10:37.031Z"
-last_activity: "2026-04-26 - Completed quick task 260426-mic: preserve injection_flags in ingest_state on collector rewrite"
+status: executing
+stopped_at: Completed 06-01-portfolio-path-cutover-PLAN.md
+last_updated: "2026-04-28T14:55:50.140Z"
+last_activity: 2026-04-28
 progress:
   total_phases: 10
   completed_phases: 5
-  total_plans: 28
-  completed_plans: 28
-  percent: 100
+  total_plans: 37
+  completed_plans: 29
+  percent: 78
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Claude Code에서 보유·관심 종목을 질의했을 때, 최신 공시·뉴스·가격·본인 리서치 메모를 종합한 근거 있는 매수/매도 판단을 즉시 받을 수 있다.
-**Current focus:** Phase 06 — Full MCP Tool Surface (next)
+**Current focus:** Phase 06 — full-mcp-tool-surface
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Phase 5 complete (UAT 5/5 passed 2026-04-26) — ready to discuss/plan Phase 6
-Last activity: 2026-04-26 - Completed quick task 260426-mic: preserve injection_flags in ingest_state on collector rewrite
+Phase: 06 (full-mcp-tool-surface) — EXECUTING
+Plan: 2 of 9
+Status: Ready to execute
+Last activity: 2026-04-28
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -85,6 +85,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05-claude-schedule-enrichment-with-korean-number-safety P05 | 5min | 2 tasks | 4 files |
 | Phase 05-claude-schedule-enrichment-with-korean-number-safety P06 | 5min | 2 tasks | 2 files |
 | Phase 05-claude-schedule-enrichment-with-korean-number-safety P07 | 13min | 2 tasks | 4 files |
+| Phase 06-full-mcp-tool-surface P01 | 27min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,7 @@ Recent decisions affecting current work:
 - [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-06: BacklogItem compound key (path::flag) — two flags on same document track first_seen independently; tolerant regex parse over YAML load for prior file robustness
 - [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-07: alert_level auto-populated only when source=='enrich' (COLL-08 per-source isolation preserved for dart/krx/news/macro)
 - [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-07: disk_metrics module has zero DB deps — Routines skill injects db_size_mb via pg_database_size query
+- [Phase 06-full-mcp-tool-surface]: Phase 6 P-01: Portfolio.load signature cutover (vault_root -> repo_root); SoT moved to notes/private/portfolio.md (gitignored, local-only)
 
 ### Pending Todos
 
@@ -184,6 +186,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-26T13:10:36.996Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-full-mcp-tool-surface/06-CONTEXT.md
+Last session: 2026-04-28T14:55:50.089Z
+Stopped at: Completed 06-01-portfolio-path-cutover-PLAN.md
+Resume file: None

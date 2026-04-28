@@ -126,12 +126,12 @@ Plans:
   2. `get_recent_events`, `get_portfolio_state`, `get_related`, and `get_filing` each return correct data against a fixture vault and enforce the ID-based two-step pattern (list returns IDs + snippets, `get_filing(id)` returns full body)
   3. `add_note` writes only under `vault/notes/` and is rejected with a clear error if the caller passes a `raw/` or `ingested/` target path
   4. `health()` reports last batch success per source, DB connectivity, and staleness indicators derived from the heartbeat file
-  5. CI tests assert every tool's p95 latency < 5s and p95 response size < 8k tokens on the fixture corpus; docstrings render as coherent LLM-facing contracts in the MCP inspector
+  5. CI tests assert every tool's p95 latency < 5s and p95 response size < 8k tokens on the fixture corpus, with the documented exception of `get_filing` (full-body retrieval, p95 < 50k tokens per CONTEXT D-07 / UI-SPEC); docstrings render as coherent LLM-facing contracts in the MCP inspector
 **Plans**: 9 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 06-01-portfolio-path-cutover-PLAN.md -- P-01 atomic cutover: Portfolio.load(repo_root) reads notes/private/portfolio.md across 9 source/test sites
+- [x] 06-01-portfolio-path-cutover-PLAN.md -- P-01 atomic cutover: Portfolio.load(repo_root) reads notes/private/portfolio.md across 9 source/test sites
 - [ ] 06-02-models-errors-helpers-PLAN.md -- Pydantic response models (Phase 10 placeholders typed T|None) + 5 new ErrorCode constants + snippets/paths/NoteFrontmatter helpers
 - [ ] 06-03-fixture-vault-and-deps-PLAN.md -- tiktoken dev dep + Alembic 0003 (relax edges CHECK) + tests/fixtures/mcp-vault corpus + session conftest
 - [ ] 06-04-get-filing-and-events-PLAN.md -- get_filing (sha256 keyed, 200K-char truncate) + get_recent_events (id+snippet two-step)
