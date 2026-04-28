@@ -10,8 +10,9 @@ from sqlalchemy import text
 from db.seed_entities import seed_entities_from_portfolio
 
 
-def _write_portfolio(vault_root: Path, holdings: list[str], watchlist: list[str]) -> None:
-    (vault_root / "notes").mkdir(parents=True, exist_ok=True)
+def _write_portfolio(repo_root: Path, holdings: list[str], watchlist: list[str]) -> None:
+    # Phase 6 P-01: portfolio at <repo_root>/notes/private/portfolio.md
+    (repo_root / "notes" / "private").mkdir(parents=True, exist_ok=True)
     lines = ["---"]
     if holdings:
         lines.append("holdings:")
@@ -28,7 +29,7 @@ def _write_portfolio(vault_root: Path, holdings: list[str], watchlist: list[str]
     else:
         lines.append("watchlist: []")
     lines.append("---")
-    (vault_root / "notes/portfolio.md").write_text("\n".join(lines))
+    (repo_root / "notes" / "private" / "portfolio.md").write_text("\n".join(lines))
 
 
 class _FakeCorpList:

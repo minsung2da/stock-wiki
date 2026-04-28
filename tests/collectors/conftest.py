@@ -33,11 +33,19 @@ _SEED_PORTFOLIO = (
 
 @pytest.fixture
 def vault_tmp(tmp_path: Path) -> Path:
-    """Empty vault with raw/ + notes/ + ingested/_status/ subdirs + seed portfolio."""
+    """Empty vault with raw/ + notes/ + ingested/_status/ subdirs + seed portfolio.
+
+    Phase 6 P-01: portfolio lives at `<repo_root>/notes/private/portfolio.md`
+    where `repo_root = vault_root.parent`. We materialize tmp_path as the repo
+    root and return tmp_path/"vault" as the vault_root so collectors can
+    derive repo_root via .parent.
+    """
+    vault = tmp_path / "vault"
     for sub in ("raw", "notes", "ingested/_status"):
-        (tmp_path / sub).mkdir(parents=True, exist_ok=True)
-    (tmp_path / "notes" / "portfolio.md").write_text(_SEED_PORTFOLIO, encoding="utf-8")
-    return tmp_path
+        (vault / sub).mkdir(parents=True, exist_ok=True)
+    (tmp_path / "notes" / "private").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "notes" / "private" / "portfolio.md").write_text(_SEED_PORTFOLIO, encoding="utf-8")
+    return vault
 
 
 @pytest.fixture

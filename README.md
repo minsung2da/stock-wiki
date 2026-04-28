@@ -29,7 +29,7 @@ Claude Code에서 매수/매도 판단의 근거를 즉시 받아볼 수 있도�
   │ 한경/이데일리 │ ── collect_news ─→ │ raw/news/YYYY-MM/...    │                   │ chunks               │
   │ DART+KIND    │ ── collect_kind ─→ │ raw/kind/YYYY-MM/...   │                   │   · embedding (bge-m3)│
   │              │                    │                        │                   │   · bm25_tokens       │
-  │              │                    │ notes/portfolio.md     │                   │                      │
+  │              │                    │ notes/private/portfolio.md │               │                      │
   │              │                    │                        │                   └──────────────────────┘
   │              │                    │ ingested/_status/      │                            ▲
   │              │                    │   heartbeat.md         │                            │ SQL (hybrid search)
@@ -95,7 +95,7 @@ stock/
 │   │   └── tools/         # @mcp.tool 데코레이터 달린 함수들
 │   │
 │   └── shared/
-│       ├── portfolio.py   # vault/notes/portfolio.md 로더 (Pydantic)
+│       ├── portfolio.py   # notes/private/portfolio.md 로더 (Pydantic)
 │       ├── frontmatter.py # ProvenanceBlock (trust_level, tickers, observations, ...)
 │       └── content_hash.py # sha256 기반 멱등 키
 │
@@ -153,7 +153,7 @@ stock/
 
 **핵심 속성:**
 - 전부 **멱등(idempotent)** — 같은 데이터를 두 번 받아도 파일은 한 번만 쓴다 (`content_hash` 비교).
-- **스코프 필터** — `vault/notes/portfolio.md`의 watchlist + holdings 티커만 처리.
+- **스코프 필터** — `notes/private/portfolio.md`의 watchlist + holdings 티커만 처리.
 - **trust_level** — 출처에 따라 frontmatter에 `trusted`(공시·거래소) 또는 `semi_trusted`(언론) 표시. `_derived` 추출 Routine(Phase 5)이 본문 wrapping(prompt-injection 방어)을 적용할지 결정하는 기준.
 - **heartbeat** — 소스별 `last_run`/`last_failure` 타임스탬프를 `ingested/_status/heartbeat.md`에 YAML로 기록. Phase 6 health 툴이 읽음.
 
@@ -263,7 +263,7 @@ uv run stock collect all
 ### 삼성전자 분기보고서를 수집해서 Claude가 참조하기까지
 
 ```
-  t=0  사람이 vault/notes/portfolio.md 에 005930 추가
+  t=0  사람이 notes/private/portfolio.md 에 005930 추가
   t=1  uv run python -m src.db.seed_entities
        → DART OpenAPI에서 corp_code 00126380 조회
        → entities 테이블에 upsert, entity_aliases.ticker 에 '005930' 추가

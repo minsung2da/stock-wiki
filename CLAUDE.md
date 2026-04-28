@@ -123,7 +123,7 @@ stock/
    uv run python -m src.db.seed_entities
    ```
    watchlist·holdings에 티커가 추가될 때마다 재실행. 신규 티커만 OpenDART 조회.
-   Seeds `entities` rows for every ticker in `vault/notes/portfolio.md` via
+   Seeds `entities` rows for every ticker in `notes/private/portfolio.md` via
    OpenDART corp lookup. Idempotent (ON CONFLICT). Without this, `stock collect
    krx` fails soft with `missing_entity` for un-seeded watchlist tickers.
 
