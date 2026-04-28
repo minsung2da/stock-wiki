@@ -18,6 +18,7 @@ from datetime import date as date_type
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 import frontmatter as fm
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -344,3 +345,35 @@ def read_existing_injection_flags(path: Path) -> list[str] | None:
     if not flags:
         return None
     return list(flags)
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 Plan 06-02 (Task 2): NoteFrontmatter
+# Schema for user-authored notes written via the ``add_note`` MCP tool (D-11).
+# Phase 8 NOTE-03 will reuse this exact model — defined here so both Phase 6
+# (write path) and Phase 8 (downstream consumers) read from one place.
+# ---------------------------------------------------------------------------
+
+
+def _now_kst() -> datetime:
+    return datetime.now(ZoneInfo("Asia/Seoul"))
+
+
+class NoteFrontmatter(BaseModel):
+    """Frontmatter schema for ``add_note`` user-authored notes (D-11).
+
+    ``type`` is required; ``created``/``updated`` auto-fill to now (KST) when
+    omitted. ``conviction_score`` is optional and bounded to [0.0, 1.0].
+    ``extra='forbid'`` so add_note callers cannot smuggle unknown fields into
+    the frontmatter and corrupt downstream Dataview queries.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    type: Literal["thesis", "journal", "conviction", "note"]
+    tickers: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    created: datetime = Field(default_factory=_now_kst)
+    updated: datetime = Field(default_factory=_now_kst)
+    author: str = "yamin"
+    conviction_score: float | None = Field(default=None, ge=0.0, le=1.0)
