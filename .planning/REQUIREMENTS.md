@@ -75,7 +75,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 - [x] **MCP-07**: `get_filing(id)` 툴 — 특정 문서 전체 본문 반환 (ID 기반 two-step 패턴)
 - [x] **MCP-08**: `add_note(path, body, frontmatter?)` 툴 — **`vault/notes/` 및 `notes/private/`에 쓰기 허용** (raw/ingested는 write-protected 유지). **AMENDED (2026-04-26 by Phase 10 D-21):** 화이트리스트에 `notes/private/` 추가 — 세션 중 'X 종목 메모해줘'·'오늘 일기로 남겨줘' 자동 적재. 상세는 `.planning/phases/10-.../10-CONTEXT.md` D-21.
 - [x] **MCP-09**: `health()` 툴 — 마지막 배치 성공 시각, DB 연결, 각 소스별 스테일니스 반환
-- [ ] **MCP-10**: 툴 docstring이 LLM-facing 행동 계약으로 작성되어 있고 CI 테스트로 레이턴시·토큰 크기를 검증한다
+- [x] **MCP-10**: 툴 docstring이 LLM-facing 행동 계약으로 작성되어 있고 CI 테스트로 레이턴시·토큰 크기를 검증한다
 
 ### 그래프 (Graph)
 
@@ -212,7 +212,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | MCP-07 | Phase 6 | Complete |
 | MCP-08 | Phase 6 | Complete |
 | MCP-09 | Phase 6 | Complete |
-| MCP-10 | Phase 6 | Pending |
+| MCP-10 | Phase 6 | Complete |
 | GRAPH-01 | Phase 7 | Pending |
 | GRAPH-02 | Phase 7 | Pending |
 | GRAPH-03 | Phase 7 | Pending |
