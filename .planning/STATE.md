@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-04-28T22:01:42.192Z"
-last_activity: 2026-04-28
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-05-01T10:48:13.498Z"
+last_activity: 2026-05-01
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 37
-  completed_plans: 31
-  percent: 84
+  completed_plans: 33
+  percent: 89
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 06 (full-mcp-tool-surface) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
-Last activity: 2026-04-28
+Last activity: 2026-05-01
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -88,6 +88,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06-full-mcp-tool-surface P01 | 27min | 2 tasks | 13 files |
 | Phase 06-full-mcp-tool-surface P02 | 12min | 3 tasks | 14 files |
 | Phase 06 P03 | 45 | 3 tasks | 109 files |
+| Phase 06-full-mcp-tool-surface P05 | 11min | 2 tasks tasks | 4 files files |
 
 ## Accumulated Context
 
@@ -170,6 +171,8 @@ Recent decisions affecting current work:
 - [Phase 06]: Migration 0003 drops ck_edge_type_phase2 entirely (Phase 7 GRAPH-01 will redefine taxonomy)
 - [Phase 06]: Fixture corpus uses Random(seed=42) for byte-deterministic regeneration
 - [Phase 06]: Stub embedder + tokenizer in tests/stock_mcp/conftest.py — bge-m3 / mecab-ko never load in CI
+- [Phase 06-full-mcp-tool-surface]: Plan 06-05: get_related uses recursive CTE with UNION (cycle dedupe) + hard depth cap of 2 (T-6-05-01 DoS mitigation)
+- [Phase 06-full-mcp-tool-surface]: Plan 06-05: get_portfolio_state uses relative repo_root import (..repo_root) to match tools/ package convention; PortfolioLoadError + ValidationError both map to INVALID_FRONTMATTER (PATH_NOT_FOUND reserved for missing file)
 
 ### Pending Todos
 
@@ -193,6 +196,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-28T22:01:42.141Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-05-01T10:48:05.463Z
+Stopped at: Completed 06-05-PLAN.md
 Resume file: None
