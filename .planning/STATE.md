@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-08-PLAN.md
-last_updated: "2026-05-02T05:33:03.150Z"
+stopped_at: Completed 06-09-PLAN.md (Phase 6 complete)
+last_updated: "2026-05-02T05:58:10.852Z"
 last_activity: 2026-05-02
 progress:
   total_phases: 10
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 37
-  completed_plans: 36
-  percent: 97
+  completed_plans: 37
+  percent: 100
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 06 (full-mcp-tool-surface) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-05-02
 
@@ -92,6 +92,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P06 | 18 | 2 tasks | 4 files |
 | Phase 06-full-mcp-tool-surface P07 | 25min | 2 tasks tasks | 3 files files |
 | Phase 06-full-mcp-tool-surface P08 | 14min | 1 tasks | 2 files |
+| Phase 06 P09 | 16min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,8 @@ Recent decisions affecting current work:
 - [Phase 06-full-mcp-tool-surface]: Plan 06-08: get_ticker_overview composes 3 axes defensively (events/portfolio/related_notes) — each axis fails open so any one backend can't sink the bundle; events:error sentinel + None portfolio + [] related_notes
 - [Phase 06-full-mcp-tool-surface]: Plan 06-08: _apply_truncation extracted as pure function (OverviewResponse + target → OverviewResponse) — directly unit-testable on crafted oversize inputs without DB; priority order private_thesis<valuation<supply_demand<portfolio<related_notes<events
 - [Phase 06-full-mcp-tool-surface]: Plan 06-08: 4-char-per-token heuristic (matches logging.py); TARGET_TOKENS=7000 leaves 1000-token margin under D-19 8k ceiling; no tiktoken runtime dep
+- [Phase 06]: Plan 06-09: server.py side-effect import block registers all 7 new tools onto shared mcp instance; smoke test walks _tool_manager._tools dict (sync); docstring contract enforced via parametrized test (D-24)
+- [Phase 06]: Plan 06-09: tiktoken cl100k_base measure() uses N=20 reps + 1 warmup to absorb bge-m3 cold-load (process-startup cost, not per-request); per-tool perf JSONs committed for PR-diff visibility
 
 ### Pending Todos
 
@@ -204,6 +207,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02T05:32:52.468Z
-Stopped at: Completed 06-08-PLAN.md
+Last session: 2026-05-02T05:58:04.532Z
+Stopped at: Completed 06-09-PLAN.md (Phase 6 complete)
 Resume file: None

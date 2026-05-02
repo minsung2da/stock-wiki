@@ -139,7 +139,7 @@ Plans:
 - [x] 06-06-add-note-PLAN.md -- add_note (whitelist + symlink-resolve + frontmatter validation + append-only with idempotency + atomic write)
 - [x] 06-07-health-PLAN.md -- health (ingest_runs primary + heartbeat fallback + staleness thresholds + DB-down graceful)
 - [x] 06-08-get-ticker-overview-PLAN.md -- get_ticker_overview composite (3 axes + Phase 10 None placeholders + priority-ordered truncation)
-- [ ] 06-09-server-registration-and-ci-gates-PLAN.md -- server.py wiring + docstring contract test + N=20 perf gates (tiktoken cl100k_base) per D-19/D-20
+- [x] 06-09-server-registration-and-ci-gates-PLAN.md -- server.py wiring + docstring contract test + N=20 perf gates (tiktoken cl100k_base) per D-19/D-20
 
 ### Phase 7: Graph Layer & graphify Integration
 **Goal**: The edges that ingest populates (`ticker→filing`, `filing→event`, `note→ticker`, `event→event`, `ticker→sector`, `supersedes`) become queryable through `get_related`, and graphify produces a periodic vault-wide interactive snapshot. Before any graphify run, 3–5 canonical subgraph queries are defined so the output answers real questions instead of producing a supernova.
