@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-06-PLAN.md
-last_updated: "2026-05-01T11:42:54.162Z"
-last_activity: 2026-05-01
+stopped_at: Completed 06-07-PLAN.md
+last_updated: "2026-05-02T03:11:13.531Z"
+last_activity: 2026-05-02
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 37
-  completed_plans: 34
-  percent: 92
+  completed_plans: 35
+  percent: 95
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 06 (full-mcp-tool-surface) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
-Last activity: 2026-05-01
+Last activity: 2026-05-02
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -90,6 +90,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P03 | 45 | 3 tasks | 109 files |
 | Phase 06-full-mcp-tool-surface P05 | 11min | 2 tasks tasks | 4 files files |
 | Phase 06 P06 | 18 | 2 tasks | 4 files |
+| Phase 06-full-mcp-tool-surface P07 | 25min | 2 tasks tasks | 3 files files |
 
 ## Accumulated Context
 
@@ -174,6 +175,8 @@ Recent decisions affecting current work:
 - [Phase 06]: Stub embedder + tokenizer in tests/stock_mcp/conftest.py — bge-m3 / mecab-ko never load in CI
 - [Phase 06-full-mcp-tool-surface]: Plan 06-05: get_related uses recursive CTE with UNION (cycle dedupe) + hard depth cap of 2 (T-6-05-01 DoS mitigation)
 - [Phase 06-full-mcp-tool-surface]: Plan 06-05: get_portfolio_state uses relative repo_root import (..repo_root) to match tools/ package convention; PortfolioLoadError + ValidationError both map to INVALID_FRONTMATTER (PATH_NOT_FOUND reserved for missing file)
+- [Phase 06-full-mcp-tool-surface]: Plan 06-07: health() reports DB-down as signal (db.status='down' in successful HealthResponse), not as error envelope — drives Phase 9 JUDGE-05 refusal path
+- [Phase 06-full-mcp-tool-surface]: Plan 06-07: heartbeat._read_sources renamed to public read_sources with backwards-compat alias for legacy ingest callers
 
 ### Pending Todos
 
@@ -197,6 +200,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-01T11:42:54.122Z
-Stopped at: Completed 06-06-PLAN.md
+Last session: 2026-05-02T03:11:13.464Z
+Stopped at: Completed 06-07-PLAN.md
 Resume file: None
