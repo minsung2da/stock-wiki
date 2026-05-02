@@ -26,17 +26,34 @@ import yaml
 HEARTBEAT_PATH_DEFAULT = Path("vault/ingested/_status/heartbeat.md")
 HEARTBEAT_BODY = "<!-- auto-generated; do not edit -->\n"
 
+__all__ = [
+    "HEARTBEAT_PATH_DEFAULT",
+    "HEARTBEAT_BODY",
+    "read_sources",
+    "record_source_run",
+    "compute_enrich_alert_level",
+    "write_disk_section",
+]
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def _read_sources(path: Path) -> dict[str, Any]:
-    """Read existing heartbeat metadata; return empty dict if missing.
+def read_sources(path: Path) -> dict[str, Any]:
+    """Parse heartbeat.md and return the top-level YAML metadata dict.
 
-    Heartbeat file is YAML-frontmatter-only markdown. Parsed via yaml.safe_load
-    directly because the `sources` key lives at the top level of frontmatter,
-    outside the FrontMatter Pydantic schema.
+    Heartbeat file is YAML-frontmatter-only markdown. The returned dict is the
+    full top-level frontmatter mapping, typically containing a ``sources`` key:
+    ``{source_name: {last_success: datetime, last_error: str | None, ...}}``.
+
+    Returns empty dict if the file is missing, has no frontmatter, or the
+    frontmatter doesn't parse as a dict.
+
+    Used by ``stock_mcp.tools.health`` as a fallback when ``ingest_runs`` is
+    unreachable or empty (Pitfall 3). The leading-underscore alias
+    ``_read_sources`` is preserved for backwards compatibility with existing
+    internal callers.
     """
     if not path.exists():
         return {}
@@ -96,7 +113,7 @@ def record_source_run(
     Other source blocks are preserved verbatim (per-source isolation, COLL-08).
     """
     path = heartbeat_path if heartbeat_path is not None else HEARTBEAT_PATH_DEFAULT
-    meta = _read_sources(path)
+    meta = read_sources(path)
     sources = meta.get("sources")
     if not isinstance(sources, dict):
         sources = {}
@@ -141,6 +158,10 @@ def record_source_run(
     yaml_text = yaml.safe_dump(meta, sort_keys=True, allow_unicode=True)
     content = f"---\n{yaml_text}---\n{HEARTBEAT_BODY}"
     _atomic_write(path, content)
+
+
+# Backwards-compatibility alias for legacy callers (Plan 06-07 refactor).
+_read_sources = read_sources
 
 
 # === Phase 5 additions ===
@@ -197,7 +218,7 @@ def write_disk_section(
     Preserves `sources` and any other top-level keys verbatim.
     """
     path = heartbeat_path if heartbeat_path is not None else HEARTBEAT_PATH_DEFAULT
-    meta = _read_sources(path)
+    meta = read_sources(path)
     meta["disk"] = dict(disk)  # shallow copy
     yaml_text = yaml.safe_dump(meta, sort_keys=True, allow_unicode=True)
     content = f"---\n{yaml_text}---\n{HEARTBEAT_BODY}"
