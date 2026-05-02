@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-07-PLAN.md
-last_updated: "2026-05-02T03:11:13.531Z"
+stopped_at: Completed 06-08-PLAN.md
+last_updated: "2026-05-02T05:33:03.150Z"
 last_activity: 2026-05-02
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 37
-  completed_plans: 35
-  percent: 95
+  completed_plans: 36
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 06 (full-mcp-tool-surface) — EXECUTING
-Plan: 7 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-05-02
 
@@ -91,6 +91,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06-full-mcp-tool-surface P05 | 11min | 2 tasks tasks | 4 files files |
 | Phase 06 P06 | 18 | 2 tasks | 4 files |
 | Phase 06-full-mcp-tool-surface P07 | 25min | 2 tasks tasks | 3 files files |
+| Phase 06-full-mcp-tool-surface P08 | 14min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -177,6 +178,9 @@ Recent decisions affecting current work:
 - [Phase 06-full-mcp-tool-surface]: Plan 06-05: get_portfolio_state uses relative repo_root import (..repo_root) to match tools/ package convention; PortfolioLoadError + ValidationError both map to INVALID_FRONTMATTER (PATH_NOT_FOUND reserved for missing file)
 - [Phase 06-full-mcp-tool-surface]: Plan 06-07: health() reports DB-down as signal (db.status='down' in successful HealthResponse), not as error envelope — drives Phase 9 JUDGE-05 refusal path
 - [Phase 06-full-mcp-tool-surface]: Plan 06-07: heartbeat._read_sources renamed to public read_sources with backwards-compat alias for legacy ingest callers
+- [Phase 06-full-mcp-tool-surface]: Plan 06-08: get_ticker_overview composes 3 axes defensively (events/portfolio/related_notes) — each axis fails open so any one backend can't sink the bundle; events:error sentinel + None portfolio + [] related_notes
+- [Phase 06-full-mcp-tool-surface]: Plan 06-08: _apply_truncation extracted as pure function (OverviewResponse + target → OverviewResponse) — directly unit-testable on crafted oversize inputs without DB; priority order private_thesis<valuation<supply_demand<portfolio<related_notes<events
+- [Phase 06-full-mcp-tool-surface]: Plan 06-08: 4-char-per-token heuristic (matches logging.py); TARGET_TOKENS=7000 leaves 1000-token margin under D-19 8k ceiling; no tiktoken runtime dep
 
 ### Pending Todos
 
@@ -200,6 +204,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-02T03:11:13.464Z
-Stopped at: Completed 06-07-PLAN.md
+Last session: 2026-05-02T05:32:52.468Z
+Stopped at: Completed 06-08-PLAN.md
 Resume file: None

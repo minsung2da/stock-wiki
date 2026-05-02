@@ -138,7 +138,7 @@ Plans:
 - [x] 06-05-get-related-and-portfolio-PLAN.md -- get_related (recursive CTE BFS depth<=2) + get_portfolio_state (notes/private meta-only, no prices)
 - [x] 06-06-add-note-PLAN.md -- add_note (whitelist + symlink-resolve + frontmatter validation + append-only with idempotency + atomic write)
 - [x] 06-07-health-PLAN.md -- health (ingest_runs primary + heartbeat fallback + staleness thresholds + DB-down graceful)
-- [ ] 06-08-get-ticker-overview-PLAN.md -- get_ticker_overview composite (3 axes + Phase 10 None placeholders + priority-ordered truncation)
+- [x] 06-08-get-ticker-overview-PLAN.md -- get_ticker_overview composite (3 axes + Phase 10 None placeholders + priority-ordered truncation)
 - [ ] 06-09-server-registration-and-ci-gates-PLAN.md -- server.py wiring + docstring contract test + N=20 perf gates (tiktoken cl100k_base) per D-19/D-20
 
 ### Phase 7: Graph Layer & graphify Integration
