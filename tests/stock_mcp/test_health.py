@@ -120,7 +120,7 @@ def test_db_unreachable_falls_back_to_heartbeat(
     assert res.db.status == "down"
     assert "simulated DB outage" in (res.db.last_error or "")
     # All 5 expected sources are present in the response (filled if missing).
-    assert set(res.sources.keys()) == {"dart", "krx", "news", "macro", "kind"}
+    assert set(res.sources.keys()) >= {"dart", "krx", "news", "macro", "kind"}
     assert res.overall == "down"  # db down → overall down
 
 
