@@ -249,7 +249,26 @@ Phase 3에서 작동 중인 `search` 단일 툴(MCP-01/02) 위에, Claude Code �
 
 </deferred>
 
+<post_completion>
+## Post-Completion Notes
+
+**Added:** 2026-05-05 (after phase shipped)
+
+### L-01: MCP clients spawn servers with a clean environment
+- **Symptom:** Claude Code `/mcp` showed `Failed to reconnect to stock-mcp`; server died ~1s after spawn because `_check_db_connection` failed without `DATABASE_URL`.
+- **Cause:** Claude Code launches MCP servers with effectively `env -i` — `.env` does NOT auto-load even though `uv run` is the entrypoint. The DB-fail-fast guard (Phase 3 D-24) then aborts boot.
+- **Fix (commit 040eba8):** `.mcp.json` command must pass `uv run --env-file .env stock-mcp serve` so secrets propagate without being baked into `.mcp.json` itself.
+- **Apply to future phases:** Any new MCP entrypoint or env-dependent server must be validated by spawning from a *clean* shell (or via Claude Code itself), not just `uv run` from a developer terminal that already has `.env` sourced.
+
+### L-02: Orchestrator probe is not a substitute for human UAT
+- **Symptom:** HUMAN-UAT items were initially marked resolved based on an orchestrator probe (e3ff612), then reverted to pending (43b521c) because the probe didn't exercise the real Claude Code ↔ stdio handshake — which is exactly where L-01 was hiding.
+- **Lesson:** A probe Claude can run autonomously verifies the *server* responds to JSON-RPC; it does NOT verify that a *real MCP client* (Claude Code, Claude Desktop) can spawn, authenticate, and call the tools end-to-end. Process gates that require "human UAT" must be exercised by a human in the actual client.
+- **Apply to future phases:** When a phase has HUMAN-UAT criteria, no autonomous probe — however thorough — may close them. The verifier agent should treat orchestrator-only verification as `partial` until a human confirms in the real client.
+
+</post_completion>
+
 ---
 
 *Phase: 06-full-mcp-tool-surface*
 *Context gathered: 2026-04-26*
+*Post-completion notes added: 2026-05-05*

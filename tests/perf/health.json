@@ -1,9 +1,9 @@
 {
-  "max_latency_ms": 39.038260001689196,
+  "max_latency_ms": 54.608748003374785,
   "max_tokens": 268,
   "n": 20,
-  "p50_latency_ms": 31.690450996393338,
+  "p50_latency_ms": 39.50802597682923,
   "p50_tokens": 268,
-  "p95_latency_ms": 38.81365040142555,
+  "p95_latency_ms": 54.31479300314095,
   "p95_tokens": 268
 }
