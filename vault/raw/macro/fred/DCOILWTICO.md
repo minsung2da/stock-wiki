@@ -2,7 +2,8 @@
 _derived:
   tickers: []
   event_type: news_macro
-  catalysts: []
+  catalysts:
+  - WTI 유가 급등 후 조정
   sentiment: mixed
   numeric_facts:
   - metric: wti
@@ -10,40 +11,20 @@ _derived:
     unit: USD/bbl
     period: '2025-04-28'
   - metric: wti
-    value: 59.55
+    value: 55.44
     unit: USD/bbl
-    period: '2025-04-30'
-  - metric: wti
-    value: 58.5
-    unit: USD/bbl
-    period: '2025-05-05'
-  - metric: wti
-    value: 73.87
-    unit: USD/bbl
-    period: '2025-08-01'
-  - metric: wti
-    value: 74.92
-    unit: USD/bbl
-    period: '2026-01-02'
-  - metric: wti
-    value: 85.93
-    unit: USD/bbl
-    period: '2026-04-01'
+    period: '2025-12-16'
   - metric: wti
     value: 114.58
     unit: USD/bbl
     period: '2026-04-07'
   - metric: wti
-    value: 96.17
-    unit: USD/bbl
-    period: '2026-04-08'
-  - metric: wti
     value: 91.06
     unit: USD/bbl
     period: '2026-04-20'
-  summary: null
-  _uncertain:
-  - summary
+  summary: WTI 원유 가격은 2025년 4월 약 $63에서 출발해 2025년 말 $55대까지 하락했다가, 2026년 3월 급등하여 4월 초 $114.58의 고점을 기록한 후 $91 수준으로 조정되었다. 약 1년간
+    유가는 저점 대비 두 배 이상 상승하는 극적인 변동을 보였다.
+  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false

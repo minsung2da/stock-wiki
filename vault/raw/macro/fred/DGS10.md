@@ -3,128 +3,35 @@ _derived:
   tickers: []
   event_type: news_macro
   catalysts:
-  - 미국 10년물 국채금리 변동
-  sentiment: neutral
+  - 미국 10년물 국채금리 상승
+  - 2025년 5월 금리 급등
+  - 2025년 10월 금리 4% 하회
+  - 2026년 3월 금리 재상승
+  sentiment: mixed
   numeric_facts:
   - metric: us_10y
     value: 4.23
     unit: '%'
     period: '2025-04-28'
   - metric: us_10y
-    value: 4.19
+    value: 4.58
     unit: '%'
-    period: '2025-04-29'
+    period: '2025-05-21'
   - metric: us_10y
-    value: 4.17
+    value: 3.97
     unit: '%'
-    period: '2025-04-30'
+    period: '2025-10-22'
   - metric: us_10y
-    value: 4.25
+    value: 4.44
     unit: '%'
-    period: '2025-05-01'
-  - metric: us_10y
-    value: 4.33
-    unit: '%'
-    period: '2025-05-02'
-  - metric: us_10y
-    value: 4.37
-    unit: '%'
-    period: '2025-05-08'
-  - metric: us_10y
-    value: 4.49
-    unit: '%'
-    period: '2025-05-13'
-  - metric: us_10y
-    value: 4.53
-    unit: '%'
-    period: '2025-05-14'
-  - metric: us_10y
-    value: 4.41
-    unit: '%'
-    period: '2025-06-02'
-  - metric: us_10y
-    value: 4.32
-    unit: '%'
-    period: '2025-07-01'
-  - metric: us_10y
-    value: 4.16
-    unit: '%'
-    period: '2025-08-01'
-  - metric: us_10y
-    value: 4.18
-    unit: '%'
-    period: '2025-09-01'
-  - metric: us_10y
-    value: 3.98
-    unit: '%'
-    period: '2025-10-01'
-  - metric: us_10y
-    value: 4.38
-    unit: '%'
-    period: '2025-11-03'
-  - metric: us_10y
-    value: 4.25
-    unit: '%'
-    period: '2025-12-01'
-  - metric: us_10y
-    value: 4.63
-    unit: '%'
-    period: '2026-01-02'
-  - metric: us_10y
-    value: 4.51
-    unit: '%'
-    period: '2026-02-02'
-  - metric: us_10y
-    value: 4.23
-    unit: '%'
-    period: '2026-03-02'
-  - metric: us_10y
-    value: 4.19
-    unit: '%'
-    period: '2026-04-01'
-  - metric: us_10y
-    value: 4.31
-    unit: '%'
-    period: '2026-04-10'
-  - metric: us_10y
-    value: 4.3
-    unit: '%'
-    period: '2026-04-13'
-  - metric: us_10y
-    value: 4.26
-    unit: '%'
-    period: '2026-04-14'
-  - metric: us_10y
-    value: 4.29
-    unit: '%'
-    period: '2026-04-15'
-  - metric: us_10y
-    value: 4.32
-    unit: '%'
-    period: '2026-04-16'
-  - metric: us_10y
-    value: 4.26
-    unit: '%'
-    period: '2026-04-17'
-  - metric: us_10y
-    value: 4.26
-    unit: '%'
-    period: '2026-04-20'
-  - metric: us_10y
-    value: 4.3
-    unit: '%'
-    period: '2026-04-21'
-  - metric: us_10y
-    value: 4.3
-    unit: '%'
-    period: '2026-04-22'
+    period: '2026-03-27'
   - metric: us_10y
     value: 4.34
     unit: '%'
     period: '2026-04-23'
-  summary: null
-  _uncertain:
-  - summary
+  summary: 미국 10년물 국채금리는 2025년 4월 말 4.23%에서 5월 중 4.58%까지 상승한 후, 10월에 3.97%까지 하락하는 등 변동성을 보였다. 이후 2026년 1~3월 재차 반등하여 4.44%를
+    기록하였으며, 4월 말 현재 4.34% 수준에서 유지되고 있다.
+  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false
