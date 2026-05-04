@@ -2,7 +2,7 @@
   "mcpServers": {
     "stock-mcp": {
       "command": "uv",
-      "args": ["run", "--group", "mcp", "stock-mcp"]
+      "args": ["run", "--env-file", ".env", "--group", "mcp", "stock-mcp"]
     }
   }
 }
