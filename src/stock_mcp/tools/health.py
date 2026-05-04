@@ -110,7 +110,7 @@ def _from_ingest_runs(engine) -> dict[str, SourceHealth]:
 
 def _from_heartbeat(repo_root_path: Path) -> dict[str, SourceHealth]:
     """Fallback: parse heartbeat.md via the public ingest helper."""
-    from src.ingest.heartbeat import read_sources
+    from ingest.heartbeat import read_sources
 
     path = repo_root_path / HEARTBEAT_REL_PATH
     try:
