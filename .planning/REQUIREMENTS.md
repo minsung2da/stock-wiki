@@ -81,7 +81,7 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 - [x] **GRAPH-01**: 인제스트가 `edges` 테이블에 `ticker→filing`, `filing→event`, `note→ticker`, `event→event`, `ticker→sector` 엣지를 구축한다
 - [x] **GRAPH-02**: graphify가 일배치 또는 수동 실행으로 vault 스냅샷을 생성하여 `vault/graph/{YYYY-MM-DD}/` 에 `index.html`·`graph.json`·`GRAPH_REPORT.md`를 쓴다
-- [ ] **GRAPH-03**: 3-5개의 캐노니컬 서브그래프 쿼리 (예: "내 포지션 관련 최근 30일 이벤트", "섹터 내 공시 클러스터") 가 문서화되고 graphify wiki 출력에 링크된다
+- [x] **GRAPH-03**: 3-5개의 캐노니컬 서브그래프 쿼리 (예: "내 포지션 관련 최근 30일 이벤트", "섹터 내 공시 클러스터") 가 문서화되고 graphify wiki 출력에 링크된다
 
 ### 대시보드 (Dashboards)
 
@@ -215,7 +215,7 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | MCP-10 | Phase 6 | Complete |
 | GRAPH-01 | Phase 7 | Complete |
 | GRAPH-02 | Phase 7 | Complete |
-| GRAPH-03 | Phase 7 | Pending |
+| GRAPH-03 | Phase 7 | Complete |
 | DASH-01 | Phase 8 | Pending |
 | DASH-02 | Phase 8 | Pending |
 | DASH-03 | Phase 8 | Pending |
