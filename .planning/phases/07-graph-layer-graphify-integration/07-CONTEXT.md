@@ -215,3 +215,41 @@ Phase 6의 `get_related`(MCP-06)가 SQL `edges` 테이블만으로 동작하도�
 
 *Phase: 07-graph-layer-graphify-integration*
 *Context gathered: 2026-05-05*
+
+<context_amendments>
+## Context Amendments
+
+### 2026-05-05 — D-04 schema reinterpretation
+
+**Original wording (D-04 above):** "edge pass 예외는 catch하여 `ingest_runs` row의 `extra` JSONB에 `edges_warning` 키로 기록".
+
+**Discovery during planning (Plan 02):** The existing `ingest_runs` table (migration 0001) has only a single JSONB column named `stats` — there is **no** `extra` column. D-04 was written assuming an `extra` column existed (Phase 3/4/5 heartbeat helpers had used "extra" as a logical name in their helper signatures, which created the false impression).
+
+**Reinterpretation (binding for Phase 7):** D-04's *intent* — "soft-fail observability via JSONB on the run row" — is preserved by writing the warning payload into the existing `stats` JSONB under a dedicated sub-key. The functional outcome (soft-fail behavior, observable counters in `ingest_runs`, heartbeat reflection) is unchanged.
+
+**Concrete shape (locked):**
+```python
+ingest_runs.stats = {
+    "total": int,
+    "succeeded": int,
+    "skipped": int,
+    "failed": list[str],
+    "edges_warning": {
+        "inserted": int,
+        "skipped_conflict": int,
+        "failed_per_type": dict[str, str],   # truncated to 200 chars per value (V7 ASVS)
+        "unmatched_body_tickers": dict[str, int],
+        "supersedes_skipped_no_field": int,  # only if probe-findings.md MISSING
+    },
+}
+```
+
+**No migration is added** for an `extra` column. Plans 02 and 03 read/write `stats["edges_warning"]` consistently. The `record_source_run("edges", ..., extra=edges_counters)` heartbeat call still uses the parameter name `extra` because that helper's API merges its `extra` kwarg into its own output dict — independent of the DB column name.
+
+**Scope:** This amendment binds Phase 7 only. Future phases may still add an `extra` column via their own migration if needed.
+
+### 2026-05-05 — D-09 events-table bypass clarification
+
+D-09's `event_event` derivation operates on synthesized event ids (`{corp_code}-{event_type}-{first_seen_at_iso}`) inserted directly into the `edges` table; the empty `events` table is intentionally NOT populated by Phase 7. ETL into the `events` table proper is a deferred follow-up task (Phase 8 or 9). This was implicit in RESEARCH §Pitfall 1 / Open Q2 and is recorded here for traceability.
+
+</context_amendments>
