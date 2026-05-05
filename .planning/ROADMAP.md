@@ -156,7 +156,7 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md — Wave 0 setup: graphifyy 0.7.5 dep + API probe + DART supersedes field probe + test stubs (10 files) + 07-VALIDATION.md filled
 - [x] 07-02-PLAN.md — Migration 0004 (6-value CHECK reinstate w/ pre-validate) + src/ingest/edges.py (6 derivations + populate) + worker batch hook
-- [ ] 07-03-PLAN.md — stock graph snapshot CLI (snapshot.py + window.py + config/graphify.json) + 14-day prune + .gitignore
+- [x] 07-03-PLAN.md — stock graph snapshot CLI (snapshot.py + window.py + config/graphify.json) + 14-day prune + .gitignore
 - [ ] 07-04-PLAN.md — src/graph/canonical.py (5 SQL queries) + vault/graph/README.md + D-22 get_related regression test
 
 ### Phase 8: Vault Dashboards & Research Memo Templates
