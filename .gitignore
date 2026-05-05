@@ -27,6 +27,10 @@ graphify-out/
 .graphify_detect.json
 .graphify_python
 
+# Phase 7 graph snapshots — regenerable, never commit
+vault/graph/
+vault/.graphify-staging/
+
 # Secrets
 .env
 .env.local
