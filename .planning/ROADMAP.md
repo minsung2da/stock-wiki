@@ -159,6 +159,24 @@ Plans:
 - [x] 07-03-PLAN.md — stock graph snapshot CLI (snapshot.py + window.py + config/graphify.json) + 14-day prune + .gitignore
 - [x] 07-04-PLAN.md — src/graph/canonical.py (5 SQL queries) + vault/graph/README.md + D-22 get_related regression test
 
+### Phase 7.1: SQL-Driven Graph + MCP Graph Traversal Acceleration
+**Goal**: Build `vault/graph/<DATE>/{index.html, graph.json, GRAPH_REPORT.md}` directly from the SQL `edges` + `entities` tables (already populated by Phase 7-02) using networkx + graphifyy's cluster/visualize layer — no LLM calls. Cache the resulting graph in stock-mcp so multi-hop neighborhood queries (`get_related` depth ≥ 2, community lookups) skip recursive SQL and traverse in-memory.
+**Depends on**: Phase 7
+**Requirements**: GRAPH-01, GRAPH-02 (gap closure for SC-2 spirit + new MCP enhancement)
+**Success Criteria** (what must be TRUE):
+  1. `uv run stock graph snapshot` reads SQL `edges` + `entities` and writes `vault/graph/<KST_DATE>/graph.json` with `nodes` and `links` populated from the live DB (no `nodes: []`)
+  2. `index.html` renders an interactive graph showing communities, god-nodes, and edges with `tag` (EXTRACTED/INFERRED) carried through from `edges.tag`
+  3. stock-mcp loads the most-recent `graph.json` lazily on first graph-tool call and exposes `graph_query` (BFS at given depth, community lookup, god-node listing); 2-hop traversal is measurably faster than the equivalent recursive SQL on a labeled fixture
+  4. No new dependency on paid LLM APIs; graphifyy's `detect/extract/collect_files` are no longer called from the snapshot path
+**Plans**: 3 plans
+**UI hint**: yes
+**Gap closure**: addresses 07-HUMAN-UAT.md gap-1 (empty graph from markdown vault) and gap-2 (slow multi-hop SQL traversal)
+
+Plans:
+- [ ] 07.1-01-PLAN.md — src/graph/sql_to_graph.py (SQL edges+entities+documents → graphify build_from_json compatible dict) + TDD tests
+- [ ] 07.1-02-PLAN.md — Rewrite src/graph/snapshot.py to use sql_to_graph (drop graphifyy detect/extract/collect_files) + integration test gap-1 auto-guard
+- [ ] 07.1-03-PLAN.md — src/stock_mcp/graph_cache.py + tools/graph_query.py (bfs/community/god_nodes) + 2-hop perf benchmark vs SQL recursive CTE
+
 ### Phase 8: Vault Dashboards & Research Memo Templates
 **Goal**: The user's daily entry points inside Obsidian — portfolio state, watchlist, this-week events, per-ticker hub pages — regenerate automatically from the DB using Dataview. Thesis and journal templates let the user record investment logic (with kill criteria) and decision logs that are indexed alongside raw data.
 **Depends on**: Phase 7
