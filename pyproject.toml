@@ -62,6 +62,9 @@ db = [
     "psycopg[binary]>=3.2",
     "pgvector>=0.4",
 ]
+graph = [
+    "graphifyy>=0.7.5,<0.8",
+]
 dev = [
     "pytest>=9.0",
     "ruff>=0.11.7",
