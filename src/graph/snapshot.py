@@ -70,9 +70,15 @@ def snapshot(repo_root: Path, config: dict, *, dry_run: bool = False) -> Path:
     staging = repo_root / "vault" / ".graphify-staging" / today
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Local import so ``src.graph.window`` substitution in tests stays cheap
+    # Local import so ``graph.window`` substitution in tests stays cheap
     # and the module remains importable when the ``graph`` group is absent.
-    from src.graph.window import build_staging
+    # Tolerate both import styles: ``src.graph.window`` (tests run from repo
+    # root with ``src/`` not on sys.path as a namespace) and ``graph.window``
+    # (CLI run via ``uv run stock`` puts ``src/`` on sys.path).
+    try:
+        from src.graph.window import build_staging
+    except ModuleNotFoundError:
+        from graph.window import build_staging
 
     try:
         link_counts = build_staging(repo_root, staging, config)

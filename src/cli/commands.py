@@ -32,6 +32,7 @@ __all__ = [
     "cmd_ingest_run",
     "cmd_ingest_rebuild",
     "cmd_sync",
+    "cmd_graph_snapshot",
 ]
 
 # D-18: default `collect all` source set excludes dart (Phase 3 kept standalone).
@@ -348,4 +349,49 @@ def cmd_sync(args) -> int:  # noqa: ANN001
 
     if not quiet:
         print(json.dumps(report, ensure_ascii=False, default=str))
+    return 0
+
+
+# ---------- graph (Phase 7 GRAPH-02) ----------
+
+
+def cmd_graph_snapshot(args) -> int:  # noqa: ANN001
+    """Handle ``stock graph snapshot [--dry-run] [--config PATH]``.
+
+    Loads ``config/graphify.json`` (or ``--config`` override) and invokes
+    ``src.graph.snapshot.snapshot()`` in-process. Prints a one-line JSON
+    status report on stderr (consistent with collectors).
+
+    Exit codes:
+    - 0: success (snapshot wrote ``vault/graph/<KST_DATE>/``)
+    - 1: config not found, graphify failed, or staging build error
+    """
+    from stock_mcp.repo_root import repo_root as get_repo_root
+
+    rr = get_repo_root()
+    config_path = (
+        Path(args.config) if getattr(args, "config", None) else rr / "config" / "graphify.json"
+    )
+    if not config_path.exists():
+        print(
+            json.dumps({"status": "error", "error": f"config not found: {config_path}"}),
+            file=sys.stderr,
+        )
+        return 1
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+
+    from graph.snapshot import snapshot
+
+    try:
+        out_dir = snapshot(rr, config, dry_run=getattr(args, "dry_run", False))
+    except Exception as exc:  # noqa: BLE001 — top-level CLI boundary
+        print(
+            json.dumps({"status": "error", "error": str(exc)[:500]}),
+            file=sys.stderr,
+        )
+        return 1
+    print(
+        json.dumps({"status": "ok", "out_dir": str(out_dir)}),
+        file=sys.stderr,
+    )
     return 0
