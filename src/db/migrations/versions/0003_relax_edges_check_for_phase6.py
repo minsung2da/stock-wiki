@@ -28,7 +28,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Phase 7 populates non-supersedes edge_type values (mentions_ticker,
+    # ticker_sector, filing_event, event_event, note_ticker). Reinstating the
+    # supersedes-only CHECK requires deleting incompatible rows first; this is
+    # correct downgrade semantics — going back to a world where only
+    # 'supersedes' was a valid edge type means losing the richer taxonomy.
+    op.execute("DELETE FROM edges WHERE edge_type <> 'supersedes'")
     op.execute(
-        "ALTER TABLE edges ADD CONSTRAINT ck_edge_type_phase2 "
-        "CHECK (edge_type IN ('supersedes'))"
+        "ALTER TABLE edges ADD CONSTRAINT ck_edge_type_phase2 CHECK (edge_type IN ('supersedes'))"
     )
