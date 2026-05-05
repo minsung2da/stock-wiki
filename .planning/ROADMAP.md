@@ -150,8 +150,14 @@ Plans:
   2. `graphify` run (daily or manual) writes `vault/graph/{YYYY-MM-DD}/` containing `index.html`, `graph.json`, and `GRAPH_REPORT.md` that Obsidian and a browser can open
   3. 3–5 canonical subgraph queries (e.g. "last-30-day events for my positions", "filing clusters in a sector", "catalyst chain for ticker X") are documented in `vault/graph/README.md` and each returns a non-empty, legible subgraph on the current corpus
   4. graphify edges are tagged EXTRACTED / INFERRED / AMBIGUOUS so Claude can differentiate provenance when citing graph evidence
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 07-01-PLAN.md — Wave 0 setup: graphifyy 0.7.5 dep + API probe + DART supersedes field probe + test stubs (10 files) + 07-VALIDATION.md filled
+- [ ] 07-02-PLAN.md — Migration 0004 (6-value CHECK reinstate w/ pre-validate) + src/ingest/edges.py (6 derivations + populate) + worker batch hook
+- [ ] 07-03-PLAN.md — stock graph snapshot CLI (snapshot.py + window.py + config/graphify.json) + 14-day prune + .gitignore
+- [ ] 07-04-PLAN.md — src/graph/canonical.py (5 SQL queries) + vault/graph/README.md + D-22 get_related regression test
 
 ### Phase 8: Vault Dashboards & Research Memo Templates
 **Goal**: The user's daily entry points inside Obsidian — portfolio state, watchlist, this-week events, per-ticker hub pages — regenerate automatically from the DB using Dataview. Thesis and journal templates let the user record investment logic (with kill criteria) and decision logs that are indexed alongside raw data.

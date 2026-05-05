@@ -756,32 +756,37 @@ def _derive_event_event(doc_ids: list[str], conn: Connection, counters: dict) ->
 
 **Empty assumption table?** No — 8개 assumed claim. 모두 plan-time 사용자 확인 또는 Wave-0 probe로 해소.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **`_derived.events` (list) 의도가 무엇이었나?**
    - What we know: CONTEXT D-09 텍스트는 list를 가정. DerivedBlock은 단일 `event_type`.
    - What's unclear: Phase 5 schema 확장 의도였는지, 단순 typo인지.
    - Recommendation: Plan 또는 discuss-phase에서 사용자 확인. typo면 single-field 우회로, 확장 의도면 별도 마이그레이션 task.
+   - **RESOLVED:** CONTEXT D-09 amendment (2026-05-05) confirms single-field interpretation. Plan 02 `_derive_filing_event` / `_derive_event_event` read `fm.derived.event_type` (singular). Phase 5 schema unchanged.
 
 2. **events 테이블을 누가 채우나?**
    - What we know: Phase 2 D-06 스키마, INSERT 코드 부재.
    - What's unclear: Phase 5 routine이 채워야 하는데 누락? Phase 7가 책임?
    - Recommendation: 우선 Phase 7는 events 우회 (documents+_derived 직접 join), 이후 별도 quick task로 events 테이블 ETL.
+   - **RESOLVED:** Phase 7 bypasses the empty `events` table by synthesizing event ids inline via the convention `{corp_code}-{event_type}-{first_seen_at_iso}` (Plan 02 lock-in; CONTEXT amendment 2026-05-05). Real `events` table ETL deferred to Phase 8/9 quick task.
 
 3. **supersedes 엣지의 source frontmatter 필드명?**
    - What we know: DART 기재정정 metadata 어딘가 있어야 함.
    - What's unclear: 정확한 필드명·shape (`correction_of_rcept_no`? `rcept_no_origin`? nested `revisions`?).
    - Recommendation: Wave-0 probe — `find vault/raw/dart/ -name '*.md' | head -3 | xargs grep -l '정정\|correction'` 후 frontmatter 확인.
+   - **RESOLVED:** Plan 01 Wave-0 probe (Task 1 step 3) writes the FOUND/MISSING result into `probe-findings.md`. Plan 02 Task 2 ships TEMPLATE A (FOUND) or TEMPLATE B (MISSING) accordingly.
 
 4. **Phase 6 fixture rebuild 정책?**
    - What we know: 0003이 fixture를 위해 CHECK 드롭. fixture row의 5 임의 edge_type.
    - What's unclear: fixture가 매번 vault rebuild로 만들어지는지, 정적 dump인지.
    - Recommendation: Plan-time `tests/fixtures/mcp-vault/` 검토.
+   - **RESOLVED:** Plan 02 Task 1 updates `tests/stock_mcp/conftest.py::_seed_test_edges` to write 6-value-enum edge rows directly; the migration 0004 pre-validate aborts upgrade if any legacy `references` / `mentions` / `precedes` / `same_sector` row exists. Both fixtures and migration are aligned in the same task.
 
 5. **directed graph edge 방향 합의?**
    - What we know: D-11 `directed=True`, CONTEXT가 "news_article → ticker" 표기.
    - What's unclear: `mentions_ticker`는 doc→ticker, 그러나 `note_ticker`도 동일 방향? `filing_event`는 doc→event? `event_event`는 prev→curr (시간순)?
    - Recommendation: Plan에서 6 edge 모두 방향 표 명시.
+   - **RESOLVED:** Plan 02 `<interfaces>` block locks all 6 directions (mentions_ticker doc→ticker, note_ticker doc(note)→ticker, ticker_sector ticker→sector, supersedes amendment→original, filing_event doc→event, event_event prev→curr). Plan 04 canonical queries consume these conventions verbatim.
 
 ## Environment Availability
 
