@@ -26,6 +26,7 @@ from cli.commands import (
     cmd_collect_krx,
     cmd_collect_macro,
     cmd_collect_news,
+    cmd_graph_snapshot,
     cmd_ingest_rebuild,
     cmd_ingest_run,
     cmd_sync,
@@ -137,6 +138,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sync.add_argument("--quiet", action="store_true", help="Suppress stdout JSON report")
     sync.set_defaults(func=cmd_sync)
+
+    # graph (Phase 7 GRAPH-02)
+    graph_parser = subs.add_parser("graph", help="Graph layer commands (graphifyy snapshots)")
+    graph_sub = graph_parser.add_subparsers(dest="graph_cmd", required=True)
+    snap = graph_sub.add_parser(
+        "snapshot",
+        help="Run a graphify vault snapshot into vault/graph/<KST_DATE>/",
+    )
+    snap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Build staging only; skip graphify call",
+    )
+    snap.add_argument(
+        "--config",
+        default=None,
+        help="Path to graphify config JSON (default: <repo_root>/config/graphify.json)",
+    )
+    snap.set_defaults(func=cmd_graph_snapshot)
 
     return parser
 

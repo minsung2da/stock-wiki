@@ -277,5 +277,58 @@ def test_build_parser_is_complete() -> None:
         p.parse_args([])
 
 
+# ---------- Phase 7 GRAPH-02: stock graph snapshot ----------
+
+
+def test_graph_snapshot_dry_run_smoke(tmp_path, monkeypatch, capsys):
+    """`stock graph snapshot --dry-run` exits 0 with valid config; no graphify call."""
+    # Minimal repo layout: pyproject.toml + vault/ markers for repo_root resolution.
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='stub'\n", encoding="utf-8")
+    (tmp_path / "vault").mkdir()
+    (tmp_path / "vault" / "notes").mkdir()
+    cfg = tmp_path / "config" / "graphify.json"
+    cfg.parent.mkdir()
+    cfg.write_text(
+        json.dumps(
+            {
+                "graphify": {
+                    "raw_windows_days": {
+                        "dart": 365,
+                        "news": 30,
+                        "kind": 90,
+                        "macro": 180,
+                    },
+                    "mode": "deep",
+                    "directed": True,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("STOCK_REPO_ROOT", str(tmp_path))
+
+    exit_code = main(["graph", "snapshot", "--dry-run", "--config", str(cfg)])
+    assert exit_code == 0
+    err = capsys.readouterr().err
+    parsed = json.loads(err.strip().splitlines()[-1])
+    assert parsed["status"] == "ok"
+    # Output dir was created (dry-run still creates it; only graphify call is skipped).
+    assert Path(parsed["out_dir"]).exists()
+
+
+def test_graph_snapshot_missing_config_returns_1(tmp_path, monkeypatch, capsys):
+    """Missing --config path → JSON error on stderr, exit 1."""
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='stub'\n", encoding="utf-8")
+    (tmp_path / "vault").mkdir()
+    monkeypatch.setenv("STOCK_REPO_ROOT", str(tmp_path))
+
+    exit_code = main(["graph", "snapshot", "--dry-run", "--config", str(tmp_path / "nope.json")])
+    assert exit_code == 1
+    err = capsys.readouterr().err
+    parsed = json.loads(err.strip().splitlines()[-1])
+    assert parsed["status"] == "error"
+    assert "config not found" in parsed["error"]
+
+
 # Silence unused imports referenced only by monkeypatch paths
 _ = (io, cmd_mod)
