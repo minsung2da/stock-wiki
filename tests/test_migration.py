@@ -196,11 +196,16 @@ def test_edges_unique_and_check(pg_engine):
         assert uq is not None
         for col in ("src_type", "src_id", "dst_type", "dst_id", "edge_type"):
             assert col in uq
+        # Phase 7 migration 0004 renames the CHECK constraint to ck_edge_type_phase7
+        # with the 6-value enum. We accept either name to keep this test stable across
+        # migration history evolution.
         ck = conn.execute(
             sa.text(
                 """
                 SELECT pg_get_constraintdef(oid) FROM pg_constraint
-                WHERE conname='ck_edge_type_phase2'
+                WHERE conname IN ('ck_edge_type_phase7', 'ck_edge_type_phase2')
+                ORDER BY conname DESC
+                LIMIT 1
                 """
             )
         ).scalar()

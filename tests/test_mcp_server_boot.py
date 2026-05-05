@@ -88,8 +88,11 @@ def test_tool_docstring_is_llm_facing() -> None:
 
 
 def test_mcp_json_registration_exists() -> None:
-    """M1 — .mcp.json registers stock-mcp with `uv run --group mcp stock-mcp`."""
+    """M1 — .mcp.json registers stock-mcp with `uv run [--env-file .env] --group mcp stock-mcp`."""
     data = json.loads(Path(".mcp.json").read_text(encoding="utf-8"))
     server = data["mcpServers"]["stock-mcp"]
     assert server["command"] == "uv"
-    assert server["args"][:4] == ["run", "--group", "mcp", "stock-mcp"]
+    args = server["args"]
+    assert args[0] == "run"
+    assert "--group" in args and args[args.index("--group") + 1] == "mcp"
+    assert "stock-mcp" in args

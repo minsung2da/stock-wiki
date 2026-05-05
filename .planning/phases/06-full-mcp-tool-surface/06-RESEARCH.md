@@ -371,17 +371,20 @@ Fallback: parse `vault/ingested/_status/heartbeat.md` top-level `sources` dict (
 | A4 | `Portfolio.load(repo_root)` (P-01 says repo_root, not vault_root) — confirm signature change is what user wants | Runtime State Inventory P-01 | If signature should remain `vault_root` and just look one level up, avoid changing collector call sites |
 | A5 | `notes/private/` is gitignored; the actual portfolio.md file becomes local-only after cutover | Runtime State Inventory | Users on a fresh clone will get NoFile error until they create local portfolio.md from `templates/portfolio.md` (matches CONTEXT D-03 from Phase 1) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 6 include a small Alembic migration to relax `ck_edge_type_phase2` CHECK so test fixtures can insert non-supersedes edges for `get_related` testing?**
    - What we know: Phase 7 GRAPH-01 needs this anyway.
    - Recommendation: Yes, add a tiny migration `0003_relax_edges_check_for_phase6_tests.py` that drops the CHECK (or widens it). Cheap, decouples Phase 6 testing from Phase 7 work.
+   - **RESOLVED:** Yes — Plan 06-03 implements migration `0003_relax_edges_check_for_phase6_tests.py`.
 
 2. **Where should the `mcp = FastMCP(...)` singleton live long-term?**
    - Currently in `tools/search.py:29`. Adding 6 modules that import from a sibling tool feels off.
    - Recommendation: leave as-is for minimal diff; revisit in Phase 7.
+   - **RESOLVED:** Leave as-is for Phase 6; revisit in Phase 7 when adding more cross-tool wiring.
 
-3. **Confirm `Portfolio.load(repo_root)` signature shape.** CONTEXT says P-01 = "`Portfolio.load(repo_root)` 시그니처 갱신". Does `repo_root` mean the project root (parent of `vault/`)? Plan must confirm during Plan 06-01.
+3. **Confirm `Portfolio.load(repo_root)` signature shape.** CONTEXT says P-01 = "`Portfolio.load(repo_root)` 시그니처 갱신". Does `repo_root` mean the project root (parent of `vault/`)?
+   - **RESOLVED:** `repo_root = vault_root.parent` (project root, parent of `vault/`). Confirmed in Plan 06-01 task acceptance criteria.
 
 ## Environment Availability
 

@@ -148,7 +148,9 @@ def test_downgrade_reverses_migration(pg_engine):
         return {r[0] for r in rows}
 
     try:
-        command.downgrade(cfg, "-1")
+        # Migration history evolved past 0002, so use the absolute revision target
+        # (0001) instead of "-1", which now only reverses the most recent migration.
+        command.downgrade(cfg, "0001")
         with pg_engine.connect() as conn:
             chunk_cols = _column_names(conn, "chunks")
             doc_cols = _column_names(conn, "documents")
