@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import os
 import shutil
+from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Iterator
 
 import pytest
 import sqlalchemy as sa
@@ -87,10 +87,13 @@ def _seed_entities_direct(engine: Engine) -> None:
 def _seed_test_edges(engine: Engine) -> None:
     """Insert synthetic edges between fixture documents.
 
-    Picks the first two DART document_ids by source='dart' and writes one
-    ``mentions`` and one ``supersedes`` edge plus a ``references`` for breadth.
-    Migration 0003 already dropped ck_edge_type_phase2 so non-supersedes
-    inserts succeed.
+    Phase 7: edge_type values now match the 6-value enum locked by Plan 07-02
+    migration 0004 (ck_edge_type_phase7). Picks the first four DART
+    document_ids by source='dart' and writes:
+      - mentions_ticker (document → ticker '005930')
+      - filing_event   (document → document)  -- repurposes a doc id as event id
+      - supersedes     (document → document)
+    All rows include the `tag` column per EDGE_TAG_POLICY (CONTEXT D-07).
     """
     with engine.begin() as conn:
         rows = conn.execute(
@@ -99,21 +102,23 @@ def _seed_test_edges(engine: Engine) -> None:
         if len(rows) < 4:
             return  # no docs ingested; skip silently
         ids = [r.id for r in rows]
-        # (mentions, references, supersedes) — three different edge_type values
-        # so MCP-10 fixture exercises the relaxed CHECK.
+        # (src_type, src_id, dst_type, dst_id, edge_type, tag)
+        # Preserve the 2-hop chain ids[0] -> ids[1] -> ids[3] required by
+        # test_get_related_depth2_includes_two_hop, plus an extra direct
+        # neighbor to satisfy ">= 2 direct edges" assertion.
         edge_specs = [
-            (ids[0], ids[1], "mentions"),
-            (ids[0], ids[2], "references"),
-            (ids[1], ids[3], "supersedes"),
+            ("document", ids[0], "document", ids[1], "filing_event", "INFERRED"),
+            ("document", ids[0], "document", ids[2], "mentions_ticker", "EXTRACTED"),
+            ("document", ids[1], "document", ids[3], "supersedes", "EXTRACTED"),
         ]
-        for src, dst, edge_type in edge_specs:
+        for st, si, dt, di, et, tag in edge_specs:
             conn.execute(
                 sa.text(
-                    "INSERT INTO edges (src_type, src_id, dst_type, dst_id, edge_type) "
-                    "VALUES ('document', :src, 'document', :dst, :et) "
+                    "INSERT INTO edges (src_type, src_id, dst_type, dst_id, edge_type, tag) "
+                    "VALUES (:st, :si, :dt, :di, :et, :tag) "
                     "ON CONFLICT ON CONSTRAINT uq_edge_endpoints DO NOTHING"
                 ),
-                {"src": src, "dst": dst, "et": edge_type},
+                {"st": st, "si": si, "dt": dt, "di": di, "et": et, "tag": tag},
             )
 
 
@@ -140,9 +145,13 @@ def _seed_ingest_runs(engine: Engine) -> None:
                 sa.text(
                     "INSERT INTO ingest_runs (started_at, finished_at, kind, source, stats) "
                     "VALUES (:started, :finished, 'collect', :source, "
-                    "CAST('{\"succeeded\": 1, \"failed\": []}' AS JSONB))"
+                    'CAST(\'{"succeeded": 1, "failed": []}\' AS JSONB))'
                 ),
-                {"started": finished - timedelta(minutes=1), "finished": finished, "source": source},
+                {
+                    "started": finished - timedelta(minutes=1),
+                    "finished": finished,
+                    "source": source,
+                },
             )
 
 

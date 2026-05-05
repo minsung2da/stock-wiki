@@ -29,12 +29,12 @@ def test_get_related_depth1_returns_direct_neighbors(
     result = get_related(document_id=src_id, depth=1)
 
     assert hasattr(result, "related"), f"unexpected error: {result!r}"
-    # Conftest seeds at least 2 direct edges from ids[0] (ids[0]->ids[1] mentions,
-    # ids[0]->ids[2] references).
+    # Conftest (Phase 7) seeds at least 2 direct edges from ids[0]:
+    #   ids[0]->ticker '005930' (mentions_ticker), ids[0]->ids[2] (filing_event).
     assert len(result.related) >= 2
     for row in result.related:
         assert row.depth == 1
-        assert row.edge_type in {"mentions", "references", "supersedes"}
+        assert row.edge_type in {"mentions_ticker", "filing_event", "supersedes"}
         assert isinstance(row.id, str) and len(row.id) > 0
 
 
@@ -95,8 +95,8 @@ def test_get_related_handles_cycles_without_infinite_loop(
         with engine.begin() as conn:
             conn.execute(
                 sa.text(
-                    "INSERT INTO edges (src_type, src_id, dst_type, dst_id, edge_type) "
-                    "VALUES ('document', :src, 'document', :dst, 'mentions') "
+                    "INSERT INTO edges (src_type, src_id, dst_type, dst_id, edge_type, tag) "
+                    "VALUES ('document', :src, 'document', :dst, 'filing_event', 'INFERRED') "
                     "ON CONFLICT ON CONSTRAINT uq_edge_endpoints DO NOTHING"
                 ),
                 {"src": b, "dst": a},
@@ -116,7 +116,7 @@ def test_get_related_handles_cycles_without_infinite_loop(
                 conn.execute(
                     sa.text(
                         "DELETE FROM edges WHERE src_type='document' AND src_id=:src "
-                        "AND dst_type='document' AND dst_id=:dst AND edge_type='mentions'"
+                        "AND dst_type='document' AND dst_id=:dst AND edge_type='filing_event'"
                     ),
                     {"src": b, "dst": a},
                 )
