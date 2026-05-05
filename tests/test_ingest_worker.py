@@ -437,6 +437,58 @@ def _read_meta(path: Path) -> dict:
     return yaml.safe_load(text[3:end])
 
 
+def test_W17_worker_runs_edges_populate_at_batch_end(
+    pg_clean: Engine, tmp_path: Path, fast_worker_env: _FakeEmbedder
+) -> None:
+    """Phase 7 GRAPH-01 D-03: after ingesting a small fixture vault, the edges
+    table has at least one ticker_sector row, ingest_runs has a source='edges'
+    row, and heartbeat has an `edges` source key.
+    """
+    # Seed entity with sector so ticker_sector edge can be emitted.
+    with pg_clean.begin() as conn:
+        conn.execute(
+            sa.text(
+                "INSERT INTO entities "
+                "(corp_code, canonical_name, current_ticker, sector, market) "
+                "VALUES ('00126380', '삼성전자', '005930', '전기·전자', 'KOSPI')"
+            )
+        )
+
+    _seed_vault_doc(
+        tmp_path,
+        "20260101000001",
+        "I. 회사의 개요\n삼성전자 본문.\n",
+        corp_code="00126380",
+    )
+
+    stats = worker_mod.ingest_run(tmp_path, pg_clean)
+    assert stats["succeeded"] == 1
+
+    # 1) edges table has at least one ticker_sector row.
+    with pg_clean.connect() as conn:
+        ticker_sector_count = conn.execute(
+            sa.text("SELECT COUNT(*) FROM edges WHERE edge_type = 'ticker_sector'")
+        ).scalar()
+    assert ticker_sector_count >= 1
+
+    # 2) ingest_runs has a source='edges' row with edges_warning sub-key.
+    with pg_clean.connect() as conn:
+        edges_run = conn.execute(
+            sa.text("SELECT stats FROM ingest_runs WHERE source = 'edges' ORDER BY id DESC LIMIT 1")
+        ).one()
+    assert edges_run.stats is not None
+    assert "edges_warning" in edges_run.stats
+
+    # 3) heartbeat has an `edges` source block.
+    hb = tmp_path / "ingested/_status/heartbeat.md"
+    assert hb.exists()
+    text = hb.read_text(encoding="utf-8")
+    end = text.find("\n---", 3)
+    meta = yaml.safe_load(text[3:end])
+    assert "edges" in meta["sources"]
+    assert "last_success" in meta["sources"]["edges"]
+
+
 # ---------- Slow tests (real bge-m3) ----------
 
 
