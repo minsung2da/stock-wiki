@@ -13,7 +13,21 @@ and downstream waves know the canonical source. Importing from
 
 from __future__ import annotations
 
+import hashlib
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
 import pytest
+import sqlalchemy as sa
+
+from shared.frontmatter import (
+    DerivedBlock,
+    FrontMatter,
+    IngestStateBlock,
+    ProvenanceBlock,
+    TickerRef,
+    write_frontmatter,
+)
 
 # Marker comment for plan acceptance:
 # from tests.stock_mcp.conftest import pg_engine  — root-scope fixture,
@@ -33,11 +47,198 @@ def graphify_stub(monkeypatch):
     pytest.skip("Plan 03 Task 1 will implement graphify_stub fixture")
 
 
+def _doc_id(seed: str) -> str:
+    """Deterministic 64-char hex doc id derived from a seed string."""
+    return hashlib.sha256(seed.encode("utf-8")).hexdigest()
+
+
+def _write_doc(
+    vault_path: Path,
+    *,
+    source: str,
+    corp_code: str | None = None,
+    ticker: str | None = None,
+    derived_event_type: str | None = None,
+    derived_tickers: list[str] | None = None,
+    prov_tickers: list[str] | None = None,
+    body: str = "test body",
+) -> None:
+    """Write a minimal markdown file with valid frontmatter to ``vault_path``."""
+    vault_path.parent.mkdir(parents=True, exist_ok=True)
+    fm = FrontMatter(
+        provenance=ProvenanceBlock(
+            source=source,
+            source_id="seed",
+            fetched_at=datetime.now(UTC),
+            corp_code=corp_code,
+            ticker=ticker,
+            company_name=None,
+            lang="ko",
+            trust_level="trusted",
+            tickers=([TickerRef(ticker=t) for t in prov_tickers] if prov_tickers else None),
+        ),
+        ingest_state=IngestStateBlock(),
+        _derived=DerivedBlock(
+            tickers=list(derived_tickers or []),
+            event_type=derived_event_type,
+        ),
+    )
+    write_frontmatter(str(vault_path), fm, body)
+
+
 @pytest.fixture
-def seed_edges(pg_engine):
-    """Insert a controlled set of 6-edge-type fixtures into the edges table.
-    Plan 02 Task 2 implements the real edges.populate(); this fixture instead
-    seeds rows directly so canonical-query tests have data even before
-    edges.populate() exists.
+def seed_edges(pg_engine, tmp_path):
+    """Seed minimal documents + entity rows for edges.populate() exercises.
+
+    Returns a callable: ``_seed(*, with_event_chain=False) -> dict``.
+
+    The returned dict has keys:
+      - ``doc_ids`` (list[str]): all inserted document ids
+      - ``vault_root`` (Path): tmp vault root containing the markdown files
+      - ``samsung_corp`` (str): canonical 8-digit corp_code
+      - ``samsung_ticker`` (str): canonical 6-digit ticker
+      - ``sector`` (str): seeded sector for the entity
+
+    Plan 02 Task 2 idempotency: this fixture truncates `edges`, `documents`,
+    `entities`, and `entity_aliases` before seeding to give each test a clean
+    slate (pg_engine is session-scoped so cross-test bleed is otherwise possible).
     """
-    pytest.skip("Plan 04 Task 1 will implement seed_edges fixture")
+
+    def _seed(*, with_event_chain: bool = False) -> dict:
+        samsung_corp = "00126380"
+        samsung_ticker = "005930"
+        sector = "전기·전자"
+
+        # Truncate so the session-scoped DB is clean for each test.
+        with pg_engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "TRUNCATE edges, chunks, documents, entity_aliases, entities "
+                    "RESTART IDENTITY CASCADE"
+                )
+            )
+            conn.execute(
+                sa.text(
+                    "INSERT INTO entities "
+                    "(corp_code, canonical_name, current_ticker, sector, market) "
+                    "VALUES (:cc, :name, :tk, :sec, 'KOSPI')"
+                ),
+                {
+                    "cc": samsung_corp,
+                    "name": "삼성전자",
+                    "tk": samsung_ticker,
+                    "sec": sector,
+                },
+            )
+
+        vault_root = tmp_path / "vault"
+        raw_dart = vault_root / "raw" / "dart" / "2026"
+        raw_news = vault_root / "raw" / "news" / "2026"
+        notes_priv = tmp_path / "notes" / "private"
+
+        # 1) DART filing with event_type — exercises filing_event derivation.
+        dart_path = raw_dart / "samsung_filing_1.md"
+        dart_id = _doc_id("dart-1")
+        _write_doc(
+            dart_path,
+            source="dart",
+            corp_code=samsung_corp,
+            ticker=samsung_ticker,
+            derived_event_type="earnings_release",
+            body="삼성전자 분기 실적 공시 본문",
+        )
+
+        # 2) News article mentioning Samsung's ticker via ProvenanceBlock.tickers.
+        news_path = raw_news / "samsung_news.md"
+        news_id = _doc_id("news-1")
+        _write_doc(
+            news_path,
+            source="news",
+            prov_tickers=[samsung_ticker],
+            body="삼성전자 관련 뉴스 본문",
+        )
+
+        # 3) Note with frontmatter tickers list.
+        note_path = notes_priv / "thesis_samsung.md"
+        note_id = _doc_id("note-1")
+        _write_doc(
+            note_path,
+            source="note",
+            derived_tickers=[samsung_ticker],
+            body="개인 투자 메모: 005930 보유 검토. 000660 도 같이 본다.",
+        )
+
+        first_seen = datetime(2026, 1, 10, tzinfo=UTC)
+        rows: list[dict] = [
+            {
+                "id": dart_id,
+                "vault_path": str(dart_path),
+                "source": "dart",
+                "corp_code": samsung_corp,
+                "first_seen_at": first_seen,
+            },
+            {
+                "id": news_id,
+                "vault_path": str(news_path),
+                "source": "news",
+                "corp_code": None,
+                "first_seen_at": first_seen + timedelta(hours=1),
+            },
+            {
+                "id": note_id,
+                "vault_path": str(note_path),
+                "source": "note",
+                "corp_code": None,
+                "first_seen_at": first_seen + timedelta(hours=2),
+            },
+        ]
+
+        # Optional second DART filing 30 days later for event_event chain.
+        if with_event_chain:
+            dart2_path = raw_dart / "samsung_filing_2.md"
+            dart2_id = _doc_id("dart-2")
+            _write_doc(
+                dart2_path,
+                source="dart",
+                corp_code=samsung_corp,
+                ticker=samsung_ticker,
+                derived_event_type="dividend",
+                body="삼성전자 배당 공시 본문",
+            )
+            rows.append(
+                {
+                    "id": dart2_id,
+                    "vault_path": str(dart2_path),
+                    "source": "dart",
+                    "corp_code": samsung_corp,
+                    "first_seen_at": first_seen + timedelta(days=30),
+                }
+            )
+
+        with pg_engine.begin() as conn:
+            for r in rows:
+                conn.execute(
+                    sa.text(
+                        "INSERT INTO documents "
+                        "(id, body, source, vault_path, corp_code, first_seen_at, last_seen_at) "
+                        "VALUES (:id, :body, :source, :vp, :cc, :fsa, :fsa)"
+                    ),
+                    {
+                        "id": r["id"],
+                        "body": "x",
+                        "source": r["source"],
+                        "vp": r["vault_path"],
+                        "cc": r["corp_code"],
+                        "fsa": r["first_seen_at"],
+                    },
+                )
+
+        return {
+            "doc_ids": [r["id"] for r in rows],
+            "vault_root": vault_root,
+            "samsung_corp": samsung_corp,
+            "samsung_ticker": samsung_ticker,
+            "sector": sector,
+        }
+
+    return _seed
