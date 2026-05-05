@@ -133,8 +133,12 @@ def test_get_related_includes_snippet_and_vault_path_for_documents(
 
     assert hasattr(result, "related")
     assert len(result.related) >= 1
-    for row in result.related:
-        # All seeded neighbors are documents; snippet + vault_path must be set.
+    # Phase 7: edges may now point at events / tickers (no vault_path). Filter
+    # to document-typed neighbors (64-char hex doc ids) for the snippet check.
+    _HEX = set("0123456789abcdef")
+    doc_neighbors = [r for r in result.related if len(r.id) == 64 and all(c in _HEX for c in r.id)]
+    assert len(doc_neighbors) >= 1
+    for row in doc_neighbors:
         assert row.vault_path is not None
         assert row.snippet_200ch is not None
         assert "<vault_excerpt>" in row.snippet_200ch

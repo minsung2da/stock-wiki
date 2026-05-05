@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -34,6 +36,7 @@ from sqlalchemy.engine import Engine
 
 from db.entity import upsert_entity
 from ingest.chunking import chunk_document
+from ingest.edges import populate as edges_populate
 from ingest.embedder import EMBEDDING_MODEL_VERSION, Embedder
 from ingest.heartbeat import record_source_run
 from ingest.injection_defense import detect_injection_patterns
@@ -41,6 +44,8 @@ from ingest.parsers import parse_sections
 from ingest.tokenizer import tokenize_ko
 from shared.content_hash import normalize_body
 from shared.frontmatter import read_frontmatter, write_frontmatter
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["process_document", "ingest_run"]
 
@@ -179,7 +184,12 @@ def process_document(
 
     write_frontmatter(str(path), fm_model, body)
 
-    return {"status": "processed", "doc_id": new_hash, "chunks": len(chunks)}
+    return {
+        "status": "processed",
+        "doc_id": new_hash,
+        "document_id": new_hash,
+        "chunks": len(chunks),
+    }
 
 
 def ingest_run(
@@ -198,8 +208,10 @@ def ingest_run(
         embedder = Embedder()
 
     stats: dict[str, Any] = {"total": 0, "succeeded": 0, "skipped": 0, "failed": []}
+    committed_doc_ids: list[str] = []
 
     raw_root = vault_root / "raw"
+    started_at = datetime.now(UTC)
     if raw_root.exists():
         for path in sorted(raw_root.rglob("*.md")):
             stats["total"] += 1
@@ -209,8 +221,70 @@ def ingest_run(
                     stats["skipped"] += 1
                 else:
                     stats["succeeded"] += 1
+                # Track every committed document id (processed OR skipped — the
+                # row is in `documents` either way and may need edge derivation).
+                doc_id = result.get("document_id") or result.get("doc_id")
+                if doc_id:
+                    committed_doc_ids.append(doc_id)
             except Exception as exc:  # noqa: BLE001 — per-doc isolation (D-26)
                 stats["failed"].append({"doc": str(path), "error": str(exc)[:200]})
+
+    # Phase 7 GRAPH-01 (D-03): post-pass typed-edge population.
+    # Soft-fail per D-04: a buggy edge rule does NOT roll back doc commits.
+    # Edge population runs in its OWN engine.begin() block, separate from the
+    # per-doc transactions above — so an exception here cannot rewind the
+    # already-committed documents/chunks rows.
+    edges_counters: dict[str, Any] = {}
+    try:
+        with engine.begin() as conn:
+            edges_counters = edges_populate(committed_doc_ids, conn)
+    except Exception as exc:  # noqa: BLE001 — D-04 soft-fail
+        edges_counters = {"error": str(exc)[:200]}
+        logger.exception("edges.populate top-level failure")
+
+    # Record an ingest_runs row for source='edges' so OPS observability sees it.
+    # CONTEXT D-04 amendment 2026-05-05: counters land under JSONB sub-key
+    # `stats["edges_warning"]` — there is no `extra` column on ingest_runs.
+    edges_run_stats: dict[str, Any] = {
+        "total": len(committed_doc_ids),
+        "succeeded": int(edges_counters.get("inserted", 0) or 0),
+        "skipped": int(edges_counters.get("skipped_conflict", 0) or 0),
+        "failed": list(edges_counters.get("failed_per_type", {}).keys()),
+        "edges_warning": edges_counters,
+    }
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                sa.text(
+                    "INSERT INTO ingest_runs "
+                    "(started_at, finished_at, kind, source, stats, error) "
+                    "VALUES (:s, :f, 'edges', 'edges', CAST(:stats AS JSONB), :err)"
+                ),
+                {
+                    "s": started_at,
+                    "f": datetime.now(UTC),
+                    "stats": json.dumps(edges_run_stats, default=str),
+                    "err": edges_counters.get("error"),
+                },
+            )
+    except Exception:  # noqa: BLE001 — observability is best-effort
+        logger.exception("failed to record ingest_runs row for edges")
+
+    # Heartbeat: record edges as its own source row so health() and ingest doctor
+    # see degraded state when failed_per_type is non-empty (D-05).
+    # `extra=` here is the heartbeat-helper kwarg name (its own internal merging
+    # key) — unrelated to any DB column.
+    record_source_run(
+        "edges",
+        {
+            "total": len(committed_doc_ids),
+            "succeeded": int(edges_counters.get("inserted", 0) or 0),
+            "skipped": int(edges_counters.get("skipped_conflict", 0) or 0),
+            "failed": list(edges_counters.get("failed_per_type", {}).keys()),
+        },
+        heartbeat_path=vault_root / "ingested/_status/heartbeat.md",
+        extra=edges_counters,
+    )
 
     # Heartbeat (source='ingest'). Stats passed through unchanged; record_source_run
     # treats failed as list/int consistently.
