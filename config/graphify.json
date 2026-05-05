@@ -1,0 +1,12 @@
+{
+  "graphify": {
+    "raw_windows_days": {
+      "dart": 365,
+      "news": 30,
+      "kind": 90,
+      "macro": 180
+    },
+    "mode": "deep",
+    "directed": true
+  }
+}
