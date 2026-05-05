@@ -14,6 +14,9 @@ and downstream waves know the canonical source. Importing from
 from __future__ import annotations
 
 import hashlib
+import json
+import sys
+import types
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -36,15 +39,69 @@ from shared.frontmatter import (
 
 @pytest.fixture
 def graphify_stub(monkeypatch):
-    """Replace `graphify.*` modules with stubs returning deterministic in-memory
-    structures so tests/graph/test_snapshot_cli.py runs without invoking the real
-    library. Plan 03 implements the real call paths; this stub just lets us
-    assert that snapshot.py wires inputs/outputs correctly.
+    """Replace ``graphify.*`` modules with stubs returning deterministic
+    in-memory structures so ``tests/graph/test_snapshot_cli.py`` runs without
+    invoking the real library.
 
-    See probe-findings.md for the actual 0.7.5 surface; stub mirrors v4 SKILL.md
-    chain that Plan 03 will adapt.
+    The stub mirrors the 0.7.5 surface (see probe-findings.md) used by
+    ``src.graph.snapshot._run_graphify``. Mutate the returned ``state`` dict's
+    ``should_raise`` flag to exercise the failure path: the next call to
+    ``detect()`` raises and triggers the staging-cleanup ``finally`` block.
     """
-    pytest.skip("Plan 03 Task 1 will implement graphify_stub fixture")
+    state: dict = {"should_raise": False}
+
+    def _maybe_raise() -> None:
+        if state["should_raise"]:
+            raise RuntimeError("graphify_stub: forced failure")
+
+    fake = {
+        name: types.ModuleType(name)
+        for name in (
+            "graphify",
+            "graphify.detect",
+            "graphify.extract",
+            "graphify.build",
+            "graphify.cluster",
+            "graphify.analyze",
+            "graphify.report",
+            "graphify.export",
+        )
+    }
+
+    def _detect(root, **_kwargs):
+        _maybe_raise()
+        return {"files": [], "root": str(root)}
+
+    fake["graphify.detect"].detect = _detect
+    fake["graphify.extract"].collect_files = lambda detection: []
+    fake["graphify.extract"].extract = lambda files, mode="deep", semantic=False: {
+        "nodes": [],
+        "edges": [],
+    }
+    fake["graphify.build"].build_from_json = lambda extraction, *, directed=False: {
+        "_G_": True,
+        "directed": directed,
+    }
+    fake["graphify.cluster"].cluster = lambda g: {}
+    fake["graphify.cluster"].score_all = lambda g, c: {}
+    fake["graphify.analyze"].god_nodes = lambda g, top_n=10: []
+    fake["graphify.analyze"].surprising_connections = lambda g, communities=None, top_n=5: []
+    fake["graphify.analyze"].suggest_questions = lambda g, c, labels, top_n=7: []
+    fake["graphify.report"].generate = lambda *args, **kwargs: "# Stub Report\n"
+
+    def _to_json(g, c, output_path, *, force=False, built_at_commit=None):
+        Path(output_path).write_text(json.dumps({"nodes": [], "edges": []}), encoding="utf-8")
+        return True
+
+    def _to_html(g, c, output_path, community_labels=None, member_counts=None, node_limit=None):
+        Path(output_path).write_text("<html><body>stub</body></html>", encoding="utf-8")
+
+    fake["graphify.export"].to_json = _to_json
+    fake["graphify.export"].to_html = _to_html
+
+    for name, module in fake.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    return state
 
 
 def _doc_id(seed: str) -> str:
