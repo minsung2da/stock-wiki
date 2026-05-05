@@ -110,9 +110,25 @@ def _run_graphify(input_dir: Path, out_dir: Path) -> None:
     from graphify.extract import collect_files, extract
     from graphify.report import generate
 
+    # graphifyy 0.7.5 actual signatures (probe-findings.md was wrong on these):
+    #   detect(root: Path) -> dict        — categorizes files by FileType
+    #   collect_files(target: Path) -> list[Path]  — Path, NOT detection dict
+    #   extract(paths: list[Path], cache_root=None) -> dict  — no mode/semantic
+    # AST-only on a Markdown-only vault yields an empty graph; that is correct
+    # behaviour for the unattended snapshot path (RESEARCH §Pattern 3 caveat).
+    # Semantic enrichment via LLM lives in a future enhancement.
     detection = detect(Path(input_dir))
-    files = collect_files(detection)
-    extraction = extract(files, mode="deep", semantic=False)
+    files = collect_files(Path(input_dir))
+    extraction = (
+        extract(files, cache_root=Path(input_dir))
+        if files
+        else {
+            "nodes": [],
+            "edges": [],
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+    )
 
     G = build_from_json(extraction, directed=True)
     communities = cluster(G)
