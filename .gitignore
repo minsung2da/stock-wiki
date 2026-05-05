@@ -28,7 +28,9 @@ graphify-out/
 .graphify_python
 
 # Phase 7 graph snapshots — regenerable, never commit
-vault/graph/
+# Use file-level glob (not dir-level) so the README.md exception below works.
+vault/graph/*
+!vault/graph/README.md
 vault/.graphify-staging/
 
 # Secrets
