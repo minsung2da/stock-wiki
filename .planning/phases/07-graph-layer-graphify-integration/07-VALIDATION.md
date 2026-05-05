@@ -2,8 +2,8 @@
 phase: 7
 slug: graph-layer-graphify-integration
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-05-05
 ---
 
@@ -41,7 +41,17 @@ created: 2026-05-05
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD     | TBD  | TBD  | GRAPH-01    | —          | N/A             | unit      | TBD               | ❌ W0       | ⬜ pending |
+| 07-01-T1  | 01 | 0 | GRAPH-01,02,03 | T-7-01 | Pinned dep version, no LLM keys | smoke | uv run --group graph python -c "import graphify"   | ✅          | ✅ green |
+| 07-01-T2  | 01 | 0 | GRAPH-01,02,03 | —      | N/A             | scaffold | uv run pytest --collect-only tests/graph/ tests/db/test_migration_0004.py | ✅ | ✅ green |
+| 07-02-T1  | 02 | 1 | GRAPH-01      | T-7-02 | SQL bind params; pre-validate abort | unit | uv run pytest tests/db/test_migration_0004.py -x | ✅ stub     | ⬜ pending |
+| 07-02-T2  | 02 | 1 | GRAPH-01      | T-7-03 | SQL bind params; corp_code regex     | unit | uv run pytest tests/graph/test_edges_deterministic.py tests/graph/test_edges_derived.py tests/graph/test_edges_idempotency.py -x | ✅ stub | ⬜ pending |
+| 07-02-T3  | 02 | 1 | GRAPH-01      | T-7-04 | Soft-fail truncate to 200 chars (no PII) | unit | uv run pytest tests/test_ingest_worker.py tests/graph/test_edges_idempotency.py::test_soft_fail_logs_to_failed_per_type -x | ✅ stub | ⬜ pending |
+| 07-03-T1  | 03 | 2 | GRAPH-02      | T-7-05 | Symlink targets bound to repo_root; staging cleaned | integration | uv run pytest tests/graph/test_snapshot_cli.py -x | ✅ stub | ⬜ pending |
+| 07-03-T2  | 03 | 2 | GRAPH-02      | T-7-06 | mtime-based filter; staging gitignored | unit | uv run pytest tests/graph/test_window.py -x | ✅ stub | ⬜ pending |
+| 07-03-T3  | 03 | 2 | GRAPH-02      | —      | N/A             | smoke | uv run stock graph snapshot --dry-run | ❌ W0 | ⬜ pending |
+| 07-04-T1  | 04 | 2 | GRAPH-03      | T-7-07 | SQL bind params; depth-cap | unit | uv run pytest tests/graph/test_canonical_queries.py -x | ✅ stub | ⬜ pending |
+| 07-04-T2  | 04 | 2 | GRAPH-03      | —      | N/A             | smoke | uv run pytest tests/graph/test_canonical_queries.py::test_readme_parity_imports_match_snippets -x | ✅ stub | ⬜ pending |
+| 07-04-T3  | 04 | 2 | GRAPH-01      | —      | N/A             | regression | uv run pytest tests/graph/test_get_related_regression.py -x | ✅ stub | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
