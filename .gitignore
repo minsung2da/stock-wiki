@@ -5,6 +5,12 @@
 .obsidian/community-plugins.json
 .obsidian/plugins/*/data.json.bak
 
+# Phase 8 D-16/D-17: commit Dataview plugin bootstrap (settings, not state)
+!.obsidian/community-plugins.json
+!.obsidian/plugins/
+!.obsidian/plugins/dataview/
+!.obsidian/plugins/dataview/data.json
+
 # Private portfolio data (per D-03: local-only, never committed)
 notes/private/
 
