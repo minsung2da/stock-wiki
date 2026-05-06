@@ -110,6 +110,19 @@ stock/
    docker compose up -d postgres
    uv run alembic upgrade head
    ```
+   `alembic.ini` lives at the repo root (script_location → `src/db/migrations`),
+   so `uv run alembic upgrade head` works from anywhere in the project.
+   `.env` is auto-loaded by `src/db/migrations/env.py` — no manual
+   `set -a; source .env` needed.
+
+3.5. **Backfill edges for pre-existing documents** (one-shot, idempotent):
+   ```bash
+   uv run stock ingest backfill-edges
+   ```
+   Run after upgrading past migration `0004` (which introduces the
+   `mentions_ticker`/`note_ticker`/`filing_event`/`event_event` edge types).
+   `ingest.edges.populate` only fires for newly-committed docs inside the
+   ingest worker, so anything already in the DB needs this pass once.
 
 4. **Seed entity aliases** (REQUIRED before `stock collect news`):
    ```bash

@@ -103,7 +103,8 @@ def test_seed_edges_full_extraction(seed_edges, pg_engine):
             assert e["tag"] == "INFERRED"
 
     for n in result["nodes"]:
-        assert {"id", "type", "label", "source_file"} <= set(n.keys())
+        # file_type is required by graphify v0.7.5 (silences extraction warnings)
+        assert {"id", "type", "label", "source_file", "file_type"} <= set(n.keys())
 
     # graphify round-trip: SC-1 seed (graph.json populated with nodes/links).
     G = gbuild.build_from_json(result, directed=True)

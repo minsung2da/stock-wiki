@@ -29,6 +29,7 @@ from cli.commands import (
     cmd_collect_macro,
     cmd_collect_news,
     cmd_graph_snapshot,
+    cmd_ingest_backfill_edges,
     cmd_ingest_rebuild,
     cmd_ingest_run,
     cmd_sync,
@@ -120,6 +121,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip TTY confirmation prompt (D-28; for CI/cron)",
     )
     ing_rebuild.set_defaults(func=cmd_ingest_rebuild)
+
+    ing_backfill_edges = ingest_subs.add_parser(
+        "backfill-edges",
+        help="Run edges.populate over all existing documents (one-shot fix-up).",
+        description=(
+            "Useful when documents existed before edges.populate was wired into the "
+            "ingest worker, or after a schema migration that added new edge_type "
+            "values. Idempotent: ON CONFLICT DO NOTHING on (src_type, src_id, "
+            "dst_type, dst_id, edge_type)."
+        ),
+    )
+    ing_backfill_edges.set_defaults(func=cmd_ingest_backfill_edges)
 
     # sync (Phase 5.1)
     sync = subs.add_parser(

@@ -4,7 +4,11 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
+from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import engine_from_config, pool
+
+# Auto-load .env so `alembic upgrade head` works without manual `set -a; source .env`.
+load_dotenv(find_dotenv(usecwd=True))
 
 config = context.config
 if config.config_file_name:
