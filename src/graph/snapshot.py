@@ -1,34 +1,41 @@
-"""Phase 7 GRAPH-02: stock graph snapshot — vault-wide graphifyy snapshot.
+"""Phase 7.1 GRAPH-02: stock graph snapshot — SQL-driven graphify snapshot.
 
-Calls graphifyy 0.7.5 Python API in-process (CONTEXT D-10). Stages source
-files into a symlink farm at vault/.graphify-staging/<KST_DATE>/ scoped per
-config raw_windows_days (D-12), invokes graphify deep+directed (D-11), writes
-{index.html, graph.json, GRAPH_REPORT.md} into vault/graph/<KST_DATE>/ (D-13),
-prunes dated dirs beyond N=14 by mtime (D-14), cleans staging.
+Phase 7 had this module call ``graphify.detect / collect_files / extract`` on a
+markdown vault; that path returned empty ``nodes``/``links`` (Phase 7 UAT
+gap-1). Phase 7.1 replaces it with an SQL adapter
+(``src.graph.sql_to_graph.build_extraction``) that reads the live ``edges`` +
+``entities`` + ``documents`` tables — populated by Phase 2/3/7 collectors and
+``src/ingest/edges.py`` — into a graphify ``build_from_json``-compatible
+extraction dict, then runs the graphify cluster/analyze/export pipeline.
 
-KST: directory names are plain ISO ``YYYY-MM-DD``. The date is computed in
-Asia/Seoul (RESEARCH §Pitfall 6 — avoid spaces and non-ASCII in dir names).
+Output is unchanged: ``vault/graph/<KST_DATE>/{index.html, graph.json,
+GRAPH_REPORT.md}``. KST date naming, 14-day prune, and dry-run semantics are
+preserved per CONTEXT D-13/D-14.
+
+KST: directory names are plain ISO ``YYYY-MM-DD`` (RESEARCH §Pitfall 6 —
+avoid spaces and non-ASCII in dir names).
 
 Failure policy: on graphify exception, the partial output dir is preserved
-for postmortem but staging is unconditionally removed in ``finally``.
+for postmortem.
 
 NB: This module imports graphify lazily inside ``_run_graphify`` so importing
 ``src.graph.snapshot`` in environments without the ``graph`` dependency group
 (e.g., the ingest CI guard suite) does not error.
 
-API mapping vs probe-findings.md (graphifyy 0.7.5):
+API mapping (graphifyy 0.7.5, KEPT after Phase 7.1):
 
-* ``graphify.detect.detect`` — PRESENT
-* ``graphify.extract.collect_files`` / ``graphify.extract.extract`` — PRESENT
 * ``graphify.build.build_from_json`` — PRESENT (accepts ``directed=True`` kw)
 * ``graphify.cluster.cluster`` / ``score_all`` — PRESENT
 * ``graphify.analyze.god_nodes`` / ``surprising_connections`` /
   ``suggest_questions`` — PRESENT (suggest_questions requires
   ``community_labels``)
 * ``graphify.report.generate`` — PRESENT (requires ``community_labels``)
-* ``graphify.export.to_json`` / ``to_html`` — PRESENT (to_html accepts
-  ``community_labels`` and ``member_counts``; we derive both from cluster
-  output as Plan 01 SUMMARY directs).
+* ``graphify.export.to_json`` / ``to_html`` — PRESENT
+
+DROPPED (no longer imported — gap-1 fix):
+
+* ``graphify.detect.detect``
+* ``graphify.extract.collect_files`` / ``graphify.extract.extract``
 """
 
 from __future__ import annotations
@@ -55,47 +62,42 @@ def _today_kst() -> str:
 
 
 def snapshot(repo_root: Path, config: dict, *, dry_run: bool = False) -> Path:
-    """Run a vault-wide graphify snapshot.
+    """Run a vault-wide graphify snapshot from the SQL edge index.
 
     Returns:
         Path to ``vault/graph/<KST_DATE>/`` (created on entry).
 
     Args:
         repo_root: project root containing the ``vault/`` subtree.
-        config: parsed ``config/graphify.json`` (top-level dict).
-        dry_run: build staging only, skip graphify call.
+        config: reserved for future extensions; currently unused (Phase 7.1
+            removed the staging-window logic — SQL is the data source).
+        dry_run: skip the graphify call but still create the output directory
+            and prune old dirs.
     """
+    del config  # Phase 7.1: no staging windowing — SQL is the data source.
     today = _today_kst()
     out_dir = repo_root / "vault" / "graph" / today
-    staging = repo_root / "vault" / ".graphify-staging" / today
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Local import so ``graph.window`` substitution in tests stays cheap
-    # and the module remains importable when the ``graph`` group is absent.
-    # Tolerate both import styles: ``src.graph.window`` (tests run from repo
-    # root with ``src/`` not on sys.path as a namespace) and ``graph.window``
-    # (CLI run via ``uv run stock`` puts ``src/`` on sys.path).
-    try:
-        from src.graph.window import build_staging
-    except ModuleNotFoundError:
-        from graph.window import build_staging
-
-    try:
-        link_counts = build_staging(repo_root, staging, config)
-        logger.info("staging built: %s", link_counts)
-        if not dry_run:
-            _run_graphify(staging, out_dir)
-        _prune_old(out_dir.parent, KEEP_DATED_DIRS)
-        return out_dir
-    finally:
-        shutil.rmtree(staging, ignore_errors=True)
+    if not dry_run:
+        _run_graphify(out_dir)
+    _prune_old(out_dir.parent, KEEP_DATED_DIRS)
+    # Defensive: if a stale staging dir from a Phase 7 run still lives next
+    # to the dated output, remove it so the layout matches the Phase 7.1
+    # contract (CONTEXT D-13).
+    staging = repo_root / "vault" / ".graphify-staging" / today
+    shutil.rmtree(staging, ignore_errors=True)
+    return out_dir
 
 
-def _run_graphify(input_dir: Path, out_dir: Path) -> None:
-    """In-process graphify call. Symbol set matches probe-findings.md for 0.7.5.
+def _run_graphify(out_dir: Path) -> None:
+    """SQL → graph snapshot.
 
-    AST-only path (RESEARCH §Pattern 3 caveat — no LLM subagent dispatch in
-    unattended ``stock graph snapshot``).
+    Phase 7.1 replaces graphifyy 0.7.5's AST extraction path
+    (``detect/collect_files/extract``) which produced an empty graph on
+    markdown vaults (gap-1, Phase 7 HUMAN-UAT.md). Reads SQL edges + entities
+    + documents via ``sql_to_graph.build_extraction``; ``graphify.detect`` and
+    ``graphify.extract`` are no longer imported.
     """
     # Lazy imports — keep ``graph`` group optional for non-snapshot envs.
     from graphify.analyze import (
@@ -105,29 +107,25 @@ def _run_graphify(input_dir: Path, out_dir: Path) -> None:
     )
     from graphify.build import build_from_json
     from graphify.cluster import cluster, score_all
-    from graphify.detect import detect
     from graphify.export import to_html, to_json
-    from graphify.extract import collect_files, extract
     from graphify.report import generate
 
-    # graphifyy 0.7.5 actual signatures (probe-findings.md was wrong on these):
-    #   detect(root: Path) -> dict        — categorizes files by FileType
-    #   collect_files(target: Path) -> list[Path]  — Path, NOT detection dict
-    #   extract(paths: list[Path], cache_root=None) -> dict  — no mode/semantic
-    # AST-only on a Markdown-only vault yields an empty graph; that is correct
-    # behaviour for the unattended snapshot path (RESEARCH §Pattern 3 caveat).
-    # Semantic enrichment via LLM lives in a future enhancement.
-    detection = detect(Path(input_dir))
-    files = collect_files(Path(input_dir))
-    extraction = (
-        extract(files, cache_root=Path(input_dir))
-        if files
-        else {
-            "nodes": [],
-            "edges": [],
-            "input_tokens": 0,
-            "output_tokens": 0,
-        }
+    # Tolerate both import styles: ``src.graph.*`` (tests run from repo root)
+    # and ``graph.*`` (CLI run via ``uv run stock`` puts ``src/`` on sys.path).
+    try:
+        from src.graph.sql_to_graph import build_extraction
+    except ModuleNotFoundError:  # pragma: no cover - exercised under CLI path
+        from graph.sql_to_graph import build_extraction
+    try:
+        from src.db.engine import get_engine
+    except ModuleNotFoundError:  # pragma: no cover - exercised under CLI path
+        from db.engine import get_engine
+
+    extraction = build_extraction(get_engine())
+    logger.info(
+        "sql_to_graph extraction: %d nodes, %d edges",
+        len(extraction.get("nodes", [])),
+        len(extraction.get("edges", [])),
     )
 
     G = build_from_json(extraction, directed=True)
@@ -151,6 +149,13 @@ def _run_graphify(input_dir: Path, out_dir: Path) -> None:
         community_labels=labels,
         member_counts=member_counts,
     )
+    # detection placeholder — graphify.report.generate accepts any dict here;
+    # we record the actual data plane (SQL) for postmortem readability.
+    detection = {
+        "source": "sql:edges+entities+documents",
+        "input_tokens": int(extraction.get("input_tokens", 0)),
+        "output_tokens": int(extraction.get("output_tokens", 0)),
+    }
     report_text = generate(
         G,
         communities,
@@ -160,7 +165,7 @@ def _run_graphify(input_dir: Path, out_dir: Path) -> None:
         surprises,
         detection,
         {"input": 0, "output": 0},
-        str(input_dir),
+        "db://stock",
         suggested_questions=questions,
     )
     (out_dir / "GRAPH_REPORT.md").write_text(report_text, encoding="utf-8")
