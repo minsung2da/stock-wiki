@@ -293,4 +293,23 @@ def ingest_run(
         stats,
         heartbeat_path=vault_root / "ingested/_status/heartbeat.md",
     )
+
+    # Phase 8 D-01 — auto post-cycle hooks (best-effort, isolated).
+    # Order: price_snapshot first (writes dashboards/_data/prices.md),
+    # then hub_builder (may consume prices.md in future).
+    # Failures here MUST NOT propagate — ingest must already be successful.
+    # vault_root in this project is the repo root (raw/ lives under it),
+    # so we pass it as both vault_root and repo_root.
+    try:
+        from ingest import price_snapshot
+        price_snapshot.run(engine, repo_root=vault_root)
+    except Exception:  # noqa: BLE001 — D-01 isolation
+        logger.exception("Phase 8 price_snapshot hook failed")
+
+    try:
+        from ingest import hub_builder
+        hub_builder.run(engine, vault_root=vault_root, repo_root=vault_root)
+    except Exception:  # noqa: BLE001 — D-01 isolation
+        logger.exception("Phase 8 hub_builder hook failed")
+
     return stats
