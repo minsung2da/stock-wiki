@@ -35,6 +35,10 @@ __all__ = [
     "SourceHealth",
     "HealthResponse",
     "OverviewResponse",
+    # Phase 07.1-03 — graph_query
+    "GraphNode",
+    "GraphCommunity",
+    "GraphQueryResult",
 ]
 
 
@@ -266,4 +270,37 @@ class OverviewResponse(BaseModel):
     valuation: ValuationContext | None = None
     supply_demand: SupplyDemandSignals | None = None
     private_thesis: PrivateThesis | None = None
+    truncation_applied: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Phase 07.1-03 — graph_query response models
+# ---------------------------------------------------------------------------
+
+
+class GraphNode(BaseModel):
+    """A node returned by ``graph_query``. ``depth`` only set for bfs mode."""
+
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    type: str | None = None
+    label: str | None = None
+    depth: int | None = None
+
+
+class GraphCommunity(BaseModel):
+    """A community/cluster surrounding a focal node."""
+
+    model_config = ConfigDict(extra="forbid")
+    community_id: int | str
+    members: list[str]
+
+
+class GraphQueryResult(BaseModel):
+    """Response envelope for ``graph_query`` (bfs | community | god_nodes)."""
+
+    model_config = ConfigDict(extra="forbid")
+    mode: Literal["bfs", "community", "god_nodes"]
+    nodes: list[GraphNode] = Field(default_factory=list)
+    communities: list[GraphCommunity] = Field(default_factory=list)
     truncation_applied: list[str] = Field(default_factory=list)
