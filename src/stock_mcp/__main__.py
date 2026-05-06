@@ -10,10 +10,13 @@ from __future__ import annotations
 import json
 import sys
 
+from dotenv import find_dotenv, load_dotenv
+
 from .errors import StructuredError, to_error_response
 
 
 def main() -> None:
+    load_dotenv(find_dotenv(usecwd=True))
     from .server import _check_db_connection, mcp
 
     try:
