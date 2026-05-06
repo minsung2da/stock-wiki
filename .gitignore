@@ -63,6 +63,9 @@ vault/raw/**/*.jpeg
 Thumbs.db
 desktop.ini
 
+# Phase 8 — derived dashboard cache (regeneratable from DB)
+dashboards/_data/
+
 # IDE
 .vscode/
 .idea/
