@@ -56,24 +56,27 @@ def _node_label_and_source(
     *,
     doc_meta: dict[str, dict[str, str]],
     entity_by_ticker: dict[str, str],
-) -> tuple[str, str]:
-    """Return (label, source_file) for a node based on its type and id.
+) -> tuple[str, str, str]:
+    """Return (label, source_file, file_type) for a node.
 
-    Pure function — no DB IO; callers pre-load metadata maps.
+    Pure function — no DB IO; callers pre-load metadata maps. ``file_type``
+    must be one of graphify's enum (``code|concept|document|image|paper|
+    rationale``); we map vault docs to ``document`` and SQL-derived ticker /
+    sector / event nodes to ``concept``.
     """
     if ntype == "document":
         meta = doc_meta.get(nid, {})
         vault_path = meta.get("vault_path", "")
         if vault_path:
-            return Path(vault_path).stem, vault_path
-        return nid[:12], f"db://documents/{nid}"
+            return Path(vault_path).stem, vault_path, "document"
+        return nid[:12], f"db://documents/{nid}", "document"
     if ntype == "ticker":
-        return entity_by_ticker.get(nid, nid), f"db://entities/{nid}"
+        return entity_by_ticker.get(nid, nid), f"db://entities/{nid}", "concept"
     if ntype == "sector":
-        return nid, f"db://sectors/{nid}"
+        return nid, f"db://sectors/{nid}", "concept"
     if ntype == "event":
-        return nid, f"db://events/{nid}"
-    return nid, f"db://{ntype}/{nid}"
+        return nid, f"db://events/{nid}", "concept"
+    return nid, f"db://{ntype}/{nid}", "concept"
 
 
 def build_extraction(engine: Engine) -> dict[str, Any]:
@@ -135,7 +138,7 @@ def build_extraction(engine: Engine) -> dict[str, Any]:
     def _ensure_node(ntype: str, nid: str) -> None:
         if nid in nodes_by_id:
             return
-        label, source_file = _node_label_and_source(
+        label, source_file, file_type = _node_label_and_source(
             ntype,
             nid,
             doc_meta=doc_meta,
@@ -146,6 +149,7 @@ def build_extraction(engine: Engine) -> dict[str, Any]:
             "type": ntype,
             "label": label,
             "source_file": source_file,
+            "file_type": file_type,
         }
 
     edges_out: list[dict[str, Any]] = []
@@ -157,6 +161,14 @@ def build_extraction(engine: Engine) -> dict[str, Any]:
                 "source": r["src_id"],
                 "target": r["dst_id"],
                 "edge_type": r["edge_type"],
+                # graphify requires `relation`, `confidence`, and
+                # `source_file`. Mirror the canonical SQL taxonomy as
+                # `relation`; map our `tag` (EXTRACTED|INFERRED) to graphify's
+                # `confidence` enum (graphify treats it as the same axis);
+                # inherit the source endpoint's `source_file` for provenance.
+                "relation": r["edge_type"],
+                "confidence": r["tag"],
+                "source_file": nodes_by_id[r["src_id"]]["source_file"],
                 "tag": r["tag"],
                 "weight": 1.0,
             }

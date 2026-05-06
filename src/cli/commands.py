@@ -31,6 +31,7 @@ __all__ = [
     "cmd_collect_all",
     "cmd_ingest_run",
     "cmd_ingest_rebuild",
+    "cmd_ingest_backfill_edges",
     "cmd_sync",
     "cmd_graph_snapshot",
 ]
@@ -233,6 +234,27 @@ def cmd_ingest_rebuild(args) -> int:  # noqa: ANN001
     print(json.dumps(report, ensure_ascii=False, default=str))
     if report.get("aborted"):
         return 2
+    return 0
+
+
+def cmd_ingest_backfill_edges(args) -> int:  # noqa: ANN001, ARG001
+    """Handle ``stock ingest backfill-edges`` — populate edges for all docs.
+
+    One-shot fix-up for documents that existed before ``ingest.edges.populate``
+    was wired into the worker (or after a migration that introduced new
+    ``edge_type`` values). Reads every ``documents.id`` from the live DB and
+    runs ``populate`` against the same connection — idempotent.
+    """
+    from db.engine import get_engine
+    from ingest.edges import populate as edges_populate
+    from sqlalchemy import text
+
+    with get_engine().begin() as conn:
+        doc_ids = [row[0] for row in conn.execute(text("SELECT id FROM documents")).all()]
+        counters = edges_populate(doc_ids, conn)
+
+    report = {"status": "ok", "doc_count": len(doc_ids), "counters": counters}
+    print(json.dumps(report, ensure_ascii=False, default=str))
     return 0
 
 
