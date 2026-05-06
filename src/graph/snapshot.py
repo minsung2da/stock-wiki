@@ -149,10 +149,20 @@ def _run_graphify(out_dir: Path) -> None:
         community_labels=labels,
         member_counts=member_counts,
     )
-    # detection placeholder — graphify.report.generate accepts any dict here;
-    # we record the actual data plane (SQL) for postmortem readability.
+    # detection placeholder — graphify.report.generate's "Corpus Check"
+    # branch reads ``warning`` (short-circuit) OR ``total_files`` /
+    # ``total_words`` (counter branch). We populate both so the report renders
+    # cleanly regardless of which branch graphify version picks. ``source``
+    # records the actual data plane (SQL) for postmortem readability.
+    n_doc_nodes = sum(1 for n in extraction.get("nodes", []) if n.get("type") == "document")
     detection = {
         "source": "sql:edges+entities+documents",
+        "warning": (
+            "Phase 7.1 SQL-driven snapshot — corpus stats from edge index, "
+            "not file walk."
+        ),
+        "total_files": n_doc_nodes,
+        "total_words": 0,
         "input_tokens": int(extraction.get("input_tokens", 0)),
         "output_tokens": int(extraction.get("output_tokens", 0)),
     }
