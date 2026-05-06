@@ -19,6 +19,8 @@ import argparse
 import sys
 from collections.abc import Sequence
 
+from dotenv import find_dotenv, load_dotenv
+
 from cli.commands import (
     cmd_collect_all,
     cmd_collect_dart,
@@ -162,6 +164,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    load_dotenv(find_dotenv(usecwd=True))
     parser = build_parser()
     args = parser.parse_args(argv)
     func = getattr(args, "func", None)
