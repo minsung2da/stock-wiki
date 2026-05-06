@@ -21,6 +21,7 @@ from .tools.search import mcp  # re-export; import registers @mcp.tool
 from .tools import (  # noqa: F401, E402  -- side-effect registration
     events,
     filing,
+    graph_query,
     health,
     notes,
     overview,
