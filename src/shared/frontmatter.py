@@ -364,11 +364,16 @@ class NoteFrontmatter(BaseModel):
 
     ``type`` is required; ``created``/``updated`` auto-fill to now (KST) when
     omitted. ``conviction_score`` is optional and bounded to [0.0, 1.0].
-    ``extra='forbid'`` so add_note callers cannot smuggle unknown fields into
-    the frontmatter and corrupt downstream Dataview queries.
+
+    Phase 8 D-15 update: ``extra='allow'`` so user free-form keys (e.g. ``mood``,
+    ``weather``) do not crash ingest. Schema violations on KNOWN fields are
+    caught by ``ingest.parsers.note.parse_note`` and recorded as
+    ``note_schema_violation`` review_flags (Pitfall 4 avoidance). add_note
+    still validates by passing the dict to this model — unknown keys silently
+    pass through, but Literal/range constraints on known fields still raise.
     """
 
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     type: Literal["thesis", "journal", "conviction", "note"]
     tickers: list[str] = Field(default_factory=list)
@@ -377,3 +382,27 @@ class NoteFrontmatter(BaseModel):
     updated: datetime = Field(default_factory=_now_kst)
     author: str = "yamin"
     conviction_score: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
+class ThesisFrontmatter(NoteFrontmatter):
+    """Phase 8 D-13 — thesis-specific extension of NoteFrontmatter.
+
+    Adds ``kill_criteria``, ``conviction``, ``target_price`` for NOTE-01
+    research memos. Inherits ``extra='allow'`` policy from NoteFrontmatter.
+    """
+
+    type: Literal["thesis"] = "thesis"  # type: ignore[assignment]
+    kill_criteria: list[str] = Field(default_factory=list)
+    conviction: Literal["low", "medium", "high"] = "medium"
+    target_price: int | None = None  # KRW
+
+
+# Dispatch table (Phase 8 D-15) — frontmatter['type'] → Pydantic class.
+# ``ingest.parsers.note.parse_note`` looks up by raw frontmatter ``type`` value;
+# unknown types fall back to NoteFrontmatter.
+NOTE_MODEL_BY_TYPE: dict[str, type[NoteFrontmatter]] = {
+    "thesis": ThesisFrontmatter,
+    "journal": NoteFrontmatter,
+    "conviction": NoteFrontmatter,
+    "note": NoteFrontmatter,
+}
