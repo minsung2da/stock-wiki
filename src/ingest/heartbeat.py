@@ -41,19 +41,11 @@ def _now_iso() -> str:
 
 
 def read_sources(path: Path) -> dict[str, Any]:
-    """Parse heartbeat.md and return the top-level YAML metadata dict.
+    """Read existing heartbeat metadata; return empty dict if missing.
 
-    Heartbeat file is YAML-frontmatter-only markdown. The returned dict is the
-    full top-level frontmatter mapping, typically containing a ``sources`` key:
-    ``{source_name: {last_success: datetime, last_error: str | None, ...}}``.
-
-    Returns empty dict if the file is missing, has no frontmatter, or the
-    frontmatter doesn't parse as a dict.
-
-    Used by ``stock_mcp.tools.health`` as a fallback when ``ingest_runs`` is
-    unreachable or empty (Pitfall 3). The leading-underscore alias
-    ``_read_sources`` is preserved for backwards compatibility with existing
-    internal callers.
+    Heartbeat file is YAML-frontmatter-only markdown. Parsed via yaml.safe_load
+    directly because the `sources` key lives at the top level of frontmatter,
+    outside the FrontMatter Pydantic schema.
     """
     if not path.exists():
         return {}
@@ -68,6 +60,10 @@ def read_sources(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         return {}
     return data
+
+
+# Backwards-compat alias for legacy ingest callers.
+_read_sources = read_sources
 
 
 def _atomic_write(path: Path, content: str) -> None:
@@ -89,7 +85,59 @@ def _atomic_write(path: Path, content: str) -> None:
         raise
 
 
+def _write_meta(path: Path, meta: dict[str, Any]) -> None:
+    """Serialize meta as YAML frontmatter + HEARTBEAT_BODY and write atomically."""
+    yaml_text = yaml.safe_dump(meta, sort_keys=True, allow_unicode=True)
+    content = f"---\n{yaml_text}---\n{HEARTBEAT_BODY}"
+    _atomic_write(path, content)
+
+
 _RESERVED_SOURCE_KEYS = frozenset({"last_run", "last_success", "last_failure", "docs_processed"})
+
+
+def _build_source_block(
+    source: str,
+    stats: dict[str, Any],
+    prev: dict[str, Any],
+    extra: dict[str, Any] | None,
+    now: str,
+) -> dict[str, Any]:
+    """Pure function: build the per-source block from inputs.
+
+    Does not mutate `prev` or `stats` and performs no IO. The `if source ==
+    "enrich"` alert_level branch lives here so block shaping has a single
+    home — the function remains pure (same inputs → same output).
+    """
+    failed = stats.get("failed") or []
+    had_failure = bool(failed) if not isinstance(failed, int) else failed > 0
+
+    new_block: dict[str, Any] = {
+        "last_run": now,
+        "docs_processed": int(stats.get("succeeded", 0)),
+    }
+    if had_failure:
+        new_block["last_failure"] = now
+        if "last_success" in prev:
+            new_block["last_success"] = prev["last_success"]
+    else:
+        new_block["last_success"] = now
+        if "last_failure" in prev:
+            new_block["last_failure"] = prev["last_failure"]
+
+    if extra:
+        for k, v in extra.items():
+            if k not in _RESERVED_SOURCE_KEYS:
+                new_block[k] = v
+
+    # Phase 5: auto-populate alert_level for 'enrich' source if caller didn't
+    if source == "enrich" and "alert_level" not in new_block:
+        new_block["alert_level"] = compute_enrich_alert_level(
+            extra=new_block,  # new_block already has the extra fields merged
+            prior_block=prev,
+            now_iso=now,
+        )
+
+    return new_block
 
 
 def record_source_run(
@@ -123,45 +171,10 @@ def record_source_run(
         prev = {}
 
     now = _now_iso()
-    failed = stats.get("failed") or []
-    had_failure = bool(failed) if not isinstance(failed, int) else failed > 0
-
-    new_block: dict[str, Any] = {
-        "last_run": now,
-        "docs_processed": int(stats.get("succeeded", 0)),
-    }
-    if had_failure:
-        new_block["last_failure"] = now
-        if "last_success" in prev:
-            new_block["last_success"] = prev["last_success"]
-    else:
-        new_block["last_success"] = now
-        if "last_failure" in prev:
-            new_block["last_failure"] = prev["last_failure"]
-
-    if extra:
-        for k, v in extra.items():
-            if k not in _RESERVED_SOURCE_KEYS:
-                new_block[k] = v
-
-    # Phase 5: auto-populate alert_level for 'enrich' source if caller didn't
-    if source == "enrich" and "alert_level" not in new_block:
-        new_block["alert_level"] = compute_enrich_alert_level(
-            extra=new_block,  # new_block already has the extra fields merged
-            prior_block=prev,
-            now_iso=now,
-        )
-
+    new_block = _build_source_block(source, stats, prev, extra, now)
     sources[source] = new_block
     meta["sources"] = sources
-
-    yaml_text = yaml.safe_dump(meta, sort_keys=True, allow_unicode=True)
-    content = f"---\n{yaml_text}---\n{HEARTBEAT_BODY}"
-    _atomic_write(path, content)
-
-
-# Backwards-compatibility alias for legacy callers (Plan 06-07 refactor).
-_read_sources = read_sources
+    _write_meta(path, meta)
 
 
 # === Phase 5 additions ===
@@ -181,7 +194,7 @@ def compute_enrich_alert_level(
       - review_flagged ratio > 10%       -> 'info'
     'warn' overrides 'info'. Returns None if all thresholds clear.
     """
-    level: str | None = None
+    levels: list[str] = []
     extra = extra or {}
     cf = int(extra.get("consecutive_failures", 0))
     backlog = int(extra.get("backlog_count", 0))
@@ -189,24 +202,26 @@ def compute_enrich_alert_level(
     flagged = int(extra.get("docs_review_flagged", 0))
 
     if processed > 0 and (flagged / processed) > 0.10:
-        level = "info"
+        levels.append("info")
     if cf >= 2:
-        level = "warn"
+        levels.append("warn")
     if backlog > 50:
-        level = "warn"
+        levels.append("warn")
 
     # stale last_run check (26h)
     if prior_block and now_iso:
         last_run = prior_block.get("last_run")
         if isinstance(last_run, str):
-            try:
-                lr = datetime.fromisoformat(last_run.replace("Z", "+00:00"))
-                now = datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
-                if (now - lr).total_seconds() > 26 * 3600:
-                    level = "warn"
-            except (ValueError, TypeError):
-                pass
-    return level
+            lr = datetime.fromisoformat(last_run)
+            now = datetime.fromisoformat(now_iso)
+            if (now - lr).total_seconds() > 26 * 3600:
+                levels.append("warn")
+
+    if "warn" in levels:
+        return "warn"
+    if "info" in levels:
+        return "info"
+    return None
 
 
 def write_disk_section(
@@ -220,6 +235,4 @@ def write_disk_section(
     path = heartbeat_path if heartbeat_path is not None else HEARTBEAT_PATH_DEFAULT
     meta = read_sources(path)
     meta["disk"] = dict(disk)  # shallow copy
-    yaml_text = yaml.safe_dump(meta, sort_keys=True, allow_unicode=True)
-    content = f"---\n{yaml_text}---\n{HEARTBEAT_BODY}"
-    _atomic_write(path, content)
+    _write_meta(path, meta)
