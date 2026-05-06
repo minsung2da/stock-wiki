@@ -173,9 +173,9 @@ Plans:
 **Gap closure**: addresses 07-HUMAN-UAT.md gap-1 (empty graph from markdown vault) and gap-2 (slow multi-hop SQL traversal)
 
 Plans:
-- [ ] 07.1-01-PLAN.md — src/graph/sql_to_graph.py (SQL edges+entities+documents → graphify build_from_json compatible dict) + TDD tests
-- [ ] 07.1-02-PLAN.md — Rewrite src/graph/snapshot.py to use sql_to_graph (drop graphifyy detect/extract/collect_files) + integration test gap-1 auto-guard
-- [ ] 07.1-03-PLAN.md — src/stock_mcp/graph_cache.py + tools/graph_query.py (bfs/community/god_nodes) + 2-hop perf benchmark vs SQL recursive CTE
+- [x] 07.1-01-PLAN.md — src/graph/sql_to_graph.py (SQL edges+entities+documents → graphify build_from_json compatible dict) + TDD tests
+- [x] 07.1-02-PLAN.md — Rewrite src/graph/snapshot.py to use sql_to_graph (drop graphifyy detect/extract/collect_files) + integration test gap-1 auto-guard
+- [x] 07.1-03-PLAN.md — src/stock_mcp/graph_cache.py + tools/graph_query.py (bfs/community/god_nodes) + 2-hop perf benchmark vs SQL recursive CTE
 
 ### Phase 8: Vault Dashboards & Research Memo Templates
 **Goal**: The user's daily entry points inside Obsidian — portfolio state, watchlist, this-week events, per-ticker hub pages — regenerate automatically from the DB using Dataview. Thesis and journal templates let the user record investment logic (with kill criteria) and decision logs that are indexed alongside raw data.
