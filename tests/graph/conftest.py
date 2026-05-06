@@ -43,12 +43,22 @@ def graphify_stub(monkeypatch):
     in-memory structures so ``tests/graph/test_snapshot_cli.py`` runs without
     invoking the real library.
 
-    The stub mirrors the 0.7.5 surface (see probe-findings.md) used by
-    ``src.graph.snapshot._run_graphify``. Mutate the returned ``state`` dict's
-    ``should_raise`` flag to exercise the failure path: the next call to
-    ``detect()`` raises and triggers the staging-cleanup ``finally`` block.
+    Phase 7.1 Plan 02: detect/extract.collect_files/extract are NO LONGER
+    stubbed — the new SQL-driven snapshot path does not import them. Instead
+    we stub ``sql_to_graph.build_extraction`` and ``snapshot.get_engine`` so
+    the snapshot pipeline never touches the live DB during these unit tests.
+
+    Mutate the returned ``state`` dict's ``should_raise`` flag to exercise the
+    failure path: the next call to ``build_extraction`` raises and triggers
+    the (now no-op) staging-cleanup ``finally`` block, exercising the same
+    error-propagation contract test_snapshot_cli.py asserts.
+
+    Inject a custom extraction by setting ``state["extraction"]`` to a
+    ``{"nodes": [...], "edges": [...]}`` dict — the stubbed ``to_json``
+    replays it into ``graph.json`` so integration tests can assert on
+    non-empty payloads end-to-end.
     """
-    state: dict = {"should_raise": False}
+    state: dict = {"should_raise": False, "extraction": None}
 
     def _maybe_raise() -> None:
         if state["should_raise"]:
@@ -58,8 +68,6 @@ def graphify_stub(monkeypatch):
         name: types.ModuleType(name)
         for name in (
             "graphify",
-            "graphify.detect",
-            "graphify.extract",
             "graphify.build",
             "graphify.cluster",
             "graphify.analyze",
@@ -68,20 +76,18 @@ def graphify_stub(monkeypatch):
         )
     }
 
-    def _detect(root, **_kwargs):
+    def _build_from_json(extraction, *, directed=False):
         _maybe_raise()
-        return {"files": [], "root": str(root)}
+        return {
+            "_G_": True,
+            "directed": directed,
+            "n_nodes": len(extraction.get("nodes", [])),
+            "n_edges": len(extraction.get("edges", [])),
+            "nodes": list(extraction.get("nodes", [])),
+            "edges": list(extraction.get("edges", [])),
+        }
 
-    fake["graphify.detect"].detect = _detect
-    fake["graphify.extract"].collect_files = lambda detection: []
-    fake["graphify.extract"].extract = lambda files, mode="deep", semantic=False: {
-        "nodes": [],
-        "edges": [],
-    }
-    fake["graphify.build"].build_from_json = lambda extraction, *, directed=False: {
-        "_G_": True,
-        "directed": directed,
-    }
+    fake["graphify.build"].build_from_json = _build_from_json
     fake["graphify.cluster"].cluster = lambda g: {}
     fake["graphify.cluster"].score_all = lambda g, c: {}
     fake["graphify.analyze"].god_nodes = lambda g, top_n=10: []
@@ -90,7 +96,35 @@ def graphify_stub(monkeypatch):
     fake["graphify.report"].generate = lambda *args, **kwargs: "# Stub Report\n"
 
     def _to_json(g, c, output_path, *, force=False, built_at_commit=None):
-        Path(output_path).write_text(json.dumps({"nodes": [], "edges": []}), encoding="utf-8")
+        # Replay extraction's nodes/edges (carried through build_from_json
+        # stub) so callers can assert non-empty graph.json round-trip.
+        n_nodes = g.get("n_nodes", 0) if isinstance(g, dict) else 0
+        n_edges = g.get("n_edges", 0) if isinstance(g, dict) else 0
+        src_nodes = g.get("nodes", []) if isinstance(g, dict) else []
+        src_edges = g.get("edges", []) if isinstance(g, dict) else []
+        if src_nodes or src_edges:
+            payload = {
+                "nodes": [dict(n) for n in src_nodes],
+                "links": [
+                    {
+                        "source": e.get("source"),
+                        "target": e.get("target"),
+                        "tag": e.get("tag", "EXTRACTED"),
+                        "edge_type": e.get("edge_type"),
+                        "weight": e.get("weight", 1.0),
+                    }
+                    for e in src_edges
+                ],
+            }
+        else:
+            payload = {
+                "nodes": [{"id": f"n{i}"} for i in range(n_nodes)],
+                "links": [
+                    {"source": "x", "target": "y", "tag": "EXTRACTED"}
+                    for _ in range(n_edges)
+                ],
+            }
+        Path(output_path).write_text(json.dumps(payload), encoding="utf-8")
         return True
 
     def _to_html(g, c, output_path, community_labels=None, member_counts=None, node_limit=None):
@@ -101,6 +135,35 @@ def graphify_stub(monkeypatch):
 
     for name, module in fake.items():
         monkeypatch.setitem(sys.modules, name, module)
+
+    # Stub the SQL adapter and engine getter so snapshot._run_graphify never
+    # touches the live database during unit tests. Patch BOTH import styles
+    # (``src.graph.*`` and ``graph.*``) because snapshot.py tolerates both.
+    def _build_extraction(_engine):
+        _maybe_raise()
+        if state["extraction"] is not None:
+            return state["extraction"]
+        return {
+            "nodes": [],
+            "edges": [],
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+
+    for mod in ("src.graph.sql_to_graph", "graph.sql_to_graph"):
+        try:
+            monkeypatch.setattr(f"{mod}.build_extraction", _build_extraction)
+        except (AttributeError, ModuleNotFoundError):
+            pass
+
+    # Engine is a placeholder; build_extraction stub ignores it.
+    placeholder_engine = object()
+    for mod in ("src.db.engine", "db.engine"):
+        try:
+            monkeypatch.setattr(f"{mod}.get_engine", lambda: placeholder_engine)
+        except (AttributeError, ModuleNotFoundError):
+            pass
+
     return state
 
 
