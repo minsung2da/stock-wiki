@@ -41,13 +41,24 @@ from ingest.embedder import EMBEDDING_MODEL_VERSION, Embedder
 from ingest.heartbeat import record_source_run
 from ingest.injection_defense import detect_injection_patterns
 from ingest.parsers import parse_sections
+from ingest.parsers.note import parse_note
 from ingest.tokenizer import tokenize_ko
 from shared.content_hash import normalize_body
 from shared.frontmatter import read_frontmatter, write_frontmatter
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["process_document", "ingest_run"]
+__all__ = ["process_document", "process_private_note", "ingest_run"]
+
+
+def _is_private_note_path(path: Path, vault_root: Path) -> bool:
+    """Detect ``notes/private/**/*.md`` by relative path under vault_root."""
+    try:
+        rel = path.resolve().relative_to(vault_root.resolve())
+    except ValueError:
+        return False
+    parts = rel.parts
+    return len(parts) >= 2 and parts[0] == "notes" and parts[1] == "private"
 
 
 _INSERT_DOC_SQL = sa.text(
@@ -192,6 +203,103 @@ def process_document(
     }
 
 
+def process_private_note(
+    path: Path,
+    engine: Engine,
+    embedder: Embedder,
+    *,
+    force_reembed: bool = False,
+) -> dict[str, Any]:
+    """Phase 8 D-15 — process a ``notes/private/**/*.md`` user memo.
+
+    Dispatches via ``parse_note`` for type-specific Pydantic validation,
+    inserts a documents row with ``source='private_note'`` and ``note_type``
+    set to the parsed type. Validation failures still index the body but
+    record ``note_schema_violation`` in ingest_state.review_flags.
+
+    Per-doc transaction (D-26). No frontmatter write-back is attempted because
+    private_note frontmatter does not embed an ``ingest_state`` zone.
+    """
+    parsed = parse_note(path)
+    body = parsed.body
+    note_type = parsed.note_type or "note"
+
+    new_hash = hashlib.sha256(normalize_body(body).encode("utf-8")).hexdigest()
+
+    hits = detect_injection_patterns(body)
+    injection_flags = sorted({h["pattern_id"] for h in hits})  # noqa: F841 — recorded for parity
+
+    with engine.begin() as conn:
+        existing = conn.execute(
+            sa.text("SELECT id FROM documents WHERE vault_path = :vp"),
+            {"vp": str(path)},
+        ).first()
+
+        if existing is not None and existing.id == new_hash and not force_reembed:
+            return {"status": "skipped", "doc_id": new_hash}
+
+        if existing is not None:
+            conn.execute(
+                sa.text("DELETE FROM documents WHERE vault_path = :vp"),
+                {"vp": str(path)},
+            )
+
+        conn.execute(
+            sa.text(
+                "INSERT INTO documents "
+                "(id, body, source, vault_path, note_type, "
+                " first_seen_at, last_seen_at) "
+                "VALUES (:id, :body, 'private_note', :vp, :nt, now(), now())"
+            ),
+            {
+                "id": new_hash,
+                "body": body,
+                "vp": str(path),
+                "nt": note_type,
+            },
+        )
+
+        # Chunk + embed + tokenize so the memo lands in search results (NOTE-03).
+        # Section parser is dart-only today; chunk the body as a single section
+        # to keep parity with Phase 3 chunking semantics.
+        from ingest.parsers.dart import Section
+
+        sections = (
+            [Section(title="body", path="body", text=body, order=0)]
+            if body.strip()
+            else []
+        )
+        chunks = chunk_document(sections) if sections else []
+
+        texts = [c.text for c in chunks]
+        if texts:
+            vecs = embedder.encode(texts)
+            bm25_lists = [tokenize_ko(t) for t in texts]
+            for c, v, toks in zip(chunks, vecs, bm25_lists, strict=True):
+                conn.execute(
+                    _INSERT_CHUNK_SQL,
+                    {
+                        "doc_id": new_hash,
+                        "ord": c.chunk_index,
+                        "text": c.text,
+                        "embedding_model": EMBEDDING_MODEL_VERSION,
+                        "emb": _format_vec(list(v)),
+                        "section_path": c.section_path,
+                        "section_index": c.section_index,
+                        "toks": toks,
+                    },
+                )
+
+    return {
+        "status": "processed",
+        "doc_id": new_hash,
+        "document_id": new_hash,
+        "note_type": note_type,
+        "review_flags": list(parsed.review_flags),
+        "chunks": len(chunks),
+    }
+
+
 def ingest_run(
     vault_root: Path,
     engine: Engine,
@@ -227,6 +335,27 @@ def ingest_run(
                 if doc_id:
                     committed_doc_ids.append(doc_id)
             except Exception as exc:  # noqa: BLE001 — per-doc isolation (D-26)
+                stats["failed"].append({"doc": str(path), "error": str(exc)[:200]})
+
+    # Phase 8 NOTE-03 — private_note dispatch. Scan notes/private/**/*.md and
+    # route through process_private_note (parse_note + documents.note_type).
+    # Per-doc failure isolation (D-26) mirrors the raw branch above.
+    private_root = vault_root / "notes" / "private"
+    if private_root.exists():
+        for path in sorted(private_root.rglob("*.md")):
+            stats["total"] += 1
+            try:
+                result = process_private_note(
+                    path, engine, embedder, force_reembed=force_reembed
+                )
+                if result["status"] == "skipped":
+                    stats["skipped"] += 1
+                else:
+                    stats["succeeded"] += 1
+                doc_id = result.get("document_id") or result.get("doc_id")
+                if doc_id:
+                    committed_doc_ids.append(doc_id)
+            except Exception as exc:  # noqa: BLE001 — per-doc isolation
                 stats["failed"].append({"doc": str(path), "error": str(exc)[:200]})
 
     # Phase 7 GRAPH-01 (D-03): post-pass typed-edge population.
