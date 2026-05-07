@@ -27,7 +27,7 @@ WHERE holding.section = "Holdings"
 ## 보유 종목 최근 7일 이벤트
 
 ```dataview
-TABLE provenance.date AS "날짜", _derived.event_type AS "이벤트", file.link AS "문서"
+TABLE provenance.date AS "날짜", row["_derived"].event_type AS "이벤트", file.link AS "문서"
 FROM "vault/raw"
 WHERE provenance.date >= date(today) - dur(7 days)
 SORT provenance.date DESC

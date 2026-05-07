@@ -1,11 +1,19 @@
-"""Phase 8 Plan 03 — Task 2: dashboards/portfolio.md skeleton verification."""
+"""Phase 8 Plan 03 — Task 2: dashboards/portfolio.md skeleton verification.
+
+UAT (2026-05-06) revealed that Dataview DQL parser rejects `_derived.x` dotted
+form. The fix is bracket-form: `row["_derived"].x`. Test below enforces it.
+"""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DASHBOARD_PATH = REPO_ROOT / "dashboards" / "portfolio.md"
+
+# Bare `_derived.` outside bracketed/quoted/path contexts.
+_BARE_DERIVED_DOTTED = re.compile(r'(?<!["\w/])_derived\.')
 
 
 def _read() -> str:
@@ -43,4 +51,14 @@ def test_freshness_indicator() -> None:
     content = _read()
     assert "as_of" in content, (
         "portfolio.md must surface as_of freshness indicator (D-08 — '전영업일 종가 기준')"
+    )
+
+
+def test_derived_uses_bracket_form_when_referenced() -> None:
+    """UAT 2026-05-06: any `_derived` reference in DQL must use bracket form."""
+    content = _read()
+    bare = _BARE_DERIVED_DOTTED.findall(content)
+    assert not bare, (
+        f"portfolio.md must NOT contain bare `_derived.` dotted refs (Dataview "
+        f"parser fails); found {len(bare)}. Use `row[\"_derived\"].field`."
     )

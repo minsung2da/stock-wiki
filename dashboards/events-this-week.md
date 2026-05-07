@@ -9,17 +9,17 @@ type: dashboard
 ```dataview
 TABLE WITHOUT ID
   provenance.date AS "날짜",
-  _derived.tickers AS "티커",
-  _derived.event_type AS "이벤트",
+  row["_derived"].tickers AS "티커",
+  row["_derived"].event_type AS "이벤트",
   provenance.title AS "제목",
   provenance.source AS "소스",
   provenance.url AS "링크"
 FROM "vault/raw/dart" OR "vault/raw/news" OR "vault/raw/kind"
 WHERE provenance.date >= date(today) - dur(7 days)
 SORT
-  choice(_derived.event_type = "공시", 1,
-    choice(_derived.event_type = "거래정지", 2,
-      choice(_derived.event_type = "실적", 3, 4))) ASC,
+  choice(row["_derived"].event_type = "공시", 1,
+    choice(row["_derived"].event_type = "거래정지", 2,
+      choice(row["_derived"].event_type = "실적", 3, 4))) ASC,
   provenance.date DESC
 LIMIT 50
 ```
