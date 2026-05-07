@@ -226,8 +226,13 @@ def process_private_note(
 
     new_hash = hashlib.sha256(normalize_body(body).encode("utf-8")).hexdigest()
 
-    hits = detect_injection_patterns(body)
-    injection_flags = sorted({h["pattern_id"] for h in hits})  # noqa: F841 — recorded for parity
+    # WR-01 (Phase 8): private_note frontmatter has no `ingest_state` zone, so
+    # there is currently no place to persist injection_flags. Until a JSONB
+    # column or audit table lands (tracked for Phase 9), skip the detection
+    # call entirely rather than computing-and-discarding (the previous
+    # `# noqa: F841 — recorded for parity` comment was misleading: nothing
+    # was recorded).
+    # TODO Phase 9: persist injection_flags on documents row + gate LLM extract.
 
     with engine.begin() as conn:
         existing = conn.execute(
