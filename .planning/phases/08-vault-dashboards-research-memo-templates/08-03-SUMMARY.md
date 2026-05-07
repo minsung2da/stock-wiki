@@ -39,19 +39,22 @@ decisions:
   - ".gitignore negative-pattern exception added for the two committed plugin settings files. Base ignore rules still cover plugins state and other plugins/*."
   - "portfolio.md flags Pitfall 3 (frontmatter list indexing) as a UAT open question — DQL holdings × prices join may yield empty table if notes/private/portfolio.md uses markdown table instead of frontmatter list. Plan 04 follow-up if UAT confirms."
 metrics:
-  duration: "≈15 min (RED+GREEN x 2 tasks + UAT-driven fix; Task 3 re-verification pending)"
-  tasks_completed: 2
+  duration: "≈18 min (RED+GREEN x 2 tasks + UAT round 1 fix + UAT round 2 PASS)"
+  tasks_completed: 3
   tasks_total: 3
   tests_added: 14
   tests_pass: "14/14 (tests/dashboards/)"
   files_created: 10
   files_modified: 3
-  completed: 2026-05-06 (pending re-UAT after bracket-form fix)
+  completed: 2026-05-06
+  uat_status: "approved (round 2)"
+follow_ups:
+  - "Plan 04: resolve Pitfall 3 (Holdings × 평가액 frontmatter list join) — currently empty table because notes/private/portfolio.md uses markdown-table format, but DQL `FROM ... FLATTEN file.lists` expects frontmatter list. Options: (a) mirror Holdings rows to frontmatter list, (b) generate derived `dashboards/_data/portfolio_holdings.md`."
 ---
 
-# Phase 08 Plan 03: Dashboards + Dataview Bootstrap Summary (PARTIAL — UAT pending)
+# Phase 08 Plan 03: Dashboards + Dataview Bootstrap Summary
 
-3 Dataview-only dashboards (portfolio / watchlist / events-this-week) committed alongside Obsidian Dataview plugin bootstrap (D-16/D-17/D-18). All 12 skeleton + bootstrap tests green. Task 3 is a `checkpoint:human-verify` UAT — execution paused for user visual verification in Obsidian.
+3 Dataview-only dashboards (portfolio / watchlist / events-this-week) committed alongside Obsidian Dataview plugin bootstrap (D-16/D-17/D-18). All 14 tests green. UAT round 2 approved (no parsing errors, empty tables expected pending Plan 04 follow-up on Pitfall 3).
 
 ## Outcome
 
@@ -61,7 +64,7 @@ After this plan ships:
 - Three dashboards render Holdings/Watchlist/Events from the existing SoT files (`notes/private/portfolio.md`, `dashboards/_data/prices.md`, `vault/raw/{dart,news,kind}`).
 - DataviewJS is structurally impossible — disabled in settings AND absent from all three markdown files.
 
-DASH-01 / DASH-02 / DASH-03 requirements are land-able subject to UAT approval.
+DASH-01 / DASH-02 / DASH-03 requirements landed (UAT approved 2026-05-06).
 
 ## Dataview Settings (D-17 Verbatim)
 
@@ -134,7 +137,7 @@ DASH-01 / DASH-02 / DASH-03 requirements are land-able subject to UAT approval.
 
 ### Other Deviations
 
-None. Plan executed as written for Task 1 (RED→GREEN) and Task 2 (RED→GREEN). UAT round 1 surfaced the bracket-form bug above; round 2 awaiting user re-verification.
+None. Plan executed as written for Task 1 (RED→GREEN) and Task 2 (RED→GREEN). UAT round 1 surfaced the bracket-form bug (Deviation #2 above); round 2 approved by user 2026-05-06.
 
 ## Authentication Gates
 
@@ -172,18 +175,17 @@ $ python3 -c "import json; d=json.load(open('.obsidian/plugins/dataview/data.jso
 (no output = ok)
 ```
 
-## UAT Gate (Task 3 — Awaiting User)
+## UAT (Task 3) — APPROVED
 
-User must verify in Obsidian:
-1. Open vault → Dataview auto-install prompt appears → install + enable.
-2. Open `dashboards/portfolio.md`:
-   - `## Holdings × 평가액` table renders (empty table is OK if notes/private/portfolio.md is empty).
-   - `as_of` freshness label visible.
-3. Open `dashboards/watchlist.md`: Watchlist table renders.
-4. Open `dashboards/events-this-week.md`: 이벤트 표 + event_type priority sort works.
-5. Report: `approved` or describe DQL/render issues per dashboard.
+**Round 1 (FAIL):** User reported `dashboards/events-this-week.md` PARSING FAILED at `_derived.event_type`. Root cause: Dataview DQL parser rejects leading-underscore identifiers in dotted form. Fixed in commit `57100d0` by converting all 6 occurrences to bracket form `row["_derived"].field`. Regression guards added.
 
-Open question (RESEARCH A3): if holdings × prices join yields empty table, follow-up Plan 04 will mirror `## Holdings` to a frontmatter list or generate a derived `dashboards/_data/portfolio_holdings.md`.
+**Round 2 (PASS, 2026-05-06):** User confirmed `approved` — no parsing errors. Empty tables observed are the expected state until Plan 04 resolves Pitfall 3 (frontmatter list indexing for Holdings × 평가액).
+
+### Follow-ups for Plan 04
+
+| Item | Reason | Options |
+|------|--------|---------|
+| Holdings × 평가액 join yields empty table | `notes/private/portfolio.md` uses markdown-table format; DQL `FLATTEN file.lists WHERE section="Holdings"` expects frontmatter list (RESEARCH Pitfall 3 / Open Question 4) | (a) mirror Holdings rows to frontmatter list in portfolio.md template; (b) generate derived `dashboards/_data/portfolio_holdings.md` from `notes/private/portfolio.md` parser; (c) revise DQL query if Dataview supports markdown-table flatten. |
 
 ## Self-Check: PASSED
 
@@ -204,10 +206,13 @@ Open question (RESEARCH A3): if holdings × prices join yields empty table, foll
 - FOUND: f38e10a (Task 1 GREEN — bootstrap files + .gitignore carve-out)
 - FOUND: 1090da2 (Task 2 RED — 9 skeleton tests)
 - FOUND: 4f669af (Task 2 GREEN — 3 dashboards)
-- FOUND: 57100d0 (UAT fix — bracket-form `_derived` access + regression guards)
+- FOUND: daf104c (partial summary — UAT pending)
+- FOUND: 57100d0 (UAT round 1 fix — bracket-form `_derived` access + regression guards)
+- FOUND: 924ecd5 (summary update — UAT fix recorded)
 
 **Live state:**
 - 14/14 dashboard tests passing
 - DataviewJS structurally absent (settings + content)
-- All `_derived` references use bracket form `row["_derived"].field` (UAT fix)
-- Task 3 UAT round 2 awaiting user re-verification in Obsidian
+- All `_derived` references use bracket form `row["_derived"].field` (regression-guarded)
+- Task 3 UAT round 2: APPROVED (2026-05-06)
+- Plan 03 complete; Pitfall 3 deferred to Plan 04 follow-up
