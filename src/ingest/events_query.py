@@ -170,19 +170,28 @@ def events_this_week(
     start_utc, end_utc = kst_week_utc_bounds(today)
 
     # Parameterized: SQL injection mitigation (T-08-04-02).
+    # WR-02 (Phase 8): cap candidate rows on the SQL side so per-row FS reads
+    # cannot grow unbounded with backfills/popular tickers. The cap is a soft
+    # multiple of the requested limit (filtering by ticker overlap happens
+    # after the FS pass), with a floor for tiny limits.
     sql = sa.text(
         "SELECT id, vault_path, source, first_seen_at "
         "  FROM documents "
         " WHERE source IN ('dart', 'news', 'kind') "
         "   AND first_seen_at >= :start_ts "
         "   AND first_seen_at <  :end_ts "
-        " ORDER BY first_seen_at DESC"
+        " ORDER BY first_seen_at DESC "
+        " LIMIT :hard_cap"
     )
 
     holdings_set = set(holdings_tickers)
+    hard_cap = max(limit * 10, 500)
 
     with engine.connect() as conn:
-        rows = conn.execute(sql, {"start_ts": start_utc, "end_ts": end_utc}).mappings().all()
+        rows = conn.execute(
+            sql,
+            {"start_ts": start_utc, "end_ts": end_utc, "hard_cap": hard_cap},
+        ).mappings().all()
 
     enriched: list[dict[str, Any]] = []
     for r in rows:
