@@ -39,14 +39,14 @@ decisions:
   - ".gitignore negative-pattern exception added for the two committed plugin settings files. Base ignore rules still cover plugins state and other plugins/*."
   - "portfolio.md flags Pitfall 3 (frontmatter list indexing) as a UAT open question — DQL holdings × prices join may yield empty table if notes/private/portfolio.md uses markdown table instead of frontmatter list. Plan 04 follow-up if UAT confirms."
 metrics:
-  duration: "≈10 min (RED+GREEN x 2 tasks; Task 3 awaiting UAT)"
+  duration: "≈15 min (RED+GREEN x 2 tasks + UAT-driven fix; Task 3 re-verification pending)"
   tasks_completed: 2
   tasks_total: 3
-  tests_added: 12
-  tests_pass: "12/12 (tests/dashboards/)"
+  tests_added: 14
+  tests_pass: "14/14 (tests/dashboards/)"
   files_created: 10
-  files_modified: 1
-  completed: 2026-05-06 (pending UAT)
+  files_modified: 3
+  completed: 2026-05-06 (pending re-UAT after bracket-form fix)
 ---
 
 # Phase 08 Plan 03: Dashboards + Dataview Bootstrap Summary (PARTIAL — UAT pending)
@@ -97,10 +97,10 @@ DASH-01 / DASH-02 / DASH-03 requirements are land-able subject to UAT approval.
 | File | Tests | Coverage |
 |------|------:|----------|
 | `tests/dashboards/test_dataview_bootstrap.py` | 3 | community-plugins.json registration, D-17 exact dict match, DataviewJS off |
-| `tests/dashboards/test_portfolio_dashboard_skeleton.py` | 3 | ≥2 DQL blocks + dashboards/_data ref, no dataviewjs, as_of present |
+| `tests/dashboards/test_portfolio_dashboard_skeleton.py` | 4 | ≥2 DQL blocks + dashboards/_data ref, no dataviewjs, as_of present, bracket-form `_derived` guard |
 | `tests/dashboards/test_watchlist_dashboard_skeleton.py` | 2 | DQL block + portfolio.md SoT ref, no dataviewjs |
-| `tests/dashboards/test_events_dashboard_skeleton.py` | 4 | DQL + vault/raw, event_type, dur(7 days), no dataviewjs |
-| **Total** | **12** | All green |
+| `tests/dashboards/test_events_dashboard_skeleton.py` | 5 | DQL + vault/raw, event_type, dur(7 days), no dataviewjs, bracket-form `row["_derived"]` enforced |
+| **Total** | **14** | All green |
 
 ## Deviations from Plan
 
@@ -121,9 +121,20 @@ DASH-01 / DASH-02 / DASH-03 requirements are land-able subject to UAT approval.
 - **Files modified:** `.gitignore`
 - **Commit:** `f38e10a`
 
+**2. [Rule 1 - Bug] UAT-discovered: Dataview DQL parser rejects `_derived.x` dotted form**
+- **Found during:** Task 3 visual UAT (user reported `events-this-week.md` PARSING FAILED at column after `provenance.date AS "날짜",`).
+- **Root cause:** Dataview DQL grammar treats leading-underscore identifiers (`_derived`) as illegal in dotted-path expressions. Bracket-form `row["_derived"].field` is required.
+- **Fix:** Converted all 6 occurrences across 2 files:
+  - `dashboards/portfolio.md` line 30 (TABLE clause in 7일 이벤트 query): 1 occurrence
+  - `dashboards/events-this-week.md` lines 12, 13, 20, 21, 22 (TABLE × 2 + nested SORT choice() × 3): 5 occurrences
+  - `dashboards/watchlist.md`: no change (does not reference `_derived`)
+- **Regression guard:** Two new tests with regex `(?<!["\w/])_derived\.` — fails build if any future edit reintroduces bare dotted form. Path/string contexts (e.g., `dashboards/_data`, `frontmatter.as_of`) are excluded by the negative-lookbehind.
+- **Files modified:** `dashboards/portfolio.md`, `dashboards/events-this-week.md`, `tests/dashboards/test_events_dashboard_skeleton.py`, `tests/dashboards/test_portfolio_dashboard_skeleton.py`
+- **Commit:** `57100d0`
+
 ### Other Deviations
 
-None. Plan executed as written for Task 1 (RED→GREEN) and Task 2 (RED→GREEN). Task 3 is a `checkpoint:human-verify` gate — execution paused.
+None. Plan executed as written for Task 1 (RED→GREEN) and Task 2 (RED→GREEN). UAT round 1 surfaced the bracket-form bug above; round 2 awaiting user re-verification.
 
 ## Authentication Gates
 
@@ -132,15 +143,25 @@ None encountered.
 ## Verification Evidence
 
 ```
-$ uv run pytest tests/dashboards/ --no-header
-collected 12 items
+$ uv run pytest tests/dashboards/ --no-header -v
+collected 14 items
 
-tests/dashboards/test_dataview_bootstrap.py ...                          [ 25%]
-tests/dashboards/test_events_dashboard_skeleton.py ....                  [ 58%]
-tests/dashboards/test_portfolio_dashboard_skeleton.py ...                [ 83%]
-tests/dashboards/test_watchlist_dashboard_skeleton.py ..                 [100%]
+tests/dashboards/test_dataview_bootstrap.py::test_community_plugins_includes_dataview PASSED
+tests/dashboards/test_dataview_bootstrap.py::test_dataview_data_json_recommended_settings PASSED
+tests/dashboards/test_dataview_bootstrap.py::test_dataviewjs_disabled PASSED
+tests/dashboards/test_events_dashboard_skeleton.py::test_file_exists_with_dataview PASSED
+tests/dashboards/test_events_dashboard_skeleton.py::test_event_type_priority_visible PASSED
+tests/dashboards/test_events_dashboard_skeleton.py::test_derived_uses_bracket_form PASSED
+tests/dashboards/test_events_dashboard_skeleton.py::test_seven_day_window PASSED
+tests/dashboards/test_events_dashboard_skeleton.py::test_no_dataviewjs PASSED
+tests/dashboards/test_portfolio_dashboard_skeleton.py::test_file_exists_with_dataview_block PASSED
+tests/dashboards/test_portfolio_dashboard_skeleton.py::test_no_dataviewjs PASSED
+tests/dashboards/test_portfolio_dashboard_skeleton.py::test_freshness_indicator PASSED
+tests/dashboards/test_portfolio_dashboard_skeleton.py::test_derived_uses_bracket_form_when_referenced PASSED
+tests/dashboards/test_watchlist_dashboard_skeleton.py::test_file_exists_with_dataview PASSED
+tests/dashboards/test_watchlist_dashboard_skeleton.py::test_no_dataviewjs PASSED
 
-============================== 12 passed in 0.77s ==============================
+============================== 14 passed in 0.76s ==============================
 ```
 
 ```
@@ -183,8 +204,10 @@ Open question (RESEARCH A3): if holdings × prices join yields empty table, foll
 - FOUND: f38e10a (Task 1 GREEN — bootstrap files + .gitignore carve-out)
 - FOUND: 1090da2 (Task 2 RED — 9 skeleton tests)
 - FOUND: 4f669af (Task 2 GREEN — 3 dashboards)
+- FOUND: 57100d0 (UAT fix — bracket-form `_derived` access + regression guards)
 
 **Live state:**
-- 12/12 dashboard tests passing
+- 14/14 dashboard tests passing
 - DataviewJS structurally absent (settings + content)
-- Task 3 UAT awaiting user signal in Obsidian
+- All `_derived` references use bracket form `row["_derived"].field` (UAT fix)
+- Task 3 UAT round 2 awaiting user re-verification in Obsidian
