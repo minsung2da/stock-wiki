@@ -20,6 +20,7 @@ Key design notes:
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -57,7 +58,7 @@ class HubResult:
 
 
 def _sparkline(price_30d: list[tuple[date, int]]) -> str:
-    """7-bin Unicode block sparkline. Returns em-dash on empty input."""
+    """8-level Unicode block sparkline (▁ to █). Returns em-dash on empty input."""
     if not price_30d:
         return "—"
     bars = "▁▂▃▄▅▆▇█"
@@ -175,7 +176,14 @@ def write_hub_if_changed(path: Path, body: str, content_hash: str) -> bool:
     """
     if path.exists():
         existing = path.read_text(encoding="utf-8")
-        if f"content_hash: {content_hash}" in existing:
+        # Parse the frontmatter line for content_hash to avoid substring false
+        # positives (Phase 8 WR-04). Match a YAML scalar with optional quotes.
+        m = re.search(
+            r"^content_hash:\s*['\"]?([a-f0-9]{64})['\"]?\s*$",
+            existing,
+            re.MULTILINE,
+        )
+        if m and m.group(1) == content_hash:
             return False
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
