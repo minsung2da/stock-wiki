@@ -1,8 +1,9 @@
 ---
 phase: 08-vault-dashboards-research-memo-templates
 verified: 2026-05-07T15:22:02Z
-status: human_needed
-score: 4/5 must-haves verified
+re_verified: 2026-05-08T22:30:00+09:00
+status: gaps_found
+score: 4/5 must-haves verified (initial); human verification PASS (2026-05-08); structural gaps surfaced during production validation
 overrides_applied: 0
 human_verification:
   - test: "End-to-end thesis flow (NOTE-03) — Obsidian에서 templates/notes/thesis.md를 notes/private/005930/thesis.md로 복사하고, uv run stock ingest run 실행 후, MCP search 툴로 thesis 키워드 검색"
@@ -153,15 +154,75 @@ human_verification:
 
 ## Gaps Summary
 
-직접적인 gaps는 없으나, 다음 items가 human verification을 요구함:
+### Initial Verification (2026-05-07): Human Verification Items
+
+직접적인 gaps는 없었으나, 다음 items가 human verification을 요구함:
 
 1. **DASH-04 (hub 파일 실제 생성)** — 코드와 훅은 구현됨. `vault/ingested/by-ticker/` 가 비어 있음. 실제 `stock ingest run` 후 파일 생성 여부 및 idempotency(두 번째 실행에서 mtime 불변)를 사람이 확인해야 함.
 
-2. **Plan 04 Task 5 페이즈 게이트 UAT** — VALIDATION.md `nyquist_compliant: true` 이고 자동화 테스트 687/687 green이나, Task 5 manual checkpoint (`⬜ pending UAT`)가 미승인 상태. Plan 03 UAT round 2는 2026-05-06 승인되었으나 Plan 04 Task 5의 "thesis flow + hub auto-gen + failure-mode + git hygiene" 5단계 UAT는 `auto_advance` 자동 승인으로 처리되어 실제 vault walk가 이루어지지 않음.
+2. **Plan 04 Task 5 페이즈 게이트 UAT** — VALIDATION.md `nyquist_compliant: true` 이고 자동화 테스트 687/687 green이나, Task 5 manual checkpoint (`⬜ pending UAT`)가 미승인 상태.
 
-3. **가격 데이터 표시** — `price_snapshot.collect_prices`가 Phase 4 KRX close column 미정의로 인해 `latest_close=None` 반환. dashboards/portfolio.md의 Holdings × 평가액 표가 빈 상태로 렌더될 것으로 예상됨. 이는 Plan 03 SUMMARY에서 이미 "Pitfall 3 deferred to Plan 04 follow-up"으로 문서화되었고, Plan 04 Task 4 (conditional fallback)의 trigger 조건. 실제 UAT에서 확인 필요.
+3. **가격 데이터 표시** — `price_snapshot.collect_prices`가 Phase 4 KRX close column 미정의로 인해 `latest_close=None` 반환. dashboards/portfolio.md Holdings × 평가액 빈 표 예상.
+
+---
+
+### Re-verification (2026-05-08): Production Validation Results
+
+사용자가 production 환경에서 실제 ingest cycle을 돌려 검증 진행. 4개 human verification items는 모두 PASS, **그러나 그 과정에서 verifier가 잡지 못한 5개의 구조적 gap이 추가로 surfaced**:
+
+**Human verification (4/4 PASS):**
+- ✅ NOTE-03 E2E (thesis 인덱싱 + search hit) — 단, 아래 **GAP-01** fix 후 비로소 PASS
+- ✅ Dashboard 시각 — Plan 03 UAT round 2 결과 그대로 유지
+- ✅ Hub 자동 생성 — 단, 아래 **GAP-02** fix 후 비로소 PASS
+- ✅ Git 위생 — `notes/private/`, `dashboards/_data/` 모두 .gitignore 등록 확인
+
+**Structural gaps surfaced (need closure before phase 9):**
+
+#### GAP-01: notes_root 경로 분리 — RESOLVED in this re-verification cycle
+- **증상:** `uv run stock ingest run` 시 `notes/private/005930/thesis.md` 영원히 미인덱싱.
+- **원인:** CLI default `--vault-root=vault` + `worker.py` `private_root = vault_root / "notes" / "private"` → `vault/notes/private/` (빈 곳)으로 해석. 실제 메모는 repo-root `notes/private/`.
+- **위양성 통과 이유:** `tests/ingest/test_note_e2e.py`가 `tmp_path`를 vault_root와 repo_root로 동시에 사용해 분리를 가림.
+- **FIX (2026-05-08):** commit `a72a649` — worker.ingest_run에 `notes_root` 키워드 인자 추가, 자동 탐색 (vault_root/notes/private → vault_root.parent/notes/private). CLI `--notes-root` 옵션. 회귀 가드 테스트 2건 (`test_thesis_indexed_with_production_layout`, `test_explicit_notes_root_overrides_autodetect`).
+
+#### GAP-02: hub_builder entity_aliases.alias 컬럼명 오류 — RESOLVED in this re-verification cycle
+- **증상:** `vault/ingested/by-ticker/` 영원히 비어 있음. ingest_runs에 hub_builder row 없음.
+- **원인:** `hub_builder.py:223` `SELECT alias FROM entity_aliases` — 실제 컬럼은 `value` (Phase 2 0001 마이그레이션). `try/except`로 감싸진 best-effort 호출이라 silent fail.
+- **위양성 통과 이유:** Plan 02 unit tests (`test_hub_builder.py`)가 mock entity 데이터를 직접 inject — 실제 entity_aliases 스키마와 join 안 함.
+- **FIX (2026-05-08):** commit `70bed84` — `alias` → `value` 정정.
+
+#### GAP-03: vault/raw _derived.event_type Pydantic literal enum drift — OPEN
+- **증상:** production `stock ingest run` 시 vault/raw 8건 모두 fail (4건 enum mismatch + 4건 macro 미지원).
+- **원인:** FrontMatter Pydantic 모델의 `_derived.event_type` Literal enum이 기존 vault/raw 데이터의 실제 값 (예: `earnings_release`, `equity_issue`, `mergers_acquisitions`...) 의 일부만 허용.
+- **결정 필요:** A) 모델 enum 확장, B) 기존 데이터 마이그레이션 + collectors 출력 정규화. 실제 값 분포 조사 필요.
+- **영향:** Phase 5/6 데이터 자체는 유효하나 ingest 진입 차단 → 모든 다운스트림(검색, hub, dashboards 이벤트) 비어 있음.
+
+#### GAP-04: macro section parser 미지원 — OPEN
+- **증상:** `unsupported source for section parsing` (ECOS 2건 + FRED 2건 fail).
+- **원인:** `src/ingest/parsers/parse_sections`이 dart/krx/news/kind 만 dispatch. macro 핸들러 부재.
+- **FIX 방향:** `parsers/macro.py` 추가 (numeric series 본문은 단일 section으로 처리하면 충분).
+
+#### GAP-05: WR-03 documents.vault_path absolute path — OPEN (코드 리뷰에서 식별)
+- **증상:** 다른 머신/CI 컨테이너에서 dedup 쿼리·hub_builder·events_query 모두 깨짐.
+- **원인:** `process_document` / `process_private_note`이 `str(path.resolve())`로 절대경로 저장.
+- **FIX 방향:** repo-root 상대경로로 정규화 (`path.relative_to(repo_root)`). 의존 코드 (dedup 쿼리, hub_builder, events_query) 동시 수정. 기존 DB row는 마이그레이션 또는 `stock ingest rebuild`로 재인덱싱.
+
+#### GAP-06: CLAUDE.md 디렉토리 도식 outdated — OPEN
+- **증상:** "vault/notes/ — 사람/LLM 노트"라고 적혀 있으나 실제 데이터·dashboards·gitignore는 repo-root `notes/`를 씀. 새로운 협업자/agent가 GAP-01과 동일한 실수 반복 가능.
+- **FIX 방향:** Directory Layout 섹션 정정 + vault_root vs notes_root 분리 멘탈 모델 명시.
+
+#### GAP-07: Verifier 위양성 탐지 강화 — OPEN
+- **증상:** 위 GAP-01·02는 모두 unit/E2E 테스트가 통과한 상태에서 **production에서만** drop. verifier가 이걸 못 잡았음.
+- **FIX 방향:** verifier 또는 CI에 production-realistic integration test 추가 (vault/raw + notes/private 분리 fixture, 실제 stock CLI 호출, vault_root != notes_root 강제).
+
+#### GAP-08: 미사용 디렉토리 정리 — OPEN
+- **목록 (조사 필요):**
+  - `vault/notes/` — 빈 디렉토리. CLAUDE.md outdated 도식의 잔재. 사용처 없음.
+  - `ingested/_status/` (repo root) vs `vault/ingested/_status/` — 후자가 실제 사용. 전자는 legacy.
+  - 기타: `find . -type d -empty` 등으로 추가 식별.
+- **FIX 방향:** rm -rf 후 .gitignore 정리. tracked였다면 git rm.
 
 ---
 
 _Verified: 2026-05-07T15:22:02Z_
-_Verifier: Claude (gsd-verifier)_
+_Re-verified during production validation: 2026-05-08T22:30:00+09:00_
+_Verifier: Claude (gsd-verifier) + user-driven UAT_
