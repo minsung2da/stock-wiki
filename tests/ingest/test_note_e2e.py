@@ -168,6 +168,96 @@ def test_invalid_thesis_still_indexed_with_review_flag(pg_clean, tmp_path: Path,
     assert row.note_type == "thesis"
 
 
+def test_thesis_indexed_with_production_layout(pg_clean, tmp_path: Path, stub_embedder) -> None:
+    """Regression guard (Phase 8 gap fix 2026-05-08) — vault and notes split.
+
+    Previously ingest_run derived ``private_root = vault_root / "notes" / "private"``
+    which silently broke production where ``vault_root="vault"`` (collectors) but
+    user memos live at repo-root ``notes/private/``. The original E2E tests
+    masked this by using a single ``tmp_path`` as both vault_root and repo_root.
+    This test forces the production split: ``<repo>/vault/`` for raw data,
+    ``<repo>/notes/private/`` for memos. With the fix, the worker must auto-
+    discover the repo-root notes directory via ``vault_root.parent``.
+    """
+    from ingest import worker as worker_mod
+
+    repo_root = tmp_path
+    vault_root = repo_root / "vault"
+    (vault_root / "raw").mkdir(parents=True)
+
+    notes_dir = repo_root / "notes" / "private" / "005930"
+    notes_dir.mkdir(parents=True)
+    note_path = notes_dir / "thesis.md"
+    meta = {
+        "type": "thesis",
+        "tickers": ["005930"],
+        "tags": ["semiconductor"],
+        "created": "2026-05-08T00:00:00+09:00",
+        "updated": "2026-05-08T00:00:00+09:00",
+        "author": "yamin",
+        "kill_criteria": ["HBM 둔화"],
+        "conviction": "high",
+        "target_price": 95000,
+    }
+    post = pyfm.Post("# Thesis\n매수 논거: HBM.\n")
+    post.metadata = meta
+    note_path.write_text(pyfm.dumps(post), encoding="utf-8")
+
+    # No explicit notes_root — worker must auto-detect via vault_root.parent.
+    worker_mod.ingest_run(vault_root=vault_root, engine=pg_clean, embedder=stub_embedder)
+
+    with pg_clean.connect() as conn:
+        row = conn.execute(
+            sa.text(
+                "SELECT note_type, source FROM documents WHERE source='private_note'"
+            )
+        ).first()
+    assert row is not None, (
+        "thesis at repo-root notes/private must be discovered via vault_root.parent fallback"
+    )
+    assert row.note_type == "thesis"
+
+
+def test_explicit_notes_root_overrides_autodetect(pg_clean, tmp_path: Path, stub_embedder) -> None:
+    """Explicit notes_root parameter wins over auto-detection."""
+    from ingest import worker as worker_mod
+
+    vault_root = tmp_path / "vault"
+    (vault_root / "raw").mkdir(parents=True)
+    # Decoy thesis under vault/notes/private (would be auto-discovered if not overridden)
+    decoy_dir = vault_root / "notes" / "private" / "005930"
+    decoy_dir.mkdir(parents=True)
+    decoy = decoy_dir / "thesis.md"
+    meta = {"type": "thesis", "tickers": ["005930"], "created": "2026-05-08T00:00:00+09:00"}
+    post = pyfm.Post("decoy")
+    post.metadata = meta
+    decoy.write_text(pyfm.dumps(post), encoding="utf-8")
+
+    # Real thesis at custom path
+    real_dir = tmp_path / "alt-notes" / "005930"
+    real_dir.mkdir(parents=True)
+    real = real_dir / "thesis.md"
+    real_meta = {**meta, "tags": ["custom-path"]}
+    post2 = pyfm.Post("real")
+    post2.metadata = real_meta
+    real.write_text(pyfm.dumps(post2), encoding="utf-8")
+
+    worker_mod.ingest_run(
+        vault_root=vault_root,
+        notes_root=tmp_path / "alt-notes",
+        engine=pg_clean,
+        embedder=stub_embedder,
+    )
+
+    with pg_clean.connect() as conn:
+        rows = conn.execute(
+            sa.text("SELECT vault_path FROM documents WHERE source='private_note'")
+        ).fetchall()
+    paths = [r.vault_path for r in rows]
+    assert any("alt-notes" in p for p in paths), "explicit notes_root must be scanned"
+    assert not any("vault/notes" in p for p in paths), "decoy under vault/notes must NOT be scanned when explicit notes_root given"
+
+
 def test_journal_indexed(pg_clean, tmp_path: Path, stub_embedder) -> None:
     """notes/private/journal/<date>.md → indexed with note_type='journal'."""
     from ingest import worker as worker_mod

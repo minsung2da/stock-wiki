@@ -105,6 +105,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Re-embed all chunks even if content_hash unchanged",
     )
+    ing_run.add_argument(
+        "--notes-root",
+        default=None,
+        help=(
+            "Directory containing private memos (default: auto-detect — "
+            "<vault-root>/notes/private if present, else <vault-root>/../notes/private)"
+        ),
+    )
     ing_run.set_defaults(func=cmd_ingest_run)
 
     ing_rebuild = ingest_subs.add_parser(

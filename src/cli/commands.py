@@ -210,10 +210,12 @@ def cmd_ingest_run(args) -> int:  # noqa: ANN001
     from db.engine import get_engine
     from ingest.worker import ingest_run
 
+    notes_root = Path(args.notes_root) if getattr(args, "notes_root", None) else None
     stats = ingest_run(
         Path(args.vault_root),
         get_engine(),
         force_reembed=args.force_reembed,
+        notes_root=notes_root,
     )
     print(json.dumps(stats, ensure_ascii=False, default=str))
     return 0
