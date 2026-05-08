@@ -311,8 +311,15 @@ def ingest_run(
     *,
     force_reembed: bool = False,
     embedder: Embedder | None = None,
+    notes_root: Path | None = None,
 ) -> dict[str, Any]:
     """Scan `<vault_root>/raw/**/*.md` and ingest each document.
+
+    private_note scan resolves under ``notes_root`` (defaults to
+    ``<vault_root>/notes/private`` if it exists, else
+    ``<vault_root>/../notes/private`` — i.e. repo-root ``notes/private/``
+    when the canonical layout puts vault data under ``vault/`` and user
+    memos under ``notes/`` at the repo root).
 
     Returns: ``{"total": int, "succeeded": int, "skipped": int, "failed": list}``.
     Per-document failure isolation: one bad doc never aborts the run (D-26).
@@ -342,10 +349,24 @@ def ingest_run(
             except Exception as exc:  # noqa: BLE001 — per-doc isolation (D-26)
                 stats["failed"].append({"doc": str(path), "error": str(exc)[:200]})
 
-    # Phase 8 NOTE-03 — private_note dispatch. Scan notes/private/**/*.md and
+    # Phase 8 NOTE-03 — private_note dispatch. Scan <notes_root>/**/*.md and
     # route through process_private_note (parse_note + documents.note_type).
     # Per-doc failure isolation (D-26) mirrors the raw branch above.
-    private_root = vault_root / "notes" / "private"
+    #
+    # Path resolution (Phase 8 gap fix 2026-05-08):
+    #   1. explicit notes_root parameter (test fixtures, CLI override) wins
+    #   2. <vault_root>/notes/private — kept for backwards-compat with the
+    #      tmp_path-conflated layout used by the original Plan 04 E2E test
+    #   3. <vault_root>/../notes/private — production layout where collectors
+    #      write under vault/ but user memos live at repo-root notes/
+    if notes_root is None:
+        candidates = [
+            vault_root / "notes" / "private",
+            vault_root.parent / "notes" / "private",
+        ]
+        private_root = next((c for c in candidates if c.exists()), candidates[0])
+    else:
+        private_root = notes_root
     if private_root.exists():
         for path in sorted(private_root.rglob("*.md")):
             stats["total"] += 1
