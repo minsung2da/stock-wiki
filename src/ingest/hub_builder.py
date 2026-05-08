@@ -220,7 +220,7 @@ def collect_inputs_for_corp(engine: Engine, corp_code: str) -> HubInputs | None:
             return None
         ticker_row = conn.execute(
             text(
-                "SELECT alias FROM entity_aliases "
+                "SELECT value FROM entity_aliases "
                 "WHERE corp_code = :cc AND kind = 'ticker' LIMIT 1"
             ),
             {"cc": corp_code},
