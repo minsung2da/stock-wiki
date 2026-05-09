@@ -170,6 +170,10 @@ EventType = Literal[
     "analyst_downgrade",
     "macro_commentary",
     "market_gossip",
+    # KRX (1) — Phase 8 GAP-03: enriched daily price events
+    # KRX collector가 매일 기록하는 일일 시세 마이크로 이벤트.
+    # `.claude/routines/enrich/prompts/derived_krx.md` 가 이미 명시한 카테고리.
+    "price_micro",
     # fallback
     "other",
 ]

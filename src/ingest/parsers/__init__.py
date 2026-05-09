@@ -23,4 +23,8 @@ def parse_sections(body: str, source: str) -> list[Section]:
         from .dart import parse_sections as _parse
 
         return _parse(body, source)
+    if source == "macro":
+        from .macro import parse_sections as _parse
+
+        return _parse(body, source)
     raise ValueError("unsupported source for section parsing")
