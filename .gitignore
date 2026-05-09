@@ -47,8 +47,10 @@ vault/.graphify-staging/
 # Raw collected data caches
 raw_cache/
 
-# Machine-generated pipeline state (heartbeat updated by collectors/ingest)
-ingested/_status/
+# Phase 8 GAP-08: repo-root `ingested/` is legacy.
+# Production heartbeat lives at vault/ingested/_status/heartbeat.md (vault_root scoped).
+# Block the entire repo-root directory so it can't recreate as a stray sink.
+ingested/
 
 # Belt-and-suspenders: keep binary/dump artifacts out of vault/raw even if
 # something writes there by mistake. vault/raw/**.md (text) is the vault's

@@ -54,18 +54,21 @@ stock/
 │   ├── shared/               # 레이어 공용 유틸 (frontmatter, content_hash, portfolio)
 │   └── orchestration/        # (예정) 파이프라인 오케스트레이션 훅
 │
-├── vault/                    # Obsidian vault — Markdown + YAML frontmatter (single source of truth)
-│   └── notes/                # 사람/LLM이 쓰는 노트 (portfolio.md 등)
-├── notes/
-│   └── private/              # 개인 보유·평단 등 민감 메모 (gitignored 권장)
-├── dashboards/               # Dataview 기반 대시보드 노트
-├── templates/                # 노트 템플릿 (portfolio.md 등)
+├── vault/                    # Obsidian vault_root — collectors가 쓰는 raw + dashboards/graph 산출물
+│   ├── raw/                  # 수집기 산출물 (dart/, krx/, macro/, news/, kind/) — vault 내부
+│   ├── ingested/             # 인제스트 산출물 (worker가 채움)
+│   │   ├── _status/          # heartbeat.md, backlog.md (파이프라인 상태)
+│   │   └── by-ticker/        # corp_code 별 hub 노트 (DASH-04 자동 생성)
+│   ├── graph/                # graphify 산출물 (graph.json/index.html/REPORT, gitignored)
+│   ├── notes/                # 사용자 메모 화이트리스트 (D-09 write-scope) — MCP add_note 대상
+│   └── .graphify-staging/    # graphify 임시 staging dir (gitignored, 자동 생성)
+├── notes/                    # notes_root — vault와 분리된 별도 메모 루트
+│   └── private/              # 개인 보유·평단·thesis (gitignored, D-03)
+├── dashboards/               # Dataview 기반 대시보드 노트 (별도 vault sub-root, _data/는 gitignored)
+├── templates/                # 노트 템플릿
+│   └── notes/                # thesis/journal/portfolio (NOTE-01/02)
 │
-├── raw/                      # 수집 원본 캐시 (`raw/{source}/{YYYY}/...`, gitignored)
-│   └── dart/2026/
-├── ingested/                 # 인제스트 산출물·상태
-│   └── _status/              # heartbeat.md 등 파이프라인 상태
-├── graph/                    # graphify 산출물 (graph.json/index.html/REPORT, 재생성 가능)
+├── graph/                    # (legacy 위치) — 신규 산출물은 vault/graph/ 사용
 │
 ├── scripts/                  # 운영 스크립트 (init-extensions.sql, migrate-to-wsl.sh)
 ├── tests/                    # pytest 스위트 (collectors/e2e/fixtures + unit tests)
@@ -79,11 +82,39 @@ stock/
 └── CLAUDE.md                 # 본 파일 — 프로젝트 컨텍스트
 ```
 
+### vault_root vs notes_root (Phase 8 GAP-01 lesson)
+
+수집된 raw 데이터(`vault/raw/`)와 사용자 thesis/journal 메모(`notes/private/`)는 **별도 루트**에 산다:
+
+- **vault_root** = `vault/` — collectors가 raw 파일을 쓰고 ingest worker가 스캔하는 루트.
+  하위에 `raw/`, `ingested/_status/`, `ingested/by-ticker/`, `graph/`, `notes/`(MCP add_note 대상), `.graphify-staging/`이 있다.
+- **notes_root** = `notes/private/` — 사용자 thesis/journal 메모 (gitignored, D-03).
+  vault와 별도 루트로 살아 git 협업 시 사적 데이터가 노출되지 않는다.
+
+`stock ingest run`(= `src/ingest/worker.py:ingest_run`)은 두 루트를 모두 스캔한다:
+
+1. `<vault_root>/raw/**/*.md` — DART / KRX / news / macro / kind
+2. `<notes_root>/**/*.md` — 사용자 thesis/journal
+   자동 탐색 순서: `vault_root/notes/private` → `vault_root.parent/notes/private`
+   (CLI override: `--notes-root <path>`)
+
+**WARNING (GAP-01 함정):** Obsidian sidebar에서 `vault/notes/private/`에 thesis를 쓰면
+ingest worker가 스캔하지 않아 영원히 미인덱싱된다. **사용자 thesis/journal은 repo-root
+`notes/private/`에 작성**할 것. `vault/notes/`는 MCP `add_note` 툴이 쓰는 화이트리스트
+(D-09 write-scope의 절반)이며, thesis용 notes_root와 구분된다.
+
+| 경로 | 누가 쓰나 | 인덱싱? | gitignored? |
+|------|-----------|---------|-------------|
+| `notes/private/` | 사용자 (Obsidian, 사람이 직접 thesis/journal 작성) | YES (worker가 notes_root로 스캔) | YES (D-03) |
+| `vault/notes/` | MCP `add_note` 툴 (Claude가 세션 중 자동 적재) | YES (worker raw 스캔에 포함) | NO (vault 메모는 git에 살아남음) |
+| `vault/raw/{src}/` | collectors (`stock collect *`) | YES | NO (마크다운만 commit, 바이너리 ignore) |
+| `vault/ingested/` | worker post-pass (heartbeat, hub builder) | n/a (자기 자신이 산출물) | 부분 (`_status/heartbeat.md` 일부 ignored) |
+
 **레이어 규칙:**
-- `collectors/` → `raw/` + `vault/`에 원본 Markdown만 기록. `anthropic`/`openai` import 금지 (CI guard COLL-07).
+- `collectors/` → `vault/raw/`에 원본 Markdown만 기록. `anthropic`/`openai` import 금지 (CI guard COLL-07).
 - `_derived` 프론트매터 추출은 외부 Claude Schedule 에이전트가 git round-trip으로 수행 (본 코드베이스는 아님).
-- `ingest/`는 `vault/` → Postgres 인덱스 단방향. DB는 캐시이며 vault에서 항상 재생성 가능해야 함.
-- `stock_mcp/`는 읽기 전용 서빙 계층 — 수집/인제스트와 분리된 프로세스.
+- `ingest/`는 `vault/` + `notes/private/` → Postgres 인덱스 단방향. DB는 캐시이며 두 루트에서 항상 재생성 가능해야 함.
+- `stock_mcp/`는 읽기 전용 서빙 계층 + `add_note`(`vault/notes/` ∪ `notes/private/` 화이트리스트) — 수집/인제스트와 분리된 프로세스.
 <!-- GSD:project-end -->
 
 ## First-time Setup
