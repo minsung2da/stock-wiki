@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 8 context gathered
-last_updated: "2026-05-06T13:09:36.547Z"
-last_activity: 2026-05-06
+status: executing
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-05-09T01:36:50.110Z"
+last_activity: 2026-05-09
 progress:
   total_phases: 11
   completed_phases: 8
-  total_plans: 44
-  completed_plans: 44
-  percent: 100
+  total_plans: 52
+  completed_plans: 49
+  percent: 94
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-17)
 
 **Core value:** Claude Code에서 보유·관심 종목을 질의했을 때, 최신 공시·뉴스·가격·본인 리서치 메모를 종합한 근거 있는 매수/매도 판단을 즉시 받을 수 있다.
-**Current focus:** Phase 07 — graph-layer-graphify-integration
+**Current focus:** Phase 08 — vault-dashboards-research-memo-templates
 
 ## Current Position
 
-Phase: 10
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-05-06
+Phase: 08 (vault-dashboards-research-memo-templates) — EXECUTING
+Plan: 2 of 8
+Status: Ready to execute
+Last activity: 2026-05-09
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -99,6 +99,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 07-graph-layer-graphify-integration P02 | 40min | 3 tasks | 12 files |
 | Phase 07-graph-layer-graphify-integration P03 | 25min | 3 tasks tasks | 11 files files |
 | Phase 07-graph-layer-graphify-integration P04 | 14min | 3 tasks tasks | 5 files files |
+| Phase 08 P05 | 22 | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -200,6 +201,8 @@ Recent decisions affecting current work:
 - [Phase 07-graph-layer-graphify-integration]: Plan 07-04: Q4 ships full recursive walk SQL up-front; runs as graceful no-op until DART writer correction-of field
 - [Phase 07-graph-layer-graphify-integration]: Plan 07-04: gitignore vault/graph/* (file-level) so !vault/graph/README.md negation works
 - [Phase 07-graph-layer-graphify-integration]: Plan 07-04: test_readme_parity_imports_match_snippets enforces README ↔ canonical.py function-name parity in CI
+- [Phase 08]: [Plan 08-05] EventType Literal에 price_micro 추가 (KRX prompt 의도와 정합); 환각값 disclosure → buyback_announcement, news_micro → price_micro 1회성 마이그레이션
+- [Phase 08]: [Plan 08-05] macro 단일-section parser 신설 — DART처럼 TOC 분해하지 않음; empty body → []로 worker zero-section 안전 스킵
 
 ### Pending Todos
 
@@ -224,6 +227,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-06T13:09:36.482Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-vault-dashboards-research-memo-templates/08-CONTEXT.md
+Last session: 2026-05-09T01:36:50.065Z
+Stopped at: Completed 08-05-PLAN.md
+Resume file: None
