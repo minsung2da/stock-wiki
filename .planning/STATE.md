@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 08-05-PLAN.md
-last_updated: "2026-05-09T01:36:50.110Z"
+stopped_at: Completed 08-07-PLAN.md
+last_updated: "2026-05-09T08:58:12.774Z"
 last_activity: 2026-05-09
 progress:
   total_phases: 11
   completed_phases: 8
   total_plans: 52
-  completed_plans: 49
-  percent: 94
+  completed_plans: 50
+  percent: 96
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-17)
 ## Current Position
 
 Phase: 08 (vault-dashboards-research-memo-templates) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-05-09
 
@@ -100,6 +100,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 07-graph-layer-graphify-integration P03 | 25min | 3 tasks tasks | 11 files files |
 | Phase 07-graph-layer-graphify-integration P04 | 14min | 3 tasks tasks | 5 files files |
 | Phase 08 P05 | 22 | 2 tasks | 12 files |
+| Phase 08-vault-dashboards-research-memo-templates P07 | 25min | 3 tasks tasks | 4 files files |
 
 ## Accumulated Context
 
@@ -203,6 +204,9 @@ Recent decisions affecting current work:
 - [Phase 07-graph-layer-graphify-integration]: Plan 07-04: test_readme_parity_imports_match_snippets enforces README ↔ canonical.py function-name parity in CI
 - [Phase 08]: [Plan 08-05] EventType Literal에 price_micro 추가 (KRX prompt 의도와 정합); 환각값 disclosure → buyback_announcement, news_micro → price_micro 1회성 마이그레이션
 - [Phase 08]: [Plan 08-05] macro 단일-section parser 신설 — DART처럼 TOC 분해하지 않음; empty body → []로 worker zero-section 안전 스킵
+- [Phase 08-vault-dashboards-research-memo-templates]: Plan 08-07: vault/notes/ KEEP — D-09 write-scope WHITELIST_PREFIXES의 절반(MCP add_note + 14+ tests 의존). 빈 디렉토리지만 git tree에 가시화하여 시스템 의도 보존; .gitignore 미추가
+- [Phase 08-vault-dashboards-research-memo-templates]: Plan 08-07: ingested/ (repo-root) git rm -r — production heartbeat은 vault_root scoped(vault/ingested/_status/). .gitignore 'ingested/_status/' → 'ingested/' 디렉토리 단위로 강화하여 stray sink 재생성 차단
+- [Phase 08-vault-dashboards-research-memo-templates]: Plan 08-07: CLAUDE.md notes_root 멘탈 모델 — 도식 정정 + 새 섹션 'vault_root vs notes_root (GAP-01 lesson)' + 4-경로 매트릭스(notes/private vs vault/notes vs vault/raw vs vault/ingested) + ingest_run 자동 탐색 순서 명시
 
 ### Pending Todos
 
@@ -227,6 +231,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-09T01:36:50.065Z
-Stopped at: Completed 08-05-PLAN.md
+Last session: 2026-05-09T08:58:12.730Z
+Stopped at: Completed 08-07-PLAN.md
 Resume file: None

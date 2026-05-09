@@ -85,14 +85,14 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 ### 대시보드 (Dashboards)
 
-- [ ] **DASH-01**: `dashboards/portfolio.md`가 보유 종목·평가액·최근 이벤트 요약을 Dataview 쿼리로 자동 표시한다
+- [x] **DASH-01**: `dashboards/portfolio.md`가 보유 종목·평가액·최근 이벤트 요약을 Dataview 쿼리로 자동 표시한다
 - [ ] **DASH-02**: `dashboards/watchlist.md`가 관심 종목 상태를 표시한다
 - [x] **DASH-03**: `dashboards/events-this-week.md`가 이번 주 주요 공시·뉴스·거래정지를 집계한다
 - [x] **DASH-04**: 티커별 hub 노트(`ingested/by-ticker/{corp_code}.md`)가 자동 생성되어 관련 문서·메모·가격 트렌드를 링크한다
 
 ### 메모·리서치 (Notes)
 
-- [ ] **NOTE-01**: `templates/notes/thesis.md` 템플릿이 있고 새 thesis 노트가 `notes/private/{ticker}/thesis.md`로 생성된다 (투자 논리·kill criteria). **AMENDED (2026-04-26 by Phase 10 D-19):** Phase 8 = 템플릿/스키마, 콘텐츠는 `notes/private/` overlay. `notes/theses/` 디렉토리 폐기.
+- [x] **NOTE-01**: `templates/notes/thesis.md` 템플릿이 있고 새 thesis 노트가 `notes/private/{ticker}/thesis.md`로 생성된다 (투자 논리·kill criteria). **AMENDED (2026-04-26 by Phase 10 D-19):** Phase 8 = 템플릿/스키마, 콘텐츠는 `notes/private/` overlay. `notes/theses/` 디렉토리 폐기.
 - [ ] **NOTE-02**: `templates/notes/journal.md` 템플릿이 있고 새 journal entry가 `notes/private/journal/YYYY-MM-DD.md`로 생성된다 (일지·의사결정 로그). **AMENDED (2026-04-26 by Phase 10 D-19):** `notes/journal/` 디렉토리 폐기.
 - [ ] **NOTE-03**: 메모 frontmatter가 `tickers[]`, `tags[]`, `created`, `author`를 포함해 DB에 인덱싱된다
 
@@ -216,11 +216,11 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | GRAPH-01 | Phase 7 | Complete |
 | GRAPH-02 | Phase 7 | Complete |
 | GRAPH-03 | Phase 7 | Complete |
-| DASH-01 | Phase 8 | Pending |
+| DASH-01 | Phase 8 | Complete |
 | DASH-02 | Phase 8 | Pending |
 | DASH-03 | Phase 8 | Complete |
 | DASH-04 | Phase 8 | Complete |
-| NOTE-01 | Phase 8 | Pending |
+| NOTE-01 | Phase 8 | Complete |
 | NOTE-02 | Phase 8 | Pending |
 | NOTE-03 | Phase 8 | Pending |
 | JUDGE-01 | Phase 9 | Pending |
