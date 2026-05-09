@@ -87,8 +87,8 @@ v1 스코프는 리서치(`.planning/research/`)의 Must-Have(table stakes) 9개
 
 - [ ] **DASH-01**: `dashboards/portfolio.md`가 보유 종목·평가액·최근 이벤트 요약을 Dataview 쿼리로 자동 표시한다
 - [ ] **DASH-02**: `dashboards/watchlist.md`가 관심 종목 상태를 표시한다
-- [ ] **DASH-03**: `dashboards/events-this-week.md`가 이번 주 주요 공시·뉴스·거래정지를 집계한다
-- [ ] **DASH-04**: 티커별 hub 노트(`ingested/by-ticker/{corp_code}.md`)가 자동 생성되어 관련 문서·메모·가격 트렌드를 링크한다
+- [x] **DASH-03**: `dashboards/events-this-week.md`가 이번 주 주요 공시·뉴스·거래정지를 집계한다
+- [x] **DASH-04**: 티커별 hub 노트(`ingested/by-ticker/{corp_code}.md`)가 자동 생성되어 관련 문서·메모·가격 트렌드를 링크한다
 
 ### 메모·리서치 (Notes)
 
@@ -218,8 +218,8 @@ v1 검증 후 효용이 입증된 항목부터 점진 도입.
 | GRAPH-03 | Phase 7 | Complete |
 | DASH-01 | Phase 8 | Pending |
 | DASH-02 | Phase 8 | Pending |
-| DASH-03 | Phase 8 | Pending |
-| DASH-04 | Phase 8 | Pending |
+| DASH-03 | Phase 8 | Complete |
+| DASH-04 | Phase 8 | Complete |
 | NOTE-01 | Phase 8 | Pending |
 | NOTE-02 | Phase 8 | Pending |
 | NOTE-03 | Phase 8 | Pending |
