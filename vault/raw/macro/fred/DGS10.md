@@ -122,9 +122,8 @@ _derived:
     value: 4.34
     unit: '%'
     period: '2026-04-23'
-  summary: null
-  _uncertain:
-  - summary
+  summary: "미국 10년물 국채금리(us_10y) 시계열 데이터로, 2025년 4월부터 2026년 4월까지의 일별 수익률이 기록되어 있다. 금리는 2025년 5월 4.53%로 고점을 기록한 후, 2025년 10월 3.97%까지 하락하였다가 이후 다시 4%대로 회복하는 흐름을 보인다."
+  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false
