@@ -2,7 +2,8 @@
 _derived:
   tickers: []
   event_type: news_macro
-  catalysts: []
+  catalysts:
+  - 유가 100달러 돌파
   sentiment: mixed
   numeric_facts:
   - metric: wti
@@ -18,17 +19,37 @@ _derived:
     unit: USD/bbl
     period: '2025-05-05'
   - metric: wti
-    value: 73.87
+    value: 55.44
     unit: USD/bbl
-    period: '2025-08-01'
+    period: '2025-12-16'
   - metric: wti
-    value: 74.92
+    value: 57.21
     unit: USD/bbl
     period: '2026-01-02'
   - metric: wti
-    value: 85.93
+    value: 80.88
     unit: USD/bbl
-    period: '2026-04-01'
+    period: '2026-03-05'
+  - metric: wti
+    value: 90.77
+    unit: USD/bbl
+    period: '2026-03-06'
+  - metric: wti
+    value: 94.65
+    unit: USD/bbl
+    period: '2026-03-09'
+  - metric: wti
+    value: 98.71
+    unit: USD/bbl
+    period: '2026-03-20'
+  - metric: wti
+    value: 101.26
+    unit: USD/bbl
+    period: '2026-03-27'
+  - metric: wti
+    value: 104.69
+    unit: USD/bbl
+    period: '2026-03-30'
   - metric: wti
     value: 114.58
     unit: USD/bbl
@@ -38,12 +59,15 @@ _derived:
     unit: USD/bbl
     period: '2026-04-08'
   - metric: wti
+    value: 85.91
+    unit: USD/bbl
+    period: '2026-04-17'
+  - metric: wti
     value: 91.06
     unit: USD/bbl
     period: '2026-04-20'
-  summary: null
-  _uncertain:
-  - summary
+  summary: "WTI 원유 가격은 2025년 하반기 저점(55달러대)에서 2026년 4월 초 114달러대까지 급등한 후 급격히 조정되었다. 2026년 3월 초부터 4월 초까지 불과 한 달 만에 배럴당 71달러에서 114달러로 약 60% 상승하는 극심한 변동성을 보였다."
+  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false
