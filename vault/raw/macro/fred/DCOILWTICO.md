@@ -41,9 +41,8 @@ _derived:
     value: 91.06
     unit: USD/bbl
     period: '2026-04-20'
-  summary: null
-  _uncertain:
-  - summary
+  summary: WTI 유가는 2025년 4월 약 63달러에서 2025년 12월 55달러대로 하락한 후, 2026년 3~4월에 최고 114달러대까지 급등하였다. 이후 2026년 4월 중순 급락하여 85~91달러 수준에서 등락을 보이고 있다.
+  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false
