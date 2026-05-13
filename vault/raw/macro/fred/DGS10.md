@@ -122,9 +122,8 @@ _derived:
     value: 4.34
     unit: '%'
     period: '2026-04-23'
-  summary: null
-  _uncertain:
-  - summary
+  summary: 미국 10년물 국채금리는 2025년 5월 4.58%로 고점을 기록한 후 2025년 10월 3.97%까지 하락하였다. 이후 2026년 3월~4월에 4.3~4.4%대로 재상승하며 높은 수준을 유지하고 있다.
+  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false
