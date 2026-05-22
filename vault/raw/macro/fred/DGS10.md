@@ -2,8 +2,7 @@
 _derived:
   tickers: []
   event_type: news_macro
-  catalysts:
-  - 미국 10년물 국채금리 변동
+  catalysts: []
   sentiment: neutral
   numeric_facts:
   - metric: us_10y
@@ -67,10 +66,6 @@ _derived:
     unit: '%'
     period: '2025-12-01'
   - metric: us_10y
-    value: 4.63
-    unit: '%'
-    period: '2026-01-02'
-  - metric: us_10y
     value: 4.51
     unit: '%'
     period: '2026-02-02'
@@ -122,9 +117,9 @@ _derived:
     value: 4.34
     unit: '%'
     period: '2026-04-23'
-  summary: null
-  _uncertain:
-  - summary
+  summary: 미국 10년물 국채 수익률이 2025년 4월 28일 4.23%에서 2026년 4월 23일 4.34%로 변동했다. 해당 기간 수익률은
+    최저 3.97%(2026년 2월 27일)에서 최고 4.58%(2025년 5월 21일) 사이에서 등락했다.
+  _uncertain: []
 ingest_state:
   injection_flags: []
   processed: false
@@ -635,6 +630,7 @@ provenance:
   source_url: https://fred.stlouisfed.org/series/DGS10
   trust_level: trusted
 ---
+
 
 ## us_10y
 
