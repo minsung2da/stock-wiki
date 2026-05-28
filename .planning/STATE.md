@@ -1,42 +1,58 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Completed 08-07-PLAN.md
-last_updated: "2026-05-09T08:58:12.774Z"
-last_activity: 2026-05-09
+milestone: v2.0
+milestone_name: DB-direct redesign
+status: planning
+stopped_at: ROADMAP v2.0 published; ready for /gsd:plan-phase 1
+last_updated: "2026-05-29T00:00:00.000Z"
+last_activity: 2026-05-29
 progress:
-  total_phases: 11
-  completed_phases: 8
-  total_plans: 52
-  completed_plans: 50
-  percent: 96
+  total_phases: 9
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-17)
+See:
+- `.planning/PROJECT.md` (v1.0 framing — to be refreshed in Phase 1)
+- `.planning/ROADMAP.md` (v2.0 9-phase roadmap)
+- `.planning/research/redesign-2026-05.md` (authoritative architecture criteria + research synthesis)
+- `CLAUDE.md` (Hard Vetoes + tech stack + directory layout)
 
-**Core value:** Claude Code에서 보유·관심 종목을 질의했을 때, 최신 공시·뉴스·가격·본인 리서치 메모를 종합한 근거 있는 매수/매도 판단을 즉시 받을 수 있다.
-**Current focus:** Phase 08 — vault-dashboards-research-memo-templates
+**v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
+로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
+
+**Current focus:** Phase 1 — Collector DB-Direct Cutover
 
 ## Current Position
 
-Phase: 08 (vault-dashboards-research-memo-templates) — EXECUTING
-Plan: 3 of 8
-Status: Ready to execute
-Last activity: 2026-05-09
+Phase: 1 (Collector DB-Direct Cutover) — NOT YET PLANNED
+Plan: 0 of TBD
+Status: Awaiting `/gsd:plan-phase 1`
+Last activity: 2026-05-29 (v2.0 ROADMAP + CLAUDE.md published)
 
 Progress: [░░░░░░░░░░] 0%
 
+## Milestone Transition (v1.0 → v2.0)
+
+**2026-04-26 ~ 2026-05-29**: LLM-wiki strategy shutdown + DB-direct redesign.
+
+- v1.0 final state: 8/11 phases complete (Phase 1-7 + 07.1 done; Phase 8 in progress at plan 08-07)
+- Shutdown commit: `daf3edf` on origin/main
+- Archive: `git tag pre-llm-wiki-shutdown` / `git branch archive/llm-wiki-2026-04`
+- Research seed: `.planning/research/redesign-2026-05.md`
+- v2.0 roadmap published: 2026-05-29
+
 ## Performance Metrics
 
-**Velocity:**
+**Velocity:** (v2.0, baseline reset)
 
-- Total plans completed: 40
+- Total plans completed: 0
 - Average duration: —
 - Total execution time: 0 hours
 
@@ -44,193 +60,83 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| — | — | — | — |
-| 01 | 3 | - | - |
-| 02 | 3 | - | - |
-| 03 | 6 | - | - |
-| 04 | 8 | - | - |
-| 05 | 8 | - | - |
-| 06 | 9 | - | - |
-| 07.1 | 3 | - | - |
+| 1 (Collector DB cutover) | 0 | - | - |
+| 2 (Decision card schema) | 0 | - | - |
+| 3 (MCP tool surface) | 0 | - | - |
+| 4 (Analysis runner) | 0 | - | - |
+| 5 (Briefing renderer) | 0 | - | - |
+| 6 (Paper-trade action) | 0 | - | - |
+| 7 (Live trade) | 0 | - | - |
+| 8 (Eval harness) | 0 | - | - |
+| 9 (Ops hardening) | 0 | - | - |
 
-**Recent Trend:**
+**Recent Trend:** —
 
-- Last 5 plans: —
-- Trend: —
+*v1.0 velocity history archived; see `git show archive/llm-wiki-2026-04:.planning/STATE.md` if needed.*
 
-*Updated after each plan completion*
-| Phase 01 P01 | 1min | 2 tasks | 11 files |
-| Phase 01 P02 | 4min | 2 tasks | 12 files |
-| Phase 01 P03 | 5min | 2 tasks | 5 files |
-| Phase 02 P01 | 6 min | 3 tasks | 11 files |
-| Phase 02-canonical-entity-identity P02 | 6 min | 2 tasks | 3 files |
-| Phase 02-canonical-entity-identity P03 | 15 min | 2 tasks | 8 files |
-| Phase 03 P01 | 18min | 2 tasks | 7 files |
-| Phase 03 P02 | 12min | 2 tasks | 8 files |
-| Phase 03-one-company-walking-skeleton P03 | 11min | 3 tasks | 11 files |
-| Phase 03 P04 | 10min | 1 tasks | 3 files |
-| Phase 03 P05 | 55min | 2 tasks | 12 files |
-| Phase 03-one-company-walking-skeleton P06 | 35min | 3 tasks | 10 files |
-| Phase 04 P01 | 568 | 4 tasks | 10 files |
-| Phase 04 P02 | 1107 | 2 tasks | 10 files |
-| Phase 04 P03 | 7min | 2 tasks | 12 files |
-| Phase 04-multi-source-collector-coverage P04 | 30min | 2 tasks | 12 files |
-| Phase 04 P05 | 1800 | 5 tasks | 20 files |
-| Phase 04 P06 | 18 | 1 tasks | 3 files |
-| Phase 04 P07 | 20 min | 3 tasks | 5 files |
-| Phase 04 P08 | 8m | 2 tasks | 2 files |
-| Phase 05 P01 | 13min | 2 tasks | 3 files |
-| Phase 05 P03 | 12min | 2 tasks | 4 files |
-| Phase 05 P08 | 22min | 2 tasks | 14 files |
-| Phase 05 P02 | 29min | 2 tasks | 2 files |
-| Phase 05-claude-schedule-enrichment-with-korean-number-safety P04 | 7min | 2 tasks | 2 files |
-| Phase 05-claude-schedule-enrichment-with-korean-number-safety P05 | 5min | 2 tasks | 4 files |
-| Phase 05-claude-schedule-enrichment-with-korean-number-safety P06 | 5min | 2 tasks | 2 files |
-| Phase 05-claude-schedule-enrichment-with-korean-number-safety P07 | 13min | 2 tasks | 4 files |
-| Phase 06-full-mcp-tool-surface P01 | 27min | 2 tasks | 13 files |
-| Phase 06-full-mcp-tool-surface P02 | 12min | 3 tasks | 14 files |
-| Phase 06 P03 | 45 | 3 tasks | 109 files |
-| Phase 06-full-mcp-tool-surface P05 | 11min | 2 tasks tasks | 4 files files |
-| Phase 06 P06 | 18 | 2 tasks | 4 files |
-| Phase 06-full-mcp-tool-surface P07 | 25min | 2 tasks tasks | 3 files files |
-| Phase 06-full-mcp-tool-surface P08 | 14min | 1 tasks | 2 files |
-| Phase 06 P09 | 16min | 2 tasks | 14 files |
-| Phase 07 P01 | 85min | 2 tasks tasks | 13 files files |
-| Phase 07-graph-layer-graphify-integration P02 | 40min | 3 tasks | 12 files |
-| Phase 07-graph-layer-graphify-integration P03 | 25min | 3 tasks tasks | 11 files files |
-| Phase 07-graph-layer-graphify-integration P04 | 14min | 3 tasks tasks | 5 files files |
-| Phase 08 P05 | 22 | 2 tasks | 12 files |
-| Phase 08-vault-dashboards-research-memo-templates P07 | 25min | 3 tasks tasks | 4 files files |
-
-## Accumulated Context
-
-### Roadmap Evolution
-
-- Phase 10 added: Decision-context coverage: peer/historical valuation + supply-demand + private notes scaffold
+## Accumulated Context (v2.0)
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+v2.0 architecture decisions are locked in `.planning/research/redesign-2026-05.md` (sections 1-7) and
+encoded as Hard Vetoes in `CLAUDE.md`. Recent decisions affecting Phase 1+:
 
-- Phase 1 enforcement: Native Postgres 17 over PGLite (concurrency + VectorChord-BM25 require native OS)
-- Phase 1 enforcement: ingest venv excludes `anthropic`/`openai`; CI grep-test guards cost discipline
-- Phase 2 enforcement: `corp_code` (DART 8-digit) is canonical entity PK, not KRX 6-digit ticker
-- Phase 3 enforcement: Walking skeleton ships with no LLM extraction — prompt-injection defenses scaffolded before LLM is wired in (Phase 5)
-- Phase 5 research flag: Korean BM25 tokenizer + bge-m3 chunking + VectorChord-BM25 Docker image need empirical spike before commit
-- [Phase 01]: Named volume pgdata over bind mount to avoid WSL2 permission issues
-- [Phase 01]: Postgres bound to 127.0.0.1 only (no external exposure)
-- [Phase 01]: ingest dependency group excludes anthropic/openai to enforce cost discipline
-- [Phase 01]: _derived alias with populate_by_name enables both Python (.derived) and YAML (_derived) conventions
-- [Phase 01]: Downgraded gitleaks from v8.22.1 to v8.21.2 due to WASM panic on WSL2
-- [Phase 02]: psycopg3 driver (postgresql+psycopg://) adopted; testcontainers URL normalized at fixture boundary
-- [Phase 02]: Alembic target_metadata=None — hand-written migrations only (no autogenerate)
-- [Phase 02]: Content-hash is a dedup primitive, not a security primitive (sha256 collision assumed for dedup only)
-- [Phase 02-canonical-entity-identity]: Downgrade does NOT drop vector extension — shared infrastructure
-- [Phase 02-canonical-entity-identity]: chunks.embedding via raw ALTER TABLE (pgvector type) — avoids optional type-registration
-- [Phase 02-canonical-entity-identity]: D-15 UPSERT uses CASE + array_append — preserves insertion order
-- [Phase 02-canonical-entity-identity]: resolve_entity is the ONLY lookup surface — downstream collectors must import, not re-implement
-- [Phase 02-canonical-entity-identity]: Ticker-recycle fixture kept synthetic (Pitfall 1); real-case KRX mining deferred to v2
-- [Phase 02-canonical-entity-identity]: Half-open temporal interval [valid_from, valid_to) with depth<20 recursive CTE cycle guard
-- [Phase 03]: BM25 expression index ((bm25_tokens)::bm25vector) bm25_ops — opclass targets bm25vector, implicit cast materialised at index time
-- [Phase 03]: Migration self-contained: CREATE EXTENSION vchord_bm25 + pg_trgm inside 0002 for testcontainer parity with live docker-compose DB
-- [Phase 03]: documents.corp_code + btree index added in Plan 01 (not Plan 04) — Plan 05 hybrid_search filters without JSONB probe
-- [Phase 03]: trust_level lives on ProvenanceBlock (Zone 1, collector-written, D-19 enum)
-- [Phase 03]: Content-hash comparison on freshly-fetched body (not existing file hash) — guarantees correctness when remote changes
-- [Phase 03]: Heartbeat sources dict lives outside FrontMatter Pydantic schema (operational telemetry != document content)
-- [Phase 03-one-company-walking-skeleton]: injection_defense lives under src/ingest/ — leaf utility consumed by both worker (Plan 04) and MCP (Plan 05); DB/LLM-free
-- [Phase 03-one-company-walking-skeleton]: Embedder lazy-imports SentenceTransformer; EMBEDDING_MODEL_VERSION='BAAI/bge-m3@v1' importable without torch for CI parity
-- [Phase 03-one-company-walking-skeleton]: chunk_index monotonic per document; section_index resets at each new section (Q4 resolution)
-- [Phase 03-one-company-walking-skeleton]: PATTERNS ID snapshot stable: EN_IGNORE_PREV/FAKE_SYSTEM_TAG/DAN_MODE/ROLEPLAY_ADMIN/KO_IGNORE_PREV/KO_ADMIN_MODE
-- [Phase 03]: Phase 03-04: Per-doc transaction (engine.begin per document) — D-26 failure isolation requires N commits, not one long txn
-- [Phase 03]: Phase 03-04: Delete-then-insert on content_hash change (not UPSERT) — documents.id IS the hash, so hash change is new row with FK cascade
-- [Phase 03]: Phase 03-04: injection_flags UNION across runs (prior ∪ new) — security-forward default; cleanup belongs to ingest doctor
-- [Phase 03]: hybrid_search uses direct d.corp_code filter (not LEFT JOIN entities) — migration 0002 added the column precisely for this
-- [Phase 03]: BM25 ORDER BY is ASC NULLS LAST — vchord_bm25 returns negative scores where lower = better match (plan SQL sketch was inverted)
-- [Phase 03]: NULLable filter binds require explicit CAST to column type — psycopg3 AmbiguousParameter otherwise
-- [Phase 03]: FastMCP tool registered via mcp.tool()(search) call-form — preserves the callable name bound to plain function for tests + internal callers
-- [Phase 03-one-company-walking-skeleton]: Phase 03-06: hatchling build-backend + tool.uv.package=true required to register stock-mcp + stock entry scripts (latent bug from Plan 01)
-- [Phase 03-one-company-walking-skeleton]: Phase 03-06: Alembic URL must use engine.url.render_as_string(hide_password=False) — str(engine.url) masks password as ***
-- [Phase 03-one-company-walking-skeleton]: Phase 03-06: JUDGE-04 live Claude Code query auto-approved under gsd auto_advance — automated E2 schema test discharges machine-checkable half; operator runs live 9-step procedure out-of-band
-- [Phase 04]: Use entity_aliases kind='eng_name' (not 'english_name') — CHECK constraint already permits it, no migration
-- [Phase 04]: TickerRef + Observation typed Pydantic nested models (R-07) for news/macro frontmatter
-- [Phase 04]: KRX Plan 02: bundled orchestrator into writer T1 commit; promoted tenacity to collectors dep group
-- [Phase 04]: Phase 04 Plan 03: ECOS StatisticSearch needs ITEM_CODE1 filter; macro_series.yaml schema extended with item_code field
-- [Phase 04]: Phase 04 Plan 03: Append-merge reads prior observations from ProvenanceBlock.observations (D-07 structured), not body markdown — structured is source of truth
-- [Phase 04]: Phase 04 Plan 03: R-06 revisions propagate as extra={'revisions': [...]} through record_source_run — structured, not log lines
-- [Phase 04-multi-source-collector-coverage]: News collector: pre-load scoped alias inventory once (R-01), substring scan over regex tokens for better Korean recall
-- [Phase 04-multi-source-collector-coverage]: trafilatura deduplicate=False in news fetcher: the LRU cache breaks R-11 cross-URL dedup behavior
-- [Phase 04-multi-source-collector-coverage]: edaily RSS stays http:// — HTTPS fails upstream (Microsoft-IIS without SNI)
-- [Phase 04]: Plan 05 Option D: DART pblntf_ty='I' supersedes pykrx for exchange status events (pykrx has no get_market_status function)
-- [Phase 04]: CLI _dispatch() helper: single lazy-import boundary for collector orchestration, enables monkeypatch-based testing without DB/network
-- [Phase 04]: Exit codes: 0=all ok, 1=any source error/partial (D-20), 2=CLI misuse/unknown --sources (D-21). Report emitted on stderr to keep stdout composable
-- [Phase 05]: extra=forbid on v2 models only (ReviewFlag/SentimentBlock/NumericFact/DerivedBlock) — legacy zones preserved for Phase 3/4 compat
-- [Phase 05]: EventType exported as top-level Literal alias for downstream Wave 2+ modules to annotate without re-defining
-- [Phase 05]: Regex number_extraction: removed \b after Hangul (ASCII-only boundary breaks between 원을/주가 etc.), wrapped _NUM in non-capturing group for safe compound composition
-- [Phase 05]: Plan 05-08: Routines skill lives in-repo at .claude/routines/enrich/ (D-29); helpers load via importlib.util so tests reach into .claude/ without polluting pythonpath
-- [Phase 05]: Plan 05-08: Zone-integrity SHA256 over yaml.safe_dump(provenance)+yaml.safe_dump(ingest_state) — deterministic sort_keys=True payload; _derived changes correctly ignored
-- [Phase 05]: Plan 05-02: Leaf pure-util pattern for shared/units.py — no imports from shared.frontmatter or ingest.*, MappingProxyType frozen constants, defensive .get() on Literal-narrowed str input
-- [Phase 05]: Plan 05-02: normalize_to_krw explicitly returns None for non-KRW currencies (USD/EUR/JPY) — no silent FX conversion, downstream sees value_krw=None and skips KRW range checks
-- [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-04: KOSPI/KOSDAQ sanity rules use unit='other' — NumericFact.unit Literal excludes 'index_pt'; promotion to Literal deferred to Phase 9
-- [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-05: LINE_ITEM_SYNONYMS covers 22 canonical KR line items; new labels graduate via explicit synonym addition (no fabricated mapping)
-- [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-05: _fs_extract is a monkeypatchable wrapper — cassette-driven tests avoid live DART API in CI
-- [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-06: BacklogItem compound key (path::flag) — two flags on same document track first_seen independently; tolerant regex parse over YAML load for prior file robustness
-- [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-07: alert_level auto-populated only when source=='enrich' (COLL-08 per-source isolation preserved for dart/krx/news/macro)
-- [Phase 05-claude-schedule-enrichment-with-korean-number-safety]: Plan 05-07: disk_metrics module has zero DB deps — Routines skill injects db_size_mb via pg_database_size query
-- [Phase 06-full-mcp-tool-surface]: Phase 6 P-01: Portfolio.load signature cutover (vault_root -> repo_root); SoT moved to notes/private/portfolio.md (gitignored, local-only)
-- [Phase 06-full-mcp-tool-surface]: Plan 06-02: build_snippet uses inline <vault_excerpt> wrap (not wrap_untrusted) — wrap_untrusted requires source/trust/doc_id triple unavailable for portfolio rows; existing E2E test accepts both forms
-- [Phase 06-full-mcp-tool-surface]: Plan 06-02: ErrorCode additions are append-only — Phase 3 ordering preserved verbatim, six new Phase 6 codes appended
-- [Phase 06]: Migration 0003 drops ck_edge_type_phase2 entirely (Phase 7 GRAPH-01 will redefine taxonomy)
-- [Phase 06]: Fixture corpus uses Random(seed=42) for byte-deterministic regeneration
-- [Phase 06]: Stub embedder + tokenizer in tests/stock_mcp/conftest.py — bge-m3 / mecab-ko never load in CI
-- [Phase 06-full-mcp-tool-surface]: Plan 06-05: get_related uses recursive CTE with UNION (cycle dedupe) + hard depth cap of 2 (T-6-05-01 DoS mitigation)
-- [Phase 06-full-mcp-tool-surface]: Plan 06-05: get_portfolio_state uses relative repo_root import (..repo_root) to match tools/ package convention; PortfolioLoadError + ValidationError both map to INVALID_FRONTMATTER (PATH_NOT_FOUND reserved for missing file)
-- [Phase 06-full-mcp-tool-surface]: Plan 06-07: health() reports DB-down as signal (db.status='down' in successful HealthResponse), not as error envelope — drives Phase 9 JUDGE-05 refusal path
-- [Phase 06-full-mcp-tool-surface]: Plan 06-07: heartbeat._read_sources renamed to public read_sources with backwards-compat alias for legacy ingest callers
-- [Phase 06-full-mcp-tool-surface]: Plan 06-08: get_ticker_overview composes 3 axes defensively (events/portfolio/related_notes) — each axis fails open so any one backend can't sink the bundle; events:error sentinel + None portfolio + [] related_notes
-- [Phase 06-full-mcp-tool-surface]: Plan 06-08: _apply_truncation extracted as pure function (OverviewResponse + target → OverviewResponse) — directly unit-testable on crafted oversize inputs without DB; priority order private_thesis<valuation<supply_demand<portfolio<related_notes<events
-- [Phase 06-full-mcp-tool-surface]: Plan 06-08: 4-char-per-token heuristic (matches logging.py); TARGET_TOKENS=7000 leaves 1000-token margin under D-19 8k ceiling; no tiktoken runtime dep
-- [Phase 06]: Plan 06-09: server.py side-effect import block registers all 7 new tools onto shared mcp instance; smoke test walks _tool_manager._tools dict (sync); docstring contract enforced via parametrized test (D-24)
-- [Phase 06]: Plan 06-09: tiktoken cl100k_base measure() uses N=20 reps + 1 warmup to absorb bge-m3 cold-load (process-startup cost, not per-request); per-tool perf JSONs committed for PR-diff visibility
-- [Phase 07]: All 10 v4 SKILL.md graphify symbols PRESENT in 0.7.5 — no API drift
-- [Phase 07]: DART correction/supersedes field MISSING — Plan 02 supersedes degrades to no-op
-- [Phase 07]: pg_engine fixture is root-scope; graph/conftest.py does not re-export
-- [Phase 07]: Plan 03 must derive community_labels and member_counts from cluster() output
-- [Phase 07-graph-layer-graphify-integration]: Plan 07-03: dual-import fallback in snapshot.py (src.graph.window or graph.window) handles pytest vs uv CLI sys.path divergence
-- [Phase 07-graph-layer-graphify-integration]: Plan 07-03: graphifyy 0.7.5 v4 chain used unchanged; community_labels and member_counts derived locally from cluster() output
-- [Phase 07-graph-layer-graphify-integration]: Plan 07-04: shared.repo_root non-existent — canonical.py imports from stock_mcp.repo_root
-- [Phase 07-graph-layer-graphify-integration]: Plan 07-04: Q4 ships full recursive walk SQL up-front; runs as graceful no-op until DART writer correction-of field
-- [Phase 07-graph-layer-graphify-integration]: Plan 07-04: gitignore vault/graph/* (file-level) so !vault/graph/README.md negation works
-- [Phase 07-graph-layer-graphify-integration]: Plan 07-04: test_readme_parity_imports_match_snippets enforces README ↔ canonical.py function-name parity in CI
-- [Phase 08]: [Plan 08-05] EventType Literal에 price_micro 추가 (KRX prompt 의도와 정합); 환각값 disclosure → buyback_announcement, news_micro → price_micro 1회성 마이그레이션
-- [Phase 08]: [Plan 08-05] macro 단일-section parser 신설 — DART처럼 TOC 분해하지 않음; empty body → []로 worker zero-section 안전 스킵
-- [Phase 08-vault-dashboards-research-memo-templates]: Plan 08-07: vault/notes/ KEEP — D-09 write-scope WHITELIST_PREFIXES의 절반(MCP add_note + 14+ tests 의존). 빈 디렉토리지만 git tree에 가시화하여 시스템 의도 보존; .gitignore 미추가
-- [Phase 08-vault-dashboards-research-memo-templates]: Plan 08-07: ingested/ (repo-root) git rm -r — production heartbeat은 vault_root scoped(vault/ingested/_status/). .gitignore 'ingested/_status/' → 'ingested/' 디렉토리 단위로 강화하여 stray sink 재생성 차단
-- [Phase 08-vault-dashboards-research-memo-templates]: Plan 08-07: CLAUDE.md notes_root 멘탈 모델 — 도식 정정 + 새 섹션 'vault_root vs notes_root (GAP-01 lesson)' + 4-경로 매트릭스(notes/private vs vault/notes vs vault/raw vs vault/ingested) + ingest_run 자동 탐색 순서 명시
+- **Postgres is source of truth.** Markdown vault폐기. 사용자 thesis 메모만 `notes/private/`에 잔존.
+- **Collectors write directly to typed Postgres tables** (Phase 1). `vault_root` 인자 + `heartbeat`
+  stub 제거.
+- **MCP 도구는 타입드 코드 API.** `run_sql` escape hatch 금지. (Phase 3)
+- **decision_card schema가 분석 출력의 표준.** 만료일·assumptions·contradictions 강제. (Phase 2-4)
+- **Auto-trade는 paper-shadow ≥30일 + Gates A-D 통과만.** Default disabled per-ticker. (Phase 6-7)
+- **백테스트는 CPCV+embargo만.** Walk-forward 단독 금지. (Phase 8)
+
+v1.0 decisions (~70개 누적, mostly LLM-wiki specific) — historical reference로 archive branch에 보존.
+v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통해 통합됨.
+
+### Lessons Carried Over from v1.0
+
+(v1.0 phase 진행 중 학습한 것 중 v2.0에서도 유효한 것)
+
+- **CPython 3.12 + uv** — Python 3.13은 ML deps 안정성 부족
+- **Postgres 17 + pgvector 0.8 (`halfvec`) + VectorChord-BM25** — testcontainer parity 위해 마이그
+  레이션 안에서 `CREATE EXTENSION` 실행
+- **psycopg3 driver** (`postgresql+psycopg://`) — testcontainers URL normalization 픽스처 경계에서
+- **`corp_code` (DART 8-digit)가 canonical entity PK** — KRX 6-digit ticker 재활용 위험
+- **Alembic `target_metadata=None`** — 손으로 작성한 마이그레이션만, autogenerate X
+- **Content-hash dedup** (sha256) — primitive로만, 보안 아님
+- **mecab-ko 한국어 tokenizer 전처리** — VectorChord-BM25는 whitespace tokenizer로 동작, 한국어
+  복합어는 Python에서 사전 토큰화 필수
+- **Half-open temporal interval `[valid_from, valid_to)` + depth<20 recursive CTE 가드** — entity
+  history walk
+- **dart-fss의 attachment parsing** — Open DART API가 노출 안 하는 항목 (linked-note financials)
+  커버
+- **CI guard: collectors/는 `anthropic`/`openai` import 금지** — Sonnet은 Claude Code 세션을 통해서만
+  접근. (이 가드는 Phase 1 재작성 시 다시 추가 필요 — `tests/test_import_guard.py` 이미 잔존)
 
 ### Pending Todos
 
-None yet.
+- `/gsd:plan-phase 1` 실행 → Phase 1 plan 산출
+- Phase 1 plan 완성 후 PROJECT.md를 v2.0 framing으로 업데이트
+- (선택) `.planning/phases/01-08, 07.1, 10` 디렉토리를 `.planning/archive/v1.0/`로 이동 — 현재 그대로 두고
+  ROADMAP의 v1.0 섹션에서 명시적으로 historical reference라 표시
 
 ### Blockers/Concerns
 
-- WSL path migration (`/mnt/c/...` → `~/stock/`) must be resolved in Phase 1 before ingest runs (Pitfall 10 → documented in FOUND-04)
-- Private portfolio data structure (submodule vs local-only path vs frontmatter overlay) needs a decision during Phase 1 vault layout work
+- **Phase 1 우선 결정 필요**: Phase 4 (analysis runner)에서 Sonnet sub-agent를 어떻게 spawn할지 —
+  Claude Code session 내 Task tool? 별도 Claude Schedule routine? quota 영향 측정 필요. Phase 4 plan 단계에서 확정.
+- **KIS API 모의 환경 접근권**: Phase 6 시작 전 모의투자 계정 발급 및 API 키 확보 필요.
+- **`notes/private/portfolio.md` schema 미정**: Phase 1에서 entity seed + Phase 6에서 auto_trade_enabled
+  토글까지 사용. 한 번에 결정 vs 점진 진화 — Phase 1 plan에서 결정.
 
 ### Quick Tasks Completed
 
+v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 누적.
+
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
-| 260417-q3h | Replace local LLM (Ollama/Qwen/EXAONE) stack with Claude schedule + bge-m3-only embeddings | 2026-04-17 | be8c15e | | [260417-q3h-replace-local-llm-ollama-qwen-exaone-sta](./quick/260417-q3h-replace-local-llm-ollama-qwen-exaone-sta/) |
-| 260418-asr | Fix Phase 3 E2E bugs: collector vault path (A), DART retry hardening (B), auto-seed entities (C) | 2026-04-17 | e23cbc1 | | [260418-asr-fix-phase-3-bugs-a-collector-vault-path-](./quick/260418-asr-fix-phase-3-bugs-a-collector-vault-path-/) |
-| 260418-bwv | Fix D-1: ingest worker re-seeds entities from frontmatter so `stock ingest rebuild` restores ticker resolution from vault alone | 2026-04-17 | 85efe29 | | [260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro](./quick/260418-bwv-fix-d-1-ingest-worker-seeds-entities-fro/) |
-| 260424-asr | Seed `entities` from portfolio.md so `stock collect krx` no longer fails_soft on watchlist tickers (e.g., 000660 SK하이닉스). New `src/db/seed_entities.py` CLI + 3 unit tests + CLAUDE.md setup step. | 2026-04-24 | pending | | [260424-asr-entities-seed-expansion](./quick/260424-asr-entities-seed-expansion/) |
-| 260426-k8h | Preserve `_derived` block when collectors re-write a doc with new observations. New `read_existing_derived()` helper in src/shared/frontmatter.py + wired into all 5 collector writers (macro/krx/news/dart/kind). | 2026-04-26 | 5eb3a79 | Verified | [260426-k8h-preserve-derived-block-when-collectors-r](./quick/260426-k8h-preserve-derived-block-when-collectors-r/) |
-| 260426-mic | Preserve `ingest_state.injection_flags` (D-18 prompt-injection markers) on collector rewrite. New `read_existing_injection_flags()` helper + wired into all 5 collector writers. Scope-locked to injection_flags only; other ingest_state fields still reset (pipeline-state markers). | 2026-04-26 | 45cbf36 |  | [260426-mic-preserve-injection-flags-in-ingest-state](./quick/260426-mic-preserve-injection-flags-in-ingest-state/) |
-| 260506-ix3 | Refactor heartbeat.py — extract `_write_meta` helper (dedup yaml dump+atomic_write), split pure `_build_source_block`, replace sequential overwrite in `compute_enrich_alert_level` with explicit priority, drop Python 3.12-redundant `Z`-suffix datetime compat. 23/23 heartbeat tests stay green. | 2026-05-06 | 29fffa6 |  | [260506-ix3-refactor-heartbeat-py-extract-write-meta](./quick/260506-ix3-refactor-heartbeat-py-extract-write-meta/) |
+| (none yet for v2.0) | | | | | |
 
 ## Session Continuity
 
-Last session: 2026-05-09T08:58:12.730Z
-Stopped at: Completed 08-07-PLAN.md
+Last session: 2026-05-29 (ROADMAP v2.0 publication)
+Stopped at: ROADMAP v2.0 published; ready for `/gsd:plan-phase 1`
 Resume file: None

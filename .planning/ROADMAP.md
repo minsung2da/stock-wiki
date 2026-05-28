@@ -1,235 +1,294 @@
-# Roadmap: Stock Wiki — Claude-Powered Korean Market Knowledge Base
+# stock — Milestone v2.0 Roadmap
 
-## Overview
+**DB-direct Korean stock analysis system**
 
-A Korean-market stock knowledge base where Claude Code answers buy/sell judgment queries with citations drawn from an Obsidian vault. The roadmap follows a walking-skeleton-first build order: lock in the foundations (Postgres, vault, frontmatter, entity identity) before any data is written, prove the full pipeline end-to-end on a single DART company, then expand collectors, enrich with local LLM, extend the MCP surface, add graph and dashboards, and finally harden judgment UX and operations. Each phase delivers a coherent verifiable capability; no phase leaves the vault in an unusable state.
+Started: 2026-05-29
+Predecessor: v1.0 (LLM-wiki strategy) — archived at git tag `pre-llm-wiki-shutdown` /
+branch `archive/llm-wiki-2026-04`. Shutdown rationale and v2.0 design rationale in
+`.planning/research/redesign-2026-05.md` (authoritative architecture criteria).
+
+## Core Value (v2.0)
+
+Claude Code에서 보유·관심 종목을 질의했을 때, **AI가 종목을 찍어주지 않는다.** 대신 매일
+모은 공시·뉴스·가격·본인 thesis를 *근거 카드(decision_card)*로 압축해 보여주고, 모순과
+만료 조건을 명시한다. 사람이 더 빨리, 더 discipline 있게 결정한다. 검증된 paper-trade
+실적이 있는 종목에 한해 KIS API로 자동매매를 보조한다.
+
+이 framing은 v1.0의 "LLM이 vault를 enrich한다"와 다르다 — 이번엔 Postgres가 source of
+truth, Markdown vault는 폐기, 사용자 thesis 메모만 disk에 잔존.
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [ ] **Phase 1: Load-Bearing Foundation** - Postgres 17 + vault layout + Pydantic frontmatter schema + secrets hygiene + cloud-LLM CI guard lock in before any data is written
-- [ ] **Phase 2: Canonical Entity Identity** - corp_code-as-PK model with alias/supersession tracking survives the next rename, split, or 기재정정
-- [ ] **Phase 3: One-Company Walking Skeleton** - DART → minimal ingest (no LLM) → hybrid search → FastMCP → Claude answers a real question with a vault citation
-- [ ] **Phase 4: Multi-Source Collector Coverage** - KRX prices/flow, economy news, macro indicators, and KIND alerts all flow into vault/raw/ with isolated, retry-safe, idempotent collectors
-- [ ] **Phase 5: Claude-Schedule Enrichment with Korean Number Safety** - Claude schedule (git round-trip) extracts _derived attributes, DART financials bypass the LLM, narrative numbers pass regex-LLM-Pydantic-checksum
-- [ ] **Phase 6: Full MCP Tool Surface** - Ten-tool MCP contract (overview, events, portfolio, related, filing, add_note, health) with docstring contracts, latency and token-size CI gates
-- [ ] **Phase 7: Graph Layer & graphify Integration** - Ingest-populated edges + graphify nightly snapshot + 3-5 canonical subgraph queries make "why did we conclude that?" traceable
-- [ ] **Phase 8: Vault Dashboards & Research Memo Templates** - Portfolio, watchlist, events-this-week, per-ticker hubs auto-regenerate; thesis and journal templates ready for human judgments
-- [ ] **Phase 9: Judgment Prompt Conventions & Operations Hardening** - Scheduled daily batch, ingest doctor, health-aware Claude responses, evidence-weighting rules turn the skeleton into a daily-use tool
+- [ ] **Phase 1: Collector DB-Direct Cutover** — 5개 collector가 Markdown 출력을 멈추고 Postgres에 직접 INSERT
+- [ ] **Phase 2: Decision Card Schema & Storage** — `decision_cards` 테이블 + Pydantic 모델 + 마이그레이션
+- [ ] **Phase 3: MCP Tool Surface (Read-Side)** — 타입드 MCP 도구로 stock-mcp 대체
+- [ ] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성
+- [ ] **Phase 5: Briefing Renderer** — 일/주 top-N 변화 요약
+- [ ] **Phase 6: Paper-Trade Action Layer** — Gates A–D + KIS 모의 API + ≥30일 shadow
+- [ ] **Phase 7: Live Trade Promotion** — paper 성과 게이트 통과 시에만 실거래
+- [ ] **Phase 8: Evaluation Harness** — CPCV+embargo 백테스트 + Sonnet KR 금융 보정 평가
+- [ ] **Phase 9: Ops Hardening** — Routine 스케줄 + 모순율 대시보드 + 전제 만료 알람
 
 ## Phase Details
 
-### Phase 1: Load-Bearing Foundation
-**Goal**: Repo, database, vault, schema, and cost guardrails are in place before any data is written. Every load-bearing decision (Postgres vs PGLite, corp_code-as-PK readiness, frontmatter zones, anthropic-ban enforcement) is irrevocable post-ingest, so it happens here.
-**Depends on**: Nothing (first phase)
-**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, FOUND-05, FOUND-06, COLL-07, OPS-06
+### Phase 1: Collector DB-Direct Cutover
+
+**Goal**: 5개 collector(`dart`, `krx`, `news`, `macro`, `kind`)가 `vault/raw/*.md` 출력을 멈추고
+Postgres 테이블에 직접 INSERT한다. `shared/heartbeat.py` no-op stub과 `--vault-root` CLI 인자도
+제거한다.
+
+**Depends on**: 없음 (시작 phase)
+
+**Driving design decision**: `redesign-2026-05.md` §2 — "Postgres가 source of truth, Markdown 중간층 폐기"
+
 **Success Criteria** (what must be TRUE):
-  1. `docker compose up` starts Postgres 17 with pgvector, VectorChord-BM25, and pg_trgm extensions loaded and reachable
-  2. Vault has `raw/`, `notes/`, `ingested/`, `dashboards/`, `graph/` directories while preserving `.obsidian/` and `환영합니다!.md`; `.gitignore` excludes Obsidian workspace churn, caches, and portfolio overlays
-  3. `uv`-managed Python 3.12 environments for collectors, ingest, and MCP exist as separate venvs, and the ingest venv provably has no `anthropic` package installed
-  4. Pydantic `FrontMatter`, `ProvenanceBlock`, `IngestStateBlock`, and `DerivedBlock` models round-trip YAML fixtures in unit tests
-  5. CI fails the build if any file under `ingest/` or `collectors/` imports `anthropic` or `openai`; `.env`-only secret loading is documented and a pre-commit hook blocks committed secrets
-  6. A documented option (script or symlink instructions) exists to migrate the vault from `/mnt/c/.../stock` to a WSL-native path
-**Plans**: 3 plans
-Plans:
-- [x] 01-01-PLAN.md -- Docker Postgres 17 + vault directories + gitignore + obsidianignore
-- [x] 01-02-PLAN.md -- Python env (pyproject.toml) + Pydantic frontmatter schema + tests
-- [x] 01-03-PLAN.md -- CI import guard + secrets hygiene + WSL migration script
+  1. `uv run stock collect dart --corp-code=00126380 --since=2026-01-01`이 `filings` 테이블에 직접
+     INSERT 한다. `vault/raw/` 디렉토리가 다시 생기지 않는다.
+  2. `krx`, `news`, `macro`, `kind` 모두 같은 패턴: 각자의 테이블(`ohlcv`, `news`, `macro_series`,
+     `events`)에 직접 INSERT. content-hash 기반 dedup은 그대로 유지 (UPSERT ON CONFLICT).
+  3. `src/shared/heartbeat.py` no-op stub이 제거되고 collector 5개에서 import도 제거된다.
+     실행 통계는 구조화된 로그(`logging.info(extra=...)`)로 stderr에만 남긴다.
+  4. `--vault-root` CLI 인자가 모든 subcommand에서 제거된다.
+  5. `tests/collectors/` 테스트 스위트가 INSERT 경로를 검증한다. Markdown 작성 stub은 모두
+     제거된다.
+  6. `stock-enrich-daily` routine은 이미 disable됨 — 추가 작업 없음.
 
-### Phase 2: Canonical Entity Identity
-**Goal**: The stable key for every entity is DART `corp_code` — not the reusable 6-digit KRX ticker. Schema, alias history, and supersession edges for 기재정정 chains are settled before any document is written so later re-ingest is avoided.
-**Depends on**: Phase 1
-**Requirements**: ENT-01, ENT-02, ENT-03, STORE-01, STORE-02
-**Success Criteria** (what must be TRUE):
-  1. Alembic migration creates `documents`, `chunks`, `entities`, `edges`, `events`, `ingest_runs` tables with indexes and runs cleanly on a fresh Postgres volume
-  2. `documents.id` is computed as `sha256(body)` and uniqueness is enforced so content-addressed dedup works across re-fetches
-  3. `entities` schema stores `corp_code` as the canonical ID, with KRX ticker, aliases, and valid-from/valid-to ranges; a fixture covering a rename, a split, and a ticker-recycling case resolves to the correct entity
-  4. A `supersedes` edge type exists and a 기재정정 test fixture produces an edge linking amendment → original
-  5. The canonical-entity helper (`resolve_entity(ticker_or_corp_code, as_of=...)`) returns the right row for historical queries
-**Plans**: 3 plans
-Plans:
-- [x] 02-01-PLAN.md -- Alembic scaffold + db/dev deps + content_hash utility + testcontainers fixtures
-- [x] 02-02-PLAN.md -- Phase 2 migration (7 tables) + schema/dedup tests + live DB push
-- [x] 02-03-PLAN.md -- resolve_entity helper + entity fixtures + supersedes edge tests
-
-### Phase 3: One-Company Walking Skeleton
-**Goal**: End-to-end proof of architecture on one company. DART collector fetches, minimal ingest (content-hash dedup, bge-m3 embed, mecab-ko BM25 tokens — no LLM extraction), hybrid search over pgvector + VectorChord-BM25, FastMCP exposes `search`, Claude Code receives an answer with a vault-path citation. All the defenses that must exist before data accumulates (prompt-injection scaffolding, heartbeat, embedding-version tracking) are in place.
-**Depends on**: Phase 2
-**Requirements**: COLL-01, COLL-06, COLL-08, COLL-09, INGEST-01, INGEST-08, INGEST-09, INGEST-10, INGEST-11, INGEST-12, STORE-03, STORE-04, STORE-05, STORE-06, RET-01, RET-02, RET-03, MCP-01, MCP-02, JUDGE-04
-**Success Criteria** (what must be TRUE):
-  1. Running `collect_dart --corp-code=00126380 --since=2026-01-01` writes DART 4-type filings for that company to `vault/raw/dart/YYYY-MM-DD/*.md` with only minimal provenance frontmatter and no LLM calls (verified by per-run cost report = $0)
-  2. Re-running the same command is idempotent: content-hash keyed upsert skips unchanged docs; a heartbeat file at `vault/ingested/_status/heartbeat.md` records success/failure for each source
-  3. The ingest worker reads raw files, writes bge-m3 embeddings (with `chunks.embedding_model` column populated) and mecab-ko tokenized `chunks.bm25_tokens`, honoring the three frontmatter zones (provenance/ingest-state/_derived) without cross-contamination; an HNSW vector index and VectorChord-BM25 index exist
-  4. `ingest rebuild` wipes and re-creates the DB from vault alone and reproduces the same document/chunk counts
-  5. A `search(query, ticker?, date_range?, source?, mode='hybrid')` MCP tool runs dense + BM25 in parallel, fuses with RRF (k=60), applies structured SQL filters before vector scan, and returns `{vault_path, excerpt, frontmatter_ref, score}` in under 8k tokens and under 5s p95
-  6. In Claude Code, "삼성전자 최근 공시 알려줘" returns an answer containing a clickable vault path citation to a real file under `vault/raw/dart/`; prompt-injection defenses (XML delimiters, pattern pre-filter) are live and adversarial-source bodies are excluded from LLM pipelines even though the LLM is not yet wired in
-**Plans**: 6 plans
-Plans:
-- [x] 03-01-PLAN.md — Migration 0002 (section_path/section_index/bm25_tokens + HNSW + BM25 indexes) + dart-fss/vchord_bm25 API probes
-- [x] 03-02-PLAN.md — DART collector (client/fetcher/writer) + heartbeat + ProvenanceBlock.trust_level
-- [x] 03-03-PLAN.md — Injection defense scaffolding + mecab-ko tokenizer + bge-m3 embedder + section chunker + DART parser
-- [x] 03-04-PLAN.md — Ingest worker (scan → parse → chunk → embed → tokenize → upsert) with per-doc transaction + content-hash dedup
-- [x] 03-05-PLAN.md — FastMCP 2.x stdio server + hybrid RRF search tool + .mcp.json registration
-- [x] 03-06-PLAN.md — stock CLI + ingest rebuild (idempotent) + E2E schema test + human-verify JUDGE-04 checkpoint
-
-### Phase 4: Multi-Source Collector Coverage
-**Goal**: Beyond DART, the vault receives KRX prices + investor flow + short balance, Korean economy news from at least two outlets, macro indicators from ECOS and FRED, and KIND trading-halt/관리종목/불성실공시 events. Each collector is an isolated module: one source failing does not block the others, and reruns are idempotent.
-**Depends on**: Phase 3
-**Requirements**: COLL-02, COLL-03, COLL-04, COLL-05
-**Success Criteria** (what must be TRUE):
-  1. `collect_krx` writes daily OHLCV, investor flow (외국인/기관/개인 순매수), and short-position balance for every watchlist and portfolio ticker to `vault/raw/krx/YYYY-MM-DD/*.md`
-  2. `collect_news` uses trafilatura + RSS to pull economy-and-finance articles from at least two of {한경, 이데일리, 서울경제}, writing summary + URL (not full body) to `vault/raw/news/...` and respecting the copyright policy
-  3. `collect_macro` writes daily ECOS (기준금리, USD/KRW) and FRED (US 10Y, WTI) rows; schema matches what search-filters can later key on
-  4. `collect_kind` captures 거래정지, 관리종목, 불성실공시 events into `vault/raw/kind/...` with structured event-type tags
-  5. Orchestrated run with one source set to force-fail shows the other three complete successfully and the heartbeat file records per-source status
-**Plans**: 6 plans
-Plans:
-- [x] 04-01-PLAN.md — Portfolio loader + resolve_entity_by_alias + macro_series.yaml scaffold + shared conftest
-- [x] 04-02-PLAN.md — KRX collector (pykrx OHLCV+flow+short, merged per-ticker file)
-- [x] 04-03-PLAN.md — Macro collector (ECOS+FRED, append-idempotent) with Wave-0 ECOS ID probe
-- [x] 04-04-PLAN.md — News collector (RSS+trafilatura, alias match, 2-paragraph cap) with edaily RSS probe
-- [x] 04-05-PLAN.md — KIND collector (hybrid KRX-MDC + KIND scrape, robots+throttle) with Wave-0 URL/selector probe
-- [x] 04-06-PLAN.md — CLI extension (collect krx/news/macro/kind + collect all) with isolation integration test
-
-### Phase 5: Claude-Schedule Enrichment with Korean Number Safety
-**Goal**: The ingest worker extracts `_derived` attributes (tickers, event_type, catalysts, sentiment, numeric_facts, summary) via a Claude Schedule agent that runs outside the ingest venv and commits enriched frontmatter back through git — not via a local model runner. The ingest venv's `anthropic` ban is preserved because the schedule agent is a separate process. Korean financial numbers are kept out of free-form LLM extraction — DART financials go through `dart-fss` structured accessors; narrative numbers go through regex-LLM-Pydantic-checksum. Embeddings (bge-m3, 1024-d) are computed locally via sentence-transformers directly, with no separate embedding-server dependency.
-**Depends on**: Phase 4
-**Requirements**: INGEST-02, INGEST-03, INGEST-04, INGEST-05, INGEST-06, INGEST-07
-**Success Criteria** (what must be TRUE):
-  1. A Claude Schedule agent (defined outside the ingest venv) polls `vault/raw/` for documents missing a `_derived` block, extracts attributes, and commits the enriched frontmatter back via git; the ingest venv itself contains no `anthropic`/`openai` imports and the CI guard (COLL-07) still passes
-  2. The schedule agent writes only the `_derived` zone of frontmatter (provenance and ingest-state zones are write-protected against schedule writes)
-  3. DART financial-statement numbers appearing in `_derived.numeric_facts` match values pulled directly from dart-fss structured accessors (no LLM involvement in those specific fields) on a 10-filing golden set
-  4. News/report narrative numbers pass the four-stage pipeline (regex candidate extraction → Claude picks → Pydantic validates → digit-checksum compares to source); disagreements flag the doc for review instead of silent acceptance
-  5. Re-running the schedule on the same unchanged document produces byte-identical `_derived` blocks; the three frontmatter zones remain non-overlapping
-**Plans**: 8 plans
-Plans:
-- [x] 05-01-PLAN.md — Extend DerivedBlock/SentimentBlock/NumericFact schema + ReviewFlag + Literal enums (foundation)
-- [x] 05-02-PLAN.md — src/shared/units.py normalize_to_krw (pure KRW normalization)
-- [x] 05-03-PLAN.md — src/shared/number_extraction.py Korean regex candidate extractor + fixtures
-- [x] 05-04-PLAN.md — src/shared/number_sanity.py echo-back + SANITY_RULES magnitude validator
-- [x] 05-05-PLAN.md — src/collectors/dart/financials.py LLM-free structured accessor (D-14) + cassette
-- [x] 05-06-PLAN.md — src/ingest/backlog.py render_backlog (first_seen + chronic + prior preservation)
-- [x] 05-07-PLAN.md — heartbeat enrich section + disk_metrics + D-24 SLA thresholds
-- [x] 05-08-PLAN.md — .claude/routines/enrich/ SKILL.md + 4 prompts + helpers (facts_equal/walk/zone_integrity) + README operator runbook
-
-### Phase 6: Full MCP Tool Surface
-**Goal**: Claude Code has the full FastMCP toolbox needed for the judgment workflow: `get_ticker_overview`, `get_recent_events`, `get_portfolio_state`, `get_related`, `get_filing`, `add_note`, `health`. Each tool has a docstring written as an LLM-facing behavioral contract, enforces the write-scope rules (only `vault/notes/` is writable), and passes CI gates on response latency and token size.
-**Depends on**: Phase 5
-**Requirements**: MCP-03, MCP-04, MCP-05, MCP-06, MCP-07, MCP-08, MCP-09, MCP-10
-**Success Criteria** (what must be TRUE):
-  1. Calling `get_ticker_overview("005930")` from Claude Code returns a single structured object combining financials, investor flow, recent events, and related notes — all cited with vault paths — in under 8k tokens p95
-  2. `get_recent_events`, `get_portfolio_state`, `get_related`, and `get_filing` each return correct data against a fixture vault and enforce the ID-based two-step pattern (list returns IDs + snippets, `get_filing(id)` returns full body)
-  3. `add_note` writes only under `vault/notes/` and is rejected with a clear error if the caller passes a `raw/` or `ingested/` target path
-  4. `health()` reports last batch success per source, DB connectivity, and staleness indicators derived from the heartbeat file
-  5. CI tests assert every tool's p95 latency < 5s and p95 response size < 8k tokens on the fixture corpus, with the documented exception of `get_filing` (full-body retrieval, p95 < 50k tokens per CONTEXT D-07 / UI-SPEC); docstrings render as coherent LLM-facing contracts in the MCP inspector
-**Plans**: 9 plans
-**UI hint**: yes
-
-Plans:
-- [x] 06-01-portfolio-path-cutover-PLAN.md -- P-01 atomic cutover: Portfolio.load(repo_root) reads notes/private/portfolio.md across 9 source/test sites
-- [x] 06-02-models-errors-helpers-PLAN.md -- Pydantic response models (Phase 10 placeholders typed T|None) + 5 new ErrorCode constants + snippets/paths/NoteFrontmatter helpers
-- [x] 06-03-fixture-vault-and-deps-PLAN.md -- tiktoken dev dep + Alembic 0003 (relax edges CHECK) + tests/fixtures/mcp-vault corpus + session conftest
-- [x] 06-04-get-filing-and-events-PLAN.md -- get_filing (sha256 keyed, 200K-char truncate) + get_recent_events (id+snippet two-step)
-- [x] 06-05-get-related-and-portfolio-PLAN.md -- get_related (recursive CTE BFS depth<=2) + get_portfolio_state (notes/private meta-only, no prices)
-- [x] 06-06-add-note-PLAN.md -- add_note (whitelist + symlink-resolve + frontmatter validation + append-only with idempotency + atomic write)
-- [x] 06-07-health-PLAN.md -- health (ingest_runs primary + heartbeat fallback + staleness thresholds + DB-down graceful)
-- [x] 06-08-get-ticker-overview-PLAN.md -- get_ticker_overview composite (3 axes + Phase 10 None placeholders + priority-ordered truncation)
-- [x] 06-09-server-registration-and-ci-gates-PLAN.md -- server.py wiring + docstring contract test + N=20 perf gates (tiktoken cl100k_base) per D-19/D-20
-
-### Phase 7: Graph Layer & graphify Integration
-**Goal**: The edges that ingest populates (`ticker→filing`, `filing→event`, `note→ticker`, `event→event`, `ticker→sector`, `supersedes`) become queryable through `get_related`, and graphify produces a periodic vault-wide interactive snapshot. Before any graphify run, 3–5 canonical subgraph queries are defined so the output answers real questions instead of producing a supernova.
-**Depends on**: Phase 6
-**Requirements**: GRAPH-01, GRAPH-02, GRAPH-03
-**Success Criteria** (what must be TRUE):
-  1. A full ingest run populates the `edges` table with typed edges; `get_related(document_id, depth=1)` returns the expected neighbor set on a labeled fixture
-  2. `graphify` run (daily or manual) writes `vault/graph/{YYYY-MM-DD}/` containing `index.html`, `graph.json`, and `GRAPH_REPORT.md` that Obsidian and a browser can open
-  3. 3–5 canonical subgraph queries (e.g. "last-30-day events for my positions", "filing clusters in a sector", "catalyst chain for ticker X") are documented in `vault/graph/README.md` and each returns a non-empty, legible subgraph on the current corpus
-  4. graphify edges are tagged EXTRACTED / INFERRED / AMBIGUOUS so Claude can differentiate provenance when citing graph evidence
-**Plans**: 4 plans
-**UI hint**: yes
-
-Plans:
-- [x] 07-01-PLAN.md — Wave 0 setup: graphifyy 0.7.5 dep + API probe + DART supersedes field probe + test stubs (10 files) + 07-VALIDATION.md filled
-- [x] 07-02-PLAN.md — Migration 0004 (6-value CHECK reinstate w/ pre-validate) + src/ingest/edges.py (6 derivations + populate) + worker batch hook
-- [x] 07-03-PLAN.md — stock graph snapshot CLI (snapshot.py + window.py + config/graphify.json) + 14-day prune + .gitignore
-- [x] 07-04-PLAN.md — src/graph/canonical.py (5 SQL queries) + vault/graph/README.md + D-22 get_related regression test
-
-### Phase 7.1: SQL-Driven Graph + MCP Graph Traversal Acceleration
-**Goal**: Build `vault/graph/<DATE>/{index.html, graph.json, GRAPH_REPORT.md}` directly from the SQL `edges` + `entities` tables (already populated by Phase 7-02) using networkx + graphifyy's cluster/visualize layer — no LLM calls. Cache the resulting graph in stock-mcp so multi-hop neighborhood queries (`get_related` depth ≥ 2, community lookups) skip recursive SQL and traverse in-memory.
-**Depends on**: Phase 7
-**Requirements**: GRAPH-01, GRAPH-02 (gap closure for SC-2 spirit + new MCP enhancement)
-**Success Criteria** (what must be TRUE):
-  1. `uv run stock graph snapshot` reads SQL `edges` + `entities` and writes `vault/graph/<KST_DATE>/graph.json` with `nodes` and `links` populated from the live DB (no `nodes: []`)
-  2. `index.html` renders an interactive graph showing communities, god-nodes, and edges with `tag` (EXTRACTED/INFERRED) carried through from `edges.tag`
-  3. stock-mcp loads the most-recent `graph.json` lazily on first graph-tool call and exposes `graph_query` (BFS at given depth, community lookup, god-node listing); 2-hop traversal is measurably faster than the equivalent recursive SQL on a labeled fixture
-  4. No new dependency on paid LLM APIs; graphifyy's `detect/extract/collect_files` are no longer called from the snapshot path
-**Plans**: 3 plans
-**UI hint**: yes
-**Gap closure**: addresses 07-HUMAN-UAT.md gap-1 (empty graph from markdown vault) and gap-2 (slow multi-hop SQL traversal)
-
-Plans:
-- [x] 07.1-01-PLAN.md — src/graph/sql_to_graph.py (SQL edges+entities+documents → graphify build_from_json compatible dict) + TDD tests
-- [x] 07.1-02-PLAN.md — Rewrite src/graph/snapshot.py to use sql_to_graph (drop graphifyy detect/extract/collect_files) + integration test gap-1 auto-guard
-- [x] 07.1-03-PLAN.md — src/stock_mcp/graph_cache.py + tools/graph_query.py (bfs/community/god_nodes) + 2-hop perf benchmark vs SQL recursive CTE
-
-### Phase 8: Vault Dashboards & Research Memo Templates
-**Goal**: The user's daily entry points inside Obsidian — portfolio state, watchlist, this-week events, per-ticker hub pages — regenerate automatically from the DB using Dataview. Thesis and journal templates let the user record investment logic (with kill criteria) and decision logs that are indexed alongside raw data.
-**Depends on**: Phase 7
-**Requirements**: DASH-01, DASH-02, DASH-03, DASH-04, NOTE-01, NOTE-02, NOTE-03
-**Success Criteria** (what must be TRUE):
-  1. `dashboards/portfolio.md` shows holdings, evaluation values, and recent events via Dataview queries that survive vault rebuilds
-  2. `dashboards/watchlist.md` and `dashboards/events-this-week.md` render correct, current data and remain human-editable where intended without being clobbered by orchestration
-  3. A ticker hub note at `ingested/by-ticker/{corp_code}.md` exists per covered company, auto-linking related raw docs, memos, and price trends
-  4. `notes/theses/` and `notes/journal/` contain templates; creating a new thesis from the template yields a note with `tickers[]`, `tags[]`, `created`, `author` frontmatter that shows up in Postgres indexes within one ingest cycle
-  5. Memo frontmatter fields are queryable alongside raw documents through the same `search` tool, confirming notes are first-class LLM-readable content
-**Plans**: TBD
-**UI hint**: yes
-
-### Phase 9: Judgment Prompt Conventions & Operations Hardening
-**Goal**: The scheduled daily batch, health awareness, and evidence-weighted answering turn the skeleton into a daily tool. Claude's responses follow explicit conventions: cite vault paths, refuse to speculate when evidence is absent or stale, and weight user memos against raw sources transparently. Operations surfaces everything that could silently break.
-**Depends on**: Phase 8
-**Requirements**: JUDGE-01, JUDGE-02, JUDGE-03, JUDGE-05, JUDGE-06, OPS-01, OPS-02, OPS-03, OPS-04, OPS-05
-**Success Criteria** (what must be TRUE):
-  1. A systemd.timer (WSL) or Windows Task Scheduler entry runs `daily-batch` after Korean market close and logs success/failure; `stock batch run --source=...` lets the user trigger a single source manually
-  2. Asking Claude Code "종목 X 리서치해줘" produces an answer citing DART + price + user-memo + macro evidence (4-axis bundle) with every claim traceable to a vault path; "포트폴리오 오늘 어때?" and "매도 후보 3개 제안" follow the same evidence contract
-  3. When vault has no recent data for a ticker (or `health()` reports staleness), Claude returns a "근거 없음 / 스테일" response instead of speculating; tested with a fixture where the heartbeat is artificially old
-  4. The prompt convention explicitly documents how user memos (`notes/`) are weighted versus raw sources (`raw/`), and a sample audit confirms answers do not confuse opinion for fact
-  5. `ingest_runs` rows appear for every scheduled run; `ingest doctor` detects and reports missing-in-DB files, orphan chunks, and content-hash mismatches; failure modes are visible via heartbeat, logs, and `health()` simultaneously
-**Plans**: TBD
-
-## Progress
-
-**Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Load-Bearing Foundation | 0/3 | Planning complete | - |
-| 2. Canonical Entity Identity | 0/3 | Planning complete | - |
-| 3. One-Company Walking Skeleton | 0/6 | Planning complete | - |
-| 4. Multi-Source Collector Coverage | 2/6 | In Progress|  |
-| 5. Claude-Schedule Enrichment with Korean Number Safety | 0/8 | Planning complete | - |
-| 6. Full MCP Tool Surface | 0/9 | Planning complete | - |
-| 7. Graph Layer & graphify Integration | 0/TBD | Not started | - |
-| 8. Vault Dashboards & Research Memo Templates | 0/TBD | Not started | - |
-| 9. Judgment Prompt Conventions & Operations Hardening | 0/TBD | Not started | - |
-
-### Phase 10: Decision-context coverage: peer/historical valuation + supply-demand + private notes scaffold
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 9
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd-plan-phase 10 to break down)
+**Plans**: TBD (run `/gsd:plan-phase 1`)
 
 ---
-*Roadmap created: 2026-04-17*
-*Granularity: fine (9 phases, derived from walking-skeleton-first research skeleton)*
-*Coverage: 71/71 v1 requirements mapped to exactly one phase*
+
+### Phase 2: Decision Card Schema & Storage
+
+**Goal**: `decision_cards` 테이블, Pydantic 모델, Alembic 마이그레이션. CRUD helper는 `src/cards/`
+신규 모듈.
+
+**Depends on**: Phase 1 (entities 테이블 채워져 있어야 FK 가능)
+
+**Driving design decision**: `redesign-2026-05.md` §3 (decision_card schema) + §4 (frontmatter + body 패턴)
+
+**Success Criteria**:
+  1. 마이그레이션이 다음 컬럼으로 `decision_cards` 테이블 생성: `card_id PK`, `corp_code FK`,
+     `ticker`, `generated_at`, `as_of`, `payload JSONB`, `body_md TEXT`, `status`(active|superseded|invalidated),
+     `supersedes FK`, `superseded_by FK`, `expires_at`, `schema_version`.
+  2. 인덱스: `(corp_code, status, generated_at DESC)` for "latest active by ticker",
+     `(supersedes)` for chain walk, `(expires_at)` for stale-detection job.
+  3. `DecisionCard` Pydantic 모델이 §3의 YAML 예제와 round-trip 한다 (`key_claims`, `contradictions`,
+     `assumptions`, `invalidation_triggers`, `numeric_facts`, `evidence_weights`, `guards_passed` 모두
+     포함).
+  4. `src/cards/store.py`에 `save_card(card)`, `get_active(corp_code)`, `walk_supersedes(card_id)`,
+     `invalidate(card_id, reason)` helper.
+  5. **만료일 + assumptions가 없는 카드는 저장 거부** (Pydantic validator로 강제). Hard veto.
+  6. `body_md`은 `pg_trgm`/BM25 인덱스로 fallback 검색 가능.
+
+**Plans**: TBD
+
+---
+
+### Phase 3: MCP Tool Surface (Read-Side)
+
+**Goal**: 타입드 MCP 도구로 삭제된 `src/stock_mcp/`를 대체. FastMCP 2.x 기반. `run_sql` escape hatch
+금지.
+
+**Depends on**: Phase 1 (데이터 있음) + Phase 2 (decision_cards 있음)
+
+**Driving design decision**: `redesign-2026-05.md` §2 — "Anthropic Code Execution with MCP 패턴,
+타입드 코드 API"
+
+**Success Criteria**:
+  1. `src/mcp_v2/` 신규 모듈. FastMCP 2.x stdio 서버. `.mcp.json`이 등록.
+  2. 도구 surface (모두 Pydantic 모델 반환, chunk 반환 금지):
+     - `get_filing(rcept_no)` — 전체 본문 포함
+     - `search_filings(corp_code, event_type?, since?, until?)` — filed_at DESC
+     - `ohlcv_range(ticker, from_date, to_date)` — 순수 숫자
+     - `flow_range(ticker, from_date, to_date)` — 외국인/기관/공매도
+     - `peer_view(corp_code, metric)` — 동종업종 median
+     - `hybrid_search(query, source_filter?, date_range?)` — pgvector + BM25 RRF (k=60), **narrative only**
+     - `get_note(path)` — `notes/private/` 화이트리스트 read-only
+     - `get_decision_card(corp_code, latest=true)` — 기본 `payload`만 반환, `view="both"` 옵션
+     - `list_portfolio()` — `notes/private/portfolio.md` 파싱
+     - `get_briefing(date, type='daily'|'weekly')` — Phase 5 산출물 조회
+  3. `run_sql` 또는 동등한 임의 SQL 실행 도구 **금지** (CI 가드).
+  4. `hybrid_search`는 `ohlcv`/`macro_series`/`decision_cards` 같은 *숫자* 테이블 대상 호출
+     **금지** — narrative 테이블(`filings.body_md`, `news.body_md`, `notes.content_md`)만.
+  5. 모든 도구는 prompt-injection defense (XML delimiter + 패턴 prefilter)를 통과한 본문만 LLM
+     pipeline으로 흘려보낸다.
+
+**Plans**: TBD
+
+---
+
+### Phase 4: Analysis Runner (3-role Debate)
+
+**Goal**: Bull / Bear / Judge 서브에이전트 orchestration → `decision_card` 생성. 숫자 사실은
+원문 verbatim checksum.
+
+**Depends on**: Phase 2 + 3
+
+**Driving design decision**: `redesign-2026-05.md` §3 (multi-agent debate as reasoning scaffold) +
+hard veto: "AI가 가격 예측 금지, evidence 압축만"
+
+**Success Criteria**:
+  1. `src/analysis/runner.py::analyze_ticker(corp_code, as_of)` 호출 → `decision_card` 1개 반환 + Phase 2
+     helper로 저장.
+  2. 내부 흐름:
+     a. MCP 도구로 evidence 수집 (`search_filings`, `flow_range`, `hybrid_search`, `get_note`)
+     b. Bull / Bear sub-agent 병렬 spawn (Task 도구; 두 sub-agent는 서로의 출력을 모름)
+     c. Judge sub-agent가 양쪽 받아서 rubric 채점 → 최종 카드 emit
+  3. **Numeric checksum**: `numeric_facts[]`의 모든 값은 원문 본문에 verbatim 등장해야 함.
+     실패 시 해당 fact 드롭 + 카드의 `_warnings`에 기록. Hard veto.
+  4. **만료일 + assumptions[] + invalidation_triggers[]** 강제. Pydantic이 거부.
+  5. **Contradictions[]** 가 빈 카드는 의심해야 함 — log warning.
+  6. **Stance change 게이트**: 어제 카드와 같은 stance면 3-role debate 스킵하고 lightweight
+     refresh(`as_of`만 업데이트, `key_claims`/`contradictions` 재확인). 토큰 절약.
+  7. 모든 단계의 비용·시간 로깅 (Phase 9에서 quota 분석 재료).
+
+**Plans**: TBD
+
+---
+
+### Phase 5: Briefing Renderer
+
+**Goal**: 일/주 top-N 변화 요약. "바뀐 종목만" — per-ticker dump 금지.
+
+**Depends on**: Phase 4
+
+**Driving design decision**: `redesign-2026-05.md` §5 — "AlphaSense Workflow Agent + Bloomberg AI
+Summary 패턴: 바뀐 것만, 최대 10개"
+
+**Success Criteria**:
+  1. `src/briefing/daily.py::generate_daily_briefing(date)` 가 다음을 모은다:
+     - stance 변경된 카드
+     - 새로 발견된 contradictions
+     - 만료/invalidated 된 카드
+     - 새 high-conviction(≥0.8) 카드
+     - 최대 10개 entry, 우선순위 정렬
+  2. 결과는 `decision_cards`에 `report_type='daily_briefing'` row로 저장 (payload + body_md).
+  3. body_md는 표 형식 (`종목 | 변화 | 근거 | 제안 | Why now | Why not`).
+  4. 주간 브리핑은 `weekly_briefing` row + `source_reports: [daily_briefing × 7]` — pre-materialize,
+     read 시 재계산 금지.
+  5. MCP `get_briefing(date, type)` 도구로 조회 가능.
+  6. **만약 변화 없으면** 짧은 "no significant changes today" 카드만. 만들지 않거나 빈 페이지
+     렌더 X.
+
+**Plans**: TBD
+
+---
+
+### Phase 6: Paper-Trade Action Layer
+
+**Goal**: Gates A–D + KIS 모의 API. 신규 전략은 ≥30일 paper shadow 후 promotion 가능.
+
+**Depends on**: Phase 4
+
+**Driving design decision**: `redesign-2026-05.md` §3 — "Auto-trade gating, Composer + QuantConnect
+패턴", hard veto: "circuit breaker 없는 LLM auto-trade 금지"
+
+**Success Criteria**:
+  1. `src/action/gate.py::evaluate(card) -> ApprovedOrder | RejectedReason` — 모든 게이트 통과 시에만
+     주문 생성:
+     - **Gate A (deterministic, LLM 아님)**: 포지션 ≤ 2% portfolio, 일일 realized loss < 2%, no
+       earnings blackout, ticker 서킷브레이커 통과, KIS rate-limit headroom (≤15 req/s 여유, 20
+       req/s 한도의 75%).
+     - **Gate B (card freshness)**: 카드 age ≤ 24h, conviction ≥ 0.8, unresolved
+       contradictions 없음.
+     - **Gate C (human kill switch)**: `notes/private/portfolio.md`의
+       `auto_trade_enabled[ticker]: true` 가 명시되어 있을 때만. 기본값 false.
+     - **Gate D (paper shadow)**: 해당 전략이 paper 모드로 ≥30일 + 실현 Sharpe ≥ X (threshold는
+       Phase 8 결정) 만족해야 live 가능. 기본값은 paper 모드.
+  2. KIS 모의 API 클라이언트 (`src/action/kis_paper.py`). 실제 주문 X. P&L tracking 테이블
+     (`paper_orders`).
+  3. 모든 거부 사유는 audit log (`action_log` 테이블) — `(timestamp, card_id, gate, reason, payload)`.
+  4. CLI: `stock action evaluate --card=<card_id>` (dry-run), `stock action run --date=today`
+     (daily batch).
+  5. 거부된 카드는 다음 daily briefing의 "검토 후 거부" 섹션에 포함.
+
+**Plans**: TBD
+
+---
+
+### Phase 7: Live Trade Promotion
+
+**Goal**: paper 성과가 promotion threshold 통과한 ticker에 한해 실거래 KIS API 연동. Kill switch
+latency <5s.
+
+**Depends on**: Phase 6 + ≥30일 paper 데이터
+
+**Driving design decision**: `redesign-2026-05.md` §3 — "Gate D: paper-trade shadow ≥30일", hard
+veto: "Eurekahedge AI 인덱스 underperformance — 검증 없이 live 금지"
+
+**Success Criteria**:
+  1. `src/action/promotion.py::can_promote_to_live(ticker, strategy_id)` 가 통계적 유의성 검정 통과
+     판정 (Sharpe + 신뢰구간; threshold는 Phase 8 backtest 결과 기반).
+  2. KIS 실거래 API 클라이언트 (`src/action/kis_live.py`). API 키는 `.env`.
+  3. **모든 실거래 호출은 idempotent**: 동일 `client_order_id`로 재호출 시 중복 주문 X.
+  4. **Kill switch latency**: `notes/private/portfolio.md`의 토글 변경 → 다음 daily batch 시점에
+     반영 + 진행 중인 미체결 주문 즉시 cancel API 호출. p95 ≤ 5초.
+  5. 실거래 audit log에 KIS 응답 raw 저장.
+  6. **Promotion 후에도 paper shadow 병행** — paper와 live 모두 기록, 분기 결과 비교.
+
+**Plans**: TBD
+
+---
+
+### Phase 8: Evaluation Harness
+
+**Goal**: CPCV+embargo 백테스트 + Sonnet KR 금융 정확도 보정 평가.
+
+**Depends on**: Phase 4 (decision_cards 누적 데이터)
+
+**Driving design decision**: `redesign-2026-05.md` §3 — "CPCV로만 백테스트, walk-forward 단독
+금지" + 한국 PEAD anomaly 검증
+
+**Success Criteria**:
+  1. `src/eval/cpcv.py` — Combinatorial Purged Cross-Validation 구현. Purge + 5-day embargo (T+2
+     settlement + 3일 buffer).
+  2. 백테스트 출력: 각 fold별 Sharpe + 95% 신뢰구간. **신뢰구간이 0 포함하면 promotion 거부.**
+  3. Sonnet 4.x KR 금융 정확도 eval:
+     - 보유 DART 본문 N개 + ground-truth `numeric_facts` 페어
+     - Sonnet 추출 결과 vs ground truth → precision/recall, digit-level accuracy
+     - 80% 미만이면 prompt 조정 / 모델 업그레이드 트리거
+  4. 한국 PEAD anomaly 측정: 보유 corpus의 어닝 발표 이벤트 + 후속 N일 OHLCV로 surprise →
+     drift 회귀. magnitude + significance 리포트.
+  5. 모든 평가 결과는 `.planning/eval/` 디렉토리에 timestamped Markdown으로 저장. 재현 가능한
+     seed 명시.
+  6. CI에 `pytest -m "eval"` 단독 runner — 매일 자동 X (비용), PR/release 게이트에서만.
+
+**Plans**: TBD
+
+---
+
+### Phase 9: Ops Hardening
+
+**Goal**: Routine 스케줄 + 운영 모니터링 + 알람.
+
+**Depends on**: Phase 4–7
+
+**Driving design decision**: 운영 안정성. 'AI는 silent failure가 가장 위험'.
+
+**Success Criteria**:
+  1. Daily routine: 수집(collect all) → 분석(analyze top-priority tickers) → 브리핑 → paper action
+     evaluate. systemd.timer 또는 Claude Schedule routine.
+  2. Routine 실패 시 알람 (Slack webhook 또는 이메일).
+  3. **모순율 대시보드**: 카드별 `contradictions[]` 카운트 추이. 갑자기 0개가 늘면 — Bull/Bear
+     debate가 약해진 신호.
+  4. **전제 만료 알람**: `expires_at < now() + 7d` 카드 리스트를 일일 브리핑 상단에 노출.
+  5. **KIS rate-limit headroom 모니터링**: 일일 max 사용률 + 임계값(80%) 도달 시 alert.
+  6. **Schedule quota 모니터링**: Claude Schedule API 사용량 일일 리포트 (Max 한도 대비).
+  7. Stale stub (Phase 1의 heartbeat 같은) 발견 시 CI fail.
+
+**Plans**: TBD
+
+---
+
+## v1.0 (Archived)
+
+v1.0의 11 phase는 `archive/llm-wiki-2026-04` 브랜치 + `pre-llm-wiki-shutdown` 태그에 보존됨.
+`.planning/phases/` 디렉토리에 plan 파일들이 historical reference로 남아있다 — v2.0 phase 번호와
+혼동 주의.
+
+복구 필요시:
+```bash
+git checkout archive/llm-wiki-2026-04
+# 또는 특정 plan만:
+git show archive/llm-wiki-2026-04:.planning/phases/01-load-bearing-foundation/01-01-PLAN.md
+```
