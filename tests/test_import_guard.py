@@ -1,4 +1,4 @@
-"""CI test: ingest/ and collectors/ must not import anthropic or openai (COLL-07).
+"""CI test: collectors/ must not import anthropic or openai (COLL-07).
 
 Uses AST parsing to detect import statements. This catches both:
 - ``import anthropic``
@@ -6,6 +6,10 @@ Uses AST parsing to detect import statements. This catches both:
 - ``from anthropic.types import ...``
 
 The guard scans all .py files recursively under GUARDED_DIRS.
+
+Post-LLM-wiki-shutdown: ``src/ingest`` was removed; guard now only covers
+``src/collectors``. Restore the original ingest entry here if a future
+phase reintroduces a separate ingest module.
 """
 
 import ast
@@ -13,7 +17,7 @@ import textwrap
 from pathlib import Path
 
 BANNED_MODULES = {"anthropic", "openai"}
-GUARDED_DIRS = ["src/ingest", "src/collectors"]
+GUARDED_DIRS = ["src/collectors"]
 PROJECT_ROOT = Path(__file__).parent.parent
 
 
@@ -41,7 +45,7 @@ def scan_for_banned_imports(directory: Path) -> list[str]:
 
 class TestImportGuard:
     def test_no_cloud_llm_imports(self) -> None:
-        """No file in src/ingest/ or src/collectors/ imports anthropic or openai."""
+        """No file in src/collectors/ imports anthropic or openai."""
         all_violations = []
         for dir_name in GUARDED_DIRS:
             dir_path = PROJECT_ROOT / dir_name

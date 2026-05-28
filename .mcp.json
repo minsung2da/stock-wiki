@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "stock-mcp": {
-      "command": "uv",
-      "args": ["run", "--env-file", ".env", "--group", "mcp", "stock-mcp"]
-    }
-  }
-}

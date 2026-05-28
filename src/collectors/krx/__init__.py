@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from collectors.krx import fetcher, writer
 from db.entity import resolve_entity
-from ingest.heartbeat import record_source_run
+from shared.heartbeat import record_source_run
 from shared.portfolio import Portfolio
 
 if TYPE_CHECKING:

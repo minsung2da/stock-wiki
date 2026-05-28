@@ -113,7 +113,6 @@ def test_src_guard_still_clean():
             "-E",
             "import anthropic|from anthropic|import openai|from openai",
             "src/collectors",
-            "src/ingest",
             "src/shared",
         ],
         capture_output=True,

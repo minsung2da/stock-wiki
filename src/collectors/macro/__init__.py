@@ -32,7 +32,7 @@ from collectors.macro.client import (
     MacroEmptyResultError,
     require_env,
 )
-from ingest.heartbeat import record_source_run
+from shared.heartbeat import record_source_run
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine

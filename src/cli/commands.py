@@ -1,16 +1,14 @@
-"""stock CLI subcommand handlers.
+"""stock CLI subcommand handlers — collectors only (post-shutdown).
+
+The ingest/sync/graph handlers were removed as part of the LLM-wiki shutdown
+(see git tag ``pre-llm-wiki-shutdown`` / branch ``archive/llm-wiki-2026-04``).
+Only the ``cmd_collect_*`` family remains; the DB-direct collector redesign
+is pending.
 
 Each ``cmd_*`` takes the parsed ``argparse.Namespace`` and returns an int
-exit code. Handlers delegate to the domain modules (collectors.*, ingest.*) —
-CLI logic stays thin so it can be unit-tested via ``main(argv)`` +
-monkeypatching at the module boundary.
-
-Phase 4 Plan 06 (D-18..D-21):
-- ``cmd_collect_{krx,news,macro,kind}`` — individual collectors.
-- ``cmd_collect_all`` — runs default {krx, news, macro, kind} (dart excluded
-  by D-18 backward-compat) with in-process try/except isolation (D-19),
-  stderr JSON report (D-20), and ``--sources=a,b`` filtering with
-  fail-fast on unknown names (D-21).
+exit code. Handlers delegate to ``collectors.*`` — CLI logic stays thin so
+it can be unit-tested via ``main(argv)`` + monkeypatching at the module
+boundary.
 """
 
 from __future__ import annotations
@@ -29,11 +27,6 @@ __all__ = [
     "cmd_collect_macro",
     "cmd_collect_kind",
     "cmd_collect_all",
-    "cmd_ingest_run",
-    "cmd_ingest_rebuild",
-    "cmd_ingest_backfill_edges",
-    "cmd_sync",
-    "cmd_graph_snapshot",
 ]
 
 # D-18: default `collect all` source set excludes dart (Phase 3 kept standalone).
@@ -78,7 +71,7 @@ def cmd_collect_dart(args) -> int:  # noqa: ANN001
     Wires ``engine=get_engine()`` so production runs auto-seed
     ``entities``/``entity_aliases`` (Bug C fix, quick-260418-asr). Failure to
     open an engine here bubbles up — the CLI cannot meaningfully continue
-    without DB seeding for downstream ``stock ingest run``.
+    without DB seeding for downstream collectors.
 
     D-18 backward compat: signature unchanged from Phase 3.
     """
@@ -200,222 +193,3 @@ def cmd_collect_all(args) -> int:  # noqa: ANN001
 
     any_bad = any(r["status"] in ("error", "partial") for r in results.values())
     return 1 if any_bad else 0
-
-
-# ---------- ingest (unchanged) ----------
-
-
-def cmd_ingest_run(args) -> int:  # noqa: ANN001
-    """Handle `stock ingest run ...`. Returns exit code."""
-    from db.engine import get_engine
-    from ingest.worker import ingest_run
-
-    notes_root = Path(args.notes_root) if getattr(args, "notes_root", None) else None
-    stats = ingest_run(
-        Path(args.vault_root),
-        get_engine(),
-        force_reembed=args.force_reembed,
-        notes_root=notes_root,
-    )
-    print(json.dumps(stats, ensure_ascii=False, default=str))
-    return 0
-
-
-def cmd_ingest_rebuild(args) -> int:  # noqa: ANN001
-    """Handle `stock ingest rebuild ...` (STORE-05; D-25/28/29). Returns exit code."""
-    from db.engine import get_engine
-    from ingest.rebuild import rebuild_from_vault
-
-    report = rebuild_from_vault(
-        Path(args.vault_root),
-        get_engine(),
-        force_reembed=args.force_reembed,
-        dry_run=args.dry_run,
-        assume_yes=args.yes,
-    )
-    print(json.dumps(report, ensure_ascii=False, default=str))
-    if report.get("aborted"):
-        return 2
-    return 0
-
-
-def cmd_ingest_backfill_edges(args) -> int:  # noqa: ANN001, ARG001
-    """Handle ``stock ingest backfill-edges`` — populate edges for all docs.
-
-    One-shot fix-up for documents that existed before ``ingest.edges.populate``
-    was wired into the worker (or after a migration that introduced new
-    ``edge_type`` values). Reads every ``documents.id`` from the live DB and
-    runs ``populate`` against the same connection — idempotent.
-    """
-    from db.engine import get_engine
-    from ingest.edges import populate as edges_populate
-    from sqlalchemy import text
-
-    with get_engine().begin() as conn:
-        doc_ids = [row[0] for row in conn.execute(text("SELECT id FROM documents")).all()]
-        counters = edges_populate(doc_ids, conn)
-
-    report = {"status": "ok", "doc_count": len(doc_ids), "counters": counters}
-    print(json.dumps(report, ensure_ascii=False, default=str))
-    return 0
-
-
-# ---------- sync (Phase 5.1) ----------
-
-
-def _git(*args: str) -> tuple[int, str, str]:
-    """Run a git command, return (returncode, stdout, stderr).
-
-    Kept thin so cmd_sync can be unit-tested by monkeypatching this symbol.
-    """
-    import subprocess
-
-    result = subprocess.run(["git", *args], capture_output=True, text=True, check=False)
-    return result.returncode, result.stdout.strip(), result.stderr.strip()
-
-
-def cmd_sync(args) -> int:  # noqa: ANN001
-    """Handle ``stock sync [--reingest] [--remote NAME] [--branch NAME]``.
-
-    Brings the local clone up to date with the Routine's enrichment pushes.
-    Default: fast-forward only — refuses to merge or rebase.
-
-    Exit codes:
-    - 0 : already up-to-date OR fast-forwarded successfully (and reingest, if
-          requested, returned 0)
-    - 1 : pull failed (network, conflict, divergence, dirty tree). Reason on stderr.
-    - 2 : reingest step failed.
-    """
-    remote = getattr(args, "remote", "origin")
-    branch = getattr(args, "branch", "main")
-    reingest = getattr(args, "reingest", False)
-    quiet = getattr(args, "quiet", False)
-
-    report: dict[str, Any] = {"remote": remote, "branch": branch}
-
-    # 1. Working tree must be clean — refuse to pull on top of dirty TRACKED
-    # edits. Untracked files (lines starting with '??') are tolerated: a
-    # fast-forward merge can't write through them, and git's own merge will
-    # refuse if a remote-incoming file would clobber an untracked local one.
-    # Common case: Obsidian canvas / .claude/worktrees/ / scratch files.
-    rc, status, err = _git("status", "--porcelain")
-    if rc != 0:
-        report["status"] = "error"
-        report["error"] = f"git status failed: {err}"
-        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
-        return 1
-    tracked_dirty = [line for line in status.splitlines() if line and not line.startswith("??")]
-    if tracked_dirty:
-        report["status"] = "dirty"
-        report["dirty_files"] = tracked_dirty[:10]
-        report["error"] = (
-            "working tree has uncommitted tracked changes — commit or stash before sync"
-        )
-        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
-        return 1
-
-    # 2. Fetch remote.
-    rc, _, err = _git("fetch", remote, branch)
-    if rc != 0:
-        report["status"] = "error"
-        report["error"] = f"git fetch failed: {err}"
-        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
-        return 1
-
-    # 3. Compare HEAD vs FETCH_HEAD.
-    rc, counts, _ = _git("rev-list", "--left-right", "--count", "HEAD...FETCH_HEAD")
-    if rc != 0 or "\t" not in counts:
-        report["status"] = "error"
-        report["error"] = "could not compute ahead/behind counts"
-        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
-        return 1
-    ahead_str, behind_str = counts.split("\t")
-    ahead, behind = int(ahead_str), int(behind_str)
-    report["ahead"] = ahead
-    report["behind"] = behind
-
-    if behind == 0 and ahead == 0:
-        report["status"] = "up_to_date"
-    elif ahead > 0 and behind > 0:
-        report["status"] = "diverged"
-        report["error"] = (
-            f"local is {ahead} ahead and {behind} behind {remote}/{branch} — "
-            f"resolve manually (rebase or merge)"
-        )
-        print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
-        return 1
-    elif ahead > 0:
-        report["status"] = "ahead_only"
-        # nothing to pull; still allow reingest if requested
-    else:
-        # behind only — safe fast-forward
-        rc, _, err = _git("merge", "--ff-only", "FETCH_HEAD")
-        if rc != 0:
-            report["status"] = "error"
-            report["error"] = f"fast-forward failed: {err}"
-            print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
-            return 1
-        report["status"] = "fast_forwarded"
-
-    # 4. Optional re-ingest.
-    if reingest:
-        try:
-            from db.engine import get_engine
-            from ingest.worker import ingest_run
-
-            stats = ingest_run(Path(args.vault_root), get_engine(), force_reembed=False)
-            report["ingest"] = stats
-        except Exception as exc:  # noqa: BLE001
-            report["status"] = "ingest_failed"
-            report["ingest_error"] = repr(exc)
-            print(json.dumps(report, ensure_ascii=False, default=str), file=sys.stderr)
-            return 2
-
-    if not quiet:
-        print(json.dumps(report, ensure_ascii=False, default=str))
-    return 0
-
-
-# ---------- graph (Phase 7 GRAPH-02) ----------
-
-
-def cmd_graph_snapshot(args) -> int:  # noqa: ANN001
-    """Handle ``stock graph snapshot [--dry-run] [--config PATH]``.
-
-    Loads ``config/graphify.json`` (or ``--config`` override) and invokes
-    ``src.graph.snapshot.snapshot()`` in-process. Prints a one-line JSON
-    status report on stderr (consistent with collectors).
-
-    Exit codes:
-    - 0: success (snapshot wrote ``vault/graph/<KST_DATE>/``)
-    - 1: config not found, graphify failed, or staging build error
-    """
-    from stock_mcp.repo_root import repo_root as get_repo_root
-
-    rr = get_repo_root()
-    config_path = (
-        Path(args.config) if getattr(args, "config", None) else rr / "config" / "graphify.json"
-    )
-    if not config_path.exists():
-        print(
-            json.dumps({"status": "error", "error": f"config not found: {config_path}"}),
-            file=sys.stderr,
-        )
-        return 1
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-
-    from graph.snapshot import snapshot
-
-    try:
-        out_dir = snapshot(rr, config, dry_run=getattr(args, "dry_run", False))
-    except Exception as exc:  # noqa: BLE001 — top-level CLI boundary
-        print(
-            json.dumps({"status": "error", "error": str(exc)[:500]}),
-            file=sys.stderr,
-        )
-        return 1
-    print(
-        json.dumps({"status": "ok", "out_dir": str(out_dir)}),
-        file=sys.stderr,
-    )
-    return 0

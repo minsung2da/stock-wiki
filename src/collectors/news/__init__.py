@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from collectors.news import client, fetcher, matcher, writer
 from collectors.news.feeds import FEEDS_BY_OUTLET
 from collectors.news.matcher import NoAliasesSeededError
-from ingest.heartbeat import record_source_run
+from shared.heartbeat import record_source_run
 from shared.frontmatter import read_frontmatter
 from shared.portfolio import Portfolio
 

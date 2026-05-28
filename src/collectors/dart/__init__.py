@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from collectors.dart import client, fetcher, writer
-from ingest.heartbeat import record_source_run
+from shared.heartbeat import record_source_run
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine

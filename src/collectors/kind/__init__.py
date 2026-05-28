@@ -30,7 +30,7 @@ import yaml
 from collectors.kind import dart_events, scraper, writer
 from collectors.kind.selectors import ParseError
 from db.entity import resolve_entity, resolve_entity_by_alias
-from ingest.heartbeat import record_source_run
+from shared.heartbeat import record_source_run
 from shared.portfolio import Portfolio
 
 if TYPE_CHECKING:

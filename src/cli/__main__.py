@@ -1,16 +1,15 @@
-"""stock CLI entry (D-20, D-28).
+"""stock CLI entry — collectors only (post-LLM-wiki-shutdown).
+
+The ingest, sync, and graph subcommands were removed as part of the LLM-wiki
+shutdown (see git tag ``pre-llm-wiki-shutdown`` / branch
+``archive/llm-wiki-2026-04``). What remains is the raw-data collection layer;
+the DB-direct write path is pending redesign.
 
 Usage examples::
 
     stock --help
     stock collect dart --corp-code=00126380 --since=2026-01-01
-    stock ingest run
-    stock ingest rebuild --dry-run
-    stock ingest rebuild --yes
-    stock ingest rebuild --force-reembed --yes
-
-Uses argparse (no extra dependency). Subcommands are dispatched to thin
-handler callables in ``cli.commands``.
+    stock collect all
 """
 
 from __future__ import annotations
@@ -28,11 +27,6 @@ from cli.commands import (
     cmd_collect_krx,
     cmd_collect_macro,
     cmd_collect_news,
-    cmd_graph_snapshot,
-    cmd_ingest_backfill_edges,
-    cmd_ingest_rebuild,
-    cmd_ingest_run,
-    cmd_sync,
 )
 
 __all__ = ["main", "build_parser"]
@@ -41,7 +35,7 @@ __all__ = ["main", "build_parser"]
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="stock",
-        description="stock-wiki CLI: collect, ingest, rebuild",
+        description="stock CLI: collect raw market data",
     )
     parser.add_argument(
         "--vault-root",
@@ -94,92 +88,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     all_.add_argument("--since", default=None)
     all_.set_defaults(func=cmd_collect_all)
-
-    # ingest
-    ingest = subs.add_parser("ingest", help="Run ingest pipeline (parse + embed + index)")
-    ingest_subs = ingest.add_subparsers(dest="action", required=True)
-
-    ing_run = ingest_subs.add_parser("run", help="Incremental ingest (dedup by content_hash)")
-    ing_run.add_argument(
-        "--force-reembed",
-        action="store_true",
-        help="Re-embed all chunks even if content_hash unchanged",
-    )
-    ing_run.add_argument(
-        "--notes-root",
-        default=None,
-        help=(
-            "Directory containing private memos (default: auto-detect — "
-            "<vault-root>/notes/private if present, else <vault-root>/../notes/private)"
-        ),
-    )
-    ing_run.set_defaults(func=cmd_ingest_run)
-
-    ing_rebuild = ingest_subs.add_parser(
-        "rebuild",
-        help="Full wipe + rebuild from vault (STORE-05, D-25)",
-    )
-    ing_rebuild.add_argument(
-        "--force-reembed", action="store_true", help="Recompute every chunk embedding"
-    )
-    ing_rebuild.add_argument("--dry-run", action="store_true", help="Print plan without executing")
-    ing_rebuild.add_argument(
-        "--yes",
-        action="store_true",
-        help="Skip TTY confirmation prompt (D-28; for CI/cron)",
-    )
-    ing_rebuild.set_defaults(func=cmd_ingest_rebuild)
-
-    ing_backfill_edges = ingest_subs.add_parser(
-        "backfill-edges",
-        help="Run edges.populate over all existing documents (one-shot fix-up).",
-        description=(
-            "Useful when documents existed before edges.populate was wired into the "
-            "ingest worker, or after a schema migration that added new edge_type "
-            "values. Idempotent: ON CONFLICT DO NOTHING on (src_type, src_id, "
-            "dst_type, dst_id, edge_type)."
-        ),
-    )
-    ing_backfill_edges.set_defaults(func=cmd_ingest_backfill_edges)
-
-    # sync (Phase 5.1)
-    sync = subs.add_parser(
-        "sync",
-        help="Pull Routine enrichment commits from origin/main into local vault",
-        description=(
-            "Fast-forward only `git pull` (refuses dirty tree, refuses divergence). "
-            "Optional --reingest re-indexes the updated vault into Postgres so "
-            "stock-mcp serves the latest _derived blocks."
-        ),
-    )
-    sync.add_argument("--remote", default="origin", help="Remote name (default: origin)")
-    sync.add_argument("--branch", default="main", help="Branch name (default: main)")
-    sync.add_argument(
-        "--reingest",
-        action="store_true",
-        help="After pulling, run `stock ingest run` to refresh chunks/embeddings",
-    )
-    sync.add_argument("--quiet", action="store_true", help="Suppress stdout JSON report")
-    sync.set_defaults(func=cmd_sync)
-
-    # graph (Phase 7 GRAPH-02)
-    graph_parser = subs.add_parser("graph", help="Graph layer commands (graphifyy snapshots)")
-    graph_sub = graph_parser.add_subparsers(dest="graph_cmd", required=True)
-    snap = graph_sub.add_parser(
-        "snapshot",
-        help="Run a graphify vault snapshot into vault/graph/<KST_DATE>/",
-    )
-    snap.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Build staging only; skip graphify call",
-    )
-    snap.add_argument(
-        "--config",
-        default=None,
-        help="Path to graphify config JSON (default: <repo_root>/config/graphify.json)",
-    )
-    snap.set_defaults(func=cmd_graph_snapshot)
 
     return parser
 
