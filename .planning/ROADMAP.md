@@ -39,6 +39,8 @@ Postgres 테이블에 직접 INSERT한다. `shared/heartbeat.py` no-op stub과 `
 
 **Depends on**: 없음 (시작 phase)
 
+**Requirements**: [SC-1, SC-2, SC-3, SC-4, SC-5, SC-6]
+
 **Driving design decision**: `redesign-2026-05.md` §2 — "Postgres가 source of truth, Markdown 중간층 폐기"
 
 **Success Criteria** (what must be TRUE):
@@ -53,7 +55,19 @@ Postgres 테이블에 직접 INSERT한다. `shared/heartbeat.py` no-op stub과 `
      제거된다.
   6. `stock-enrich-daily` routine은 이미 disable됨 — 추가 작업 없음.
 
-**Plans**: TBD (run `/gsd:plan-phase 1`)
+**Plans:** 9 plans across 4 waves
+- [ ] 01-01-PLAN.md — Schema migration 0006 + ORM models (Wave 0)
+- [ ] 01-02-PLAN.md — CLI cleanup + collector signature strip (Wave 0)
+- [ ] 01-03-PLAN.md — macro collector cutover → `macro_series` (Wave 1)
+- [ ] 01-04-PLAN.md — krx collector cutover → `ohlcv` (Wave 1)
+- [ ] 01-05-PLAN.md — kind collector cutover → `filings` + `events` (Wave 2)
+- [ ] 01-06-PLAN.md — news collector cutover → `news` (Wave 2)
+- [ ] 01-07-PLAN.md — dart collector cutover → `filings` (Wave 2)
+- [ ] 01-08-PLAN.md — Observability: `collector_runs` + delete heartbeat.py (Wave 3)
+- [ ] 01-09-PLAN.md — Writer deletion + Veto #9 fences + SC coverage table (Wave 3)
+
+See `.planning/phases/01-collector-db-cutover/PLAN-INDEX.md` for the dependency
+graph and Success Criteria Coverage table.
 
 ---
 
