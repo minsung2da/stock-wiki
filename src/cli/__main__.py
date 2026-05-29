@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
@@ -34,6 +35,16 @@ from cli.commands import (
 )
 
 __all__ = ["main", "build_parser"]
+
+# Phase 1 v2.0 Veto #9 — runtime fence layer (RESEARCH.md Q9 + 01-09 R-5).
+# Computed once at module import using an absolute, CWD-independent anchor.
+# If any of these resurfaces at runtime (IDE-restored deleted file, accidental
+# revert, etc.) main() fails fast with a clear pointer to the plan.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_LEGACY_WRITERS: tuple[Path, ...] = tuple(
+    _REPO_ROOT / "src" / "collectors" / src / "writer.py"
+    for src in ("dart", "krx", "news", "macro", "kind")
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -92,6 +103,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    # Veto #9 runtime fence — fires before any work happens so a resurrected
+    # writer.py cannot leak even a single Markdown file. Uses absolute paths
+    # anchored to this module's location, NOT process CWD, so the check is
+    # consistent whether ``stock`` is invoked from repo root or anywhere else.
+    for _legacy in _LEGACY_WRITERS:
+        if _legacy.exists():
+            raise SystemExit(
+                f"FATAL: vault writer module resurrected ({_legacy}). "
+                "Phase 1 v2.0 deleted these (Veto #9); see "
+                ".planning/phases/01-collector-db-cutover/01-09-PLAN.md."
+            )
     load_dotenv(find_dotenv(usecwd=True))
     parser = build_parser()
     args = parser.parse_args(argv)
