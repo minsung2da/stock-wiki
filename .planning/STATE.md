@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
-status: planning
-stopped_at: ROADMAP v2.0 published; ready for /gsd:plan-phase 1
-last_updated: "2026-05-29T00:00:00.000Z"
+status: executing
+stopped_at: Phase 1 complete (9/9 plans); ready for /gsd:plan-phase 2
+last_updated: "2026-05-29T12:00:00.000Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 9
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 9
+  completed_plans: 9
+  percent: 11
 ---
 
 # Project State
@@ -27,16 +27,31 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 1 — Collector DB-Direct Cutover
+**Current focus:** Phase 2 — Decision Card Schema & Storage (next)
 
 ## Current Position
 
-Phase: 1 (Collector DB-Direct Cutover) — NOT YET PLANNED
-Plan: 0 of TBD
-Status: Awaiting `/gsd:plan-phase 1`
-Last activity: 2026-05-29 (v2.0 ROADMAP + CLAUDE.md published)
+Phase: 1 — COMPLETE (9/9 plans, all 6 SCs satisfied, 2026-05-29)
+Next: Phase 2 (Decision Card Schema & Storage) — awaiting `/gsd:plan-phase 2`
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 11% (1 of 9 phases)
+
+## Phase 1 Outcomes (2026-05-29)
+
+- 6 new domain tables: `filings`, `news`, `ohlcv`, `macro_series`, `events`, `collector_runs`
+- Legacy `events` → `events_legacy` rename (pre-rename row count = 0, verified)
+- Legacy `documents`/`chunks` dormant (Phase 3 may revisit narrative-search layer)
+- 5 collectors INSERT directly to Postgres; `writer.py` modules deleted
+- `--vault-root` flag eliminated; runtime guard prevents resurrection
+- `shared/heartbeat.py` deleted; replaced by dual-sink (`shared/run_log.py` + structured stderr)
+- Veto #6 (no numeric embedding) verified at schema layer
+- Veto #8 (no DART pre-chunking) verified at 308KB body roundtrip
+- Veto #9 (no Markdown vault) enforced via 3 layers: physical deletion + CI rglob fence + runtime guard
+- ~150 tests pass across 9 plans; vertical E2E smoke (`collect macro` → 0 .md files) green
+
+Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.md`):
+- DI-1: `tests/test_migration.py::test_events_jsonb_and_fk` still references pre-rename events shape (out of 01-09 scope)
+- DI-2: intermittent flake on `test_collect_dart_writes_collector_runs_row` (couldn't reproduce in final state)
 
 ## Milestone Transition (v1.0 → v2.0)
 

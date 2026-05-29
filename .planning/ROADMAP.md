@@ -19,7 +19,7 @@ truth, Markdown vault는 폐기, 사용자 thesis 메모만 disk에 잔존.
 
 ## Phases
 
-- [ ] **Phase 1: Collector DB-Direct Cutover** — 5개 collector가 Markdown 출력을 멈추고 Postgres에 직접 INSERT
+- [x] **Phase 1: Collector DB-Direct Cutover** — 5개 collector가 Markdown 출력을 멈추고 Postgres에 직접 INSERT ✓ 2026-05-29
 - [ ] **Phase 2: Decision Card Schema & Storage** — `decision_cards` 테이블 + Pydantic 모델 + 마이그레이션
 - [ ] **Phase 3: MCP Tool Surface (Read-Side)** — 타입드 MCP 도구로 stock-mcp 대체
 - [ ] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성
@@ -63,8 +63,8 @@ Postgres 테이블에 직접 INSERT한다. `shared/heartbeat.py` no-op stub과 `
 - [x] 01-05-PLAN.md — kind collector cutover → `filings` + `events` (Wave 2)
 - [x] 01-06-PLAN.md — news collector cutover → `news` (Wave 2)
 - [x] 01-07-PLAN.md — dart collector cutover → `filings` (Wave 2)
-- [ ] 01-08-PLAN.md — Observability: `collector_runs` + delete heartbeat.py (Wave 3)
-- [ ] 01-09-PLAN.md — Writer deletion + Veto #9 fences + SC coverage table (Wave 3)
+- [x] 01-08-PLAN.md — Observability: `collector_runs` + delete heartbeat.py (Wave 3)
+- [x] 01-09-PLAN.md — Writer deletion + Veto #9 fences + SC coverage table (Wave 3)
 
 See `.planning/phases/01-collector-db-cutover/PLAN-INDEX.md` for the dependency
 graph and Success Criteria Coverage table.
