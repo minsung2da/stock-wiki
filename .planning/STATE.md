@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-05-29T12:20:25.711Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-05-29T22:10:11.825Z"
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 12
-  completed_plans: 9
+  completed_plans: 10
   percent: 11
 ---
 
@@ -27,14 +27,15 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 2 — Decision Card Schema & Storage (next)
+**Current focus:** Phase 02 — decision-card-schema-storage
 
 ## Current Position
 
-Phase: 1 — COMPLETE (9/9 plans, all 6 SCs satisfied, 2026-05-29)
+Phase: 02 (decision-card-schema-storage) — EXECUTING
+Plan: 2 of 3
 Next: Phase 2 (Decision Card Schema & Storage) — awaiting `/gsd:plan-phase 2`
 
-Progress: [█░░░░░░░░░] 11% (1 of 9 phases)
+Progress: [████████░░] 83%
 
 ## Phase 1 Outcomes (2026-05-29)
 
@@ -89,6 +90,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 **Recent Trend:** —
 
 *v1.0 velocity history archived; see `git show archive/llm-wiki-2026-04:.planning/STATE.md` if needed.*
+| Phase 02-decision-card-schema-storage P01 | 12 min | 3 tasks | 5 files |
 
 ## Accumulated Context (v2.0)
 
@@ -108,6 +110,9 @@ encoded as Hard Vetoes in `CLAUDE.md`. Recent decisions affecting Phase 1+:
 
 v1.0 decisions (~70개 누적, mostly LLM-wiki specific) — historical reference로 archive branch에 보존.
 v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통해 통합됨.
+
+- [Phase 02-decision-card-schema-storage]: decision_cards.body_tsv uses to_tsvector('simple',...) GENERATED STORED; PG17 lacks 'korean' config (Pitfall #1) — SC#6 is an explicit fallback search; Korean morphology stays in the Python mecab-ko/VectorChord-BM25 path
+- [Phase 02-decision-card-schema-storage]: DecisionCard declared on the shared entity_models.Base (single Base) — Keeps ORM round-trip parity simple (RESEARCH A3); required widening test_migration_0006 metadata-set assertion to 7 tables
 
 ### Lessons Carried Over from v1.0
 
@@ -159,6 +164,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-05-29T09:31:54.748Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-decision-card-schema-storage/02-CONTEXT.md
+Last session: 2026-05-29T22:10:03.759Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None

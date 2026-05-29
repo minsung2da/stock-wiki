@@ -96,7 +96,7 @@ graph and Success Criteria Coverage table.
 
 **Plans:** 3 plans across 2 waves
 
-- [ ] 02-01-PLAN.md — Migration 0007 + DecisionCard ORM + schema regression tests (Wave 1) [SC#1, SC#2, SC#6]
+- [x] 02-01-PLAN.md — Migration 0007 + DecisionCard ORM + schema regression tests (Wave 1) [SC#1, SC#2, SC#6]
 - [ ] 02-02-PLAN.md — DecisionCard Pydantic model + round-trip/hard-veto tests (Wave 1) [SC#3, SC#5]
 - [ ] 02-03-PLAN.md — src/cards/store.py CRUD helpers + supersession atomicity (Wave 2) [SC#4]
 
