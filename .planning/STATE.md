@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
-status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-05-29T22:26:51.156Z"
+status: ready_to_plan
+stopped_at: Phase 02 complete (3/3) — ready to discuss Phase 03
+last_updated: 2026-05-29T22:44:49.510Z
 progress:
   total_phases: 9
   completed_phases: 2
@@ -27,12 +27,12 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 02 — decision-card-schema-storage
+**Current focus:** Phase 03 — one company walking skeleton
 
 ## Current Position
 
-Phase: 02 (decision-card-schema-storage) — EXECUTING
-Plan: 3 of 3
+Phase: 03
+Plan: Not started
 Next: Phase 2 (Decision Card Schema & Storage) — awaiting `/gsd:plan-phase 2`
 
 Progress: [██████████] 100%
@@ -69,7 +69,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 
 **Velocity:** (v2.0, baseline reset)
 
-- Total plans completed: 0
+- Total plans completed: 3
 - Average duration: —
 - Total execution time: 0 hours
 
@@ -86,6 +86,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | 7 (Live trade) | 0 | - | - |
 | 8 (Eval harness) | 0 | - | - |
 | 9 (Ops hardening) | 0 | - | - |
+| 02 | 3 | - | - |
 
 **Recent Trend:** —
 
