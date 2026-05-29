@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-05-29T22:10:11.825Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-05-29T22:17:34.193Z"
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 11
 ---
 
@@ -32,10 +32,10 @@ See:
 ## Current Position
 
 Phase: 02 (decision-card-schema-storage) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Next: Phase 2 (Decision Card Schema & Storage) — awaiting `/gsd:plan-phase 2`
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 92%
 
 ## Phase 1 Outcomes (2026-05-29)
 
@@ -91,6 +91,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 
 *v1.0 velocity history archived; see `git show archive/llm-wiki-2026-04:.planning/STATE.md` if needed.*
 | Phase 02-decision-card-schema-storage P01 | 12 min | 3 tasks | 5 files |
+| Phase 02-decision-card-schema-storage P02 | 11 min | 3 tasks | 5 files |
 
 ## Accumulated Context (v2.0)
 
@@ -113,6 +114,8 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 
 - [Phase 02-decision-card-schema-storage]: decision_cards.body_tsv uses to_tsvector('simple',...) GENERATED STORED; PG17 lacks 'korean' config (Pitfall #1) — SC#6 is an explicit fallback search; Korean morphology stays in the Python mecab-ko/VectorChord-BM25 path
 - [Phase 02-decision-card-schema-storage]: DecisionCard declared on the shared entity_models.Base (single Base) — Keeps ORM round-trip parity simple (RESEARCH A3); required widening test_migration_0006 metadata-set assertion to 7 tables
+- [Phase 02-decision-card-schema-storage]: DecisionCard SC#5 hard veto enforced by field declarations only (non-Optional expires_at + assumptions min_length=1), no @model_validator — CONTEXT 'leave shape to the type system' + Veto #2; ValidationError fires at the model boundary
+- [Phase 02-decision-card-schema-storage]: Added optional invalidation_reason field to DecisionCard (not in §3 YAML) — redesign §4 payload field; Plan 03 invalidate() writes it into payload JSONB so extra='forbid' reconstruct must accept it; adds no DB column (SC#1 untouched)
 
 ### Lessons Carried Over from v1.0
 
@@ -164,6 +167,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-05-29T22:10:03.759Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-05-29T22:17:34.183Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
