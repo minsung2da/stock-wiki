@@ -21,7 +21,8 @@ REQUIRED_TABLES = {
     "documents",
     "chunks",
     "edges",
-    "events",
+    "events",          # v2.0: new KIND classifier table (migration 0006)
+    "events_legacy",   # v2.0: renamed-from-original-events; FK + payload JSONB preserved
     "ingest_runs",
 }
 
@@ -213,13 +214,25 @@ def test_edges_unique_and_check(pg_engine):
         assert "supersedes" in ck
 
 
-def test_events_jsonb_and_fk(pg_engine):
+def test_events_legacy_jsonb_and_fk(pg_engine):
+    """Verify the v1.0 `events` table shape survived the migration 0006 rename.
+
+    Migration 0006 (Phase 1 v2.0) renamed the original `events` table to
+    `events_legacy` and created a new `events` table with a different shape
+    (KIND classifier — no `payload`, FK to `filings.rcept_no` instead of
+    `entities.corp_code`). The legacy table is kept dormant for potential
+    Phase 3 reuse and as a rename-preservation safety net.
+
+    This test asserts the legacy shape (jsonb payload + FK to entities with
+    SET NULL) is intact. The NEW `events` table shape is owned by
+    `tests/db/test_migration_0006.py` (added by plan 01-01).
+    """
     with pg_engine.connect() as conn:
         udt = conn.execute(
             sa.text(
                 """
                 SELECT udt_name FROM information_schema.columns
-                WHERE table_name='events' AND column_name='payload'
+                WHERE table_name='events_legacy' AND column_name='payload'
                 """
             )
         ).scalar()
@@ -228,7 +241,7 @@ def test_events_jsonb_and_fk(pg_engine):
             sa.text(
                 """
                 SELECT pg_get_constraintdef(oid) FROM pg_constraint
-                WHERE conrelid='events'::regclass AND contype='f'
+                WHERE conrelid='events_legacy'::regclass AND contype='f'
                 """
             )
         ).all()
