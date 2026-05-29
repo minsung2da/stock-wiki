@@ -109,15 +109,19 @@ _INVALIDATE_SQL = text(
 )
 
 
-def _row_to_card(payload: dict[str, Any], body_md: str) -> DecisionCard:
+def _row_to_card(
+    payload: dict[str, Any], body_md: str, status: str | None
+) -> DecisionCard:
     """Reconstruct a ``DecisionCard`` from a stored row.
 
-    ``body_md`` is stored in its own column (Veto #8 — whole-card TEXT, never
-    chunked), so it is merged back into the payload dict before validation. The
-    payload may already carry ``invalidation_reason`` (after ``invalidate``); the
-    Plan-02 optional field accepts it under ``extra='forbid'``.
+    ``body_md`` lives in its own column (Veto #8 — whole-card TEXT, never chunked)
+    and ``status`` lives in the ``decision_cards.status`` lifecycle column (NOT the
+    §3 payload), so both are merged back into the payload dict before validation —
+    this is what lets the returned card surface ``.status`` (e.g. ``'invalidated'``).
+    The payload may also already carry ``invalidation_reason`` (after ``invalidate``);
+    the Plan-02 optional fields accept both under ``extra='forbid'``.
     """
-    data = {**payload, "body_md": body_md}
+    data = {**payload, "body_md": body_md, "status": status}
     return DecisionCard.model_validate(data)
 
 
@@ -190,7 +194,7 @@ def get_active(engine: Engine, corp_code: str) -> DecisionCard | None:
         row = conn.execute(_SELECT_ACTIVE_SQL, {"cc": corp_code}).first()
     if row is None:
         return None
-    return _row_to_card(row.payload, row.body_md)
+    return _row_to_card(row.payload, row.body_md, row.status)
 
 
 def walk_supersedes(engine: Engine, card_id: str) -> list[DecisionCard]:
@@ -215,7 +219,7 @@ def walk_supersedes(engine: Engine, card_id: str) -> list[DecisionCard]:
             row = conn.execute(_SELECT_BY_ID_SQL, {"cid": current}).first()
             if row is None:
                 break
-            chain.append(_row_to_card(row.payload, row.body_md))
+            chain.append(_row_to_card(row.payload, row.body_md, row.status))
             current = row.supersedes
     return chain
 
@@ -241,4 +245,4 @@ def invalidate(engine: Engine, card_id: str, reason: str) -> DecisionCard | None
         row = conn.execute(_SELECT_BY_ID_SQL, {"cid": card_id}).first()
     if row is None:
         return None
-    return _row_to_card(row.payload, row.body_md)
+    return _row_to_card(row.payload, row.body_md, row.status)

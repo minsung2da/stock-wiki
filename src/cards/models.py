@@ -95,3 +95,10 @@ class DecisionCard(BaseModel):
     # it or extra="forbid" reconstruction of a post-jsonb_set payload would raise. Stays
     # inside payload — adds NO DB column, so the SC#1 locked column set is untouched.
     invalidation_reason: str | None = None
+    # OPTIONAL — the lifecycle status lives in the decision_cards.status DB COLUMN
+    # (active/superseded/invalidated), NOT in the §3 YAML payload. Plan 03's store layer
+    # merges the column value in when reconstructing a card so get_active/invalidate/
+    # walk_supersedes can surface `.status` on the returned DecisionCard. Defaults to None
+    # (a freshly-built, not-yet-persisted card has no DB status) so the SC#3 round-trip of
+    # the §3 YAML is unaffected. Adds NO new DB column — the column already exists (SC#1).
+    status: str | None = None
