@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-05-29T22:17:34.193Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-05-29T22:26:51.156Z"
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 12
-  completed_plans: 11
-  percent: 11
+  completed_plans: 12
+  percent: 22
 ---
 
 # Project State
@@ -35,7 +35,7 @@ Phase: 02 (decision-card-schema-storage) — EXECUTING
 Plan: 3 of 3
 Next: Phase 2 (Decision Card Schema & Storage) — awaiting `/gsd:plan-phase 2`
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Phase 1 Outcomes (2026-05-29)
 
@@ -92,6 +92,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 *v1.0 velocity history archived; see `git show archive/llm-wiki-2026-04:.planning/STATE.md` if needed.*
 | Phase 02-decision-card-schema-storage P01 | 12 min | 3 tasks | 5 files |
 | Phase 02-decision-card-schema-storage P02 | 11 min | 3 tasks | 5 files |
+| Phase 02-decision-card-schema-storage P03 | 8 min | 2 tasks | 4 files |
 
 ## Accumulated Context (v2.0)
 
@@ -116,6 +117,8 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase 02-decision-card-schema-storage]: DecisionCard declared on the shared entity_models.Base (single Base) — Keeps ORM round-trip parity simple (RESEARCH A3); required widening test_migration_0006 metadata-set assertion to 7 tables
 - [Phase 02-decision-card-schema-storage]: DecisionCard SC#5 hard veto enforced by field declarations only (non-Optional expires_at + assumptions min_length=1), no @model_validator — CONTEXT 'leave shape to the type system' + Veto #2; ValidationError fires at the model boundary
 - [Phase 02-decision-card-schema-storage]: Added optional invalidation_reason field to DecisionCard (not in §3 YAML) — redesign §4 payload field; Plan 03 invalidate() writes it into payload JSONB so extra='forbid' reconstruct must accept it; adds no DB column (SC#1 untouched)
+- [Phase 02-decision-card-schema-storage]: src/cards/store.py: 4 typed SC#4 CRUD helpers (save_card/get_active/walk_supersedes/invalidate), atomic single-txn supersession, jsonb_set invalidation reason in payload (OQ-1, no new column); no run_sql escape hatch (Veto #7) — Phase 3 MCP get_decision_card + Phase 4 analyze_ticker call this storage API; supersession must be atomic, all SQL parameterized, get_active returns full typed DecisionCard so view=payload|both is a serialize-time exclude (Veto #13)
+- [Phase 02-decision-card-schema-storage]: Added optional status: str|None=None to DecisionCard (Rule 2) so invalidate/get_active/walk return cards surfacing the DB lifecycle status; merged in at reconstruct, defaults None (SC#3 round-trip unaffected, no new DB column) — Plan 02-03 acceptance criteria require invalidate() to return a card with .status=='invalidated'; status is a DB column not §3 payload, mirrors the existing optional invalidation_reason precedent
 
 ### Lessons Carried Over from v1.0
 
@@ -167,6 +170,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-05-29T22:17:34.183Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-05-29T22:26:51.144Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
