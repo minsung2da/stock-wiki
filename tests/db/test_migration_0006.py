@@ -403,7 +403,9 @@ def test_orm_round_trip(pg_engine) -> None:
             f"{table_name}: DB has columns not declared in ORM: {sorted(extra)}"
         )
 
-    # Base.metadata table set matches the six Phase 1 tables.
+    # Base.metadata table set: the six Phase 1 tables plus decision_cards
+    # (Phase 2 declares DecisionCard on the SAME shared declarative Base, so it
+    # registers here too — see entity_models.DecisionCard / migration 0007).
     assert set(Base.metadata.tables) == {
         "filings",
         "news",
@@ -411,4 +413,5 @@ def test_orm_round_trip(pg_engine) -> None:
         "macro_series",
         "events",
         "collector_runs",
+        "decision_cards",
     }
