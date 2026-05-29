@@ -3,9 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: executing
-stopped_at: Phase 1 complete (9/9 plans); ready for /gsd:plan-phase 2
-last_updated: "2026-05-29T12:00:00.000Z"
-last_activity: 2026-05-29
+stopped_at: Phase 2 context gathered
+last_updated: "2026-05-29T09:31:54.758Z"
 progress:
   total_phases: 9
   completed_phases: 1
@@ -19,6 +18,7 @@ progress:
 ## Project Reference
 
 See:
+
 - `.planning/PROJECT.md` (v1.0 framing — to be refreshed in Phase 1)
 - `.planning/ROADMAP.md` (v2.0 9-phase roadmap)
 - `.planning/research/redesign-2026-05.md` (authoritative architecture criteria + research synthesis)
@@ -50,6 +50,7 @@ Progress: [█░░░░░░░░░] 11% (1 of 9 phases)
 - ~150 tests pass across 9 plans; vertical E2E smoke (`collect macro` → 0 .md files) green
 
 Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.md`):
+
 - DI-1: `tests/test_migration.py::test_events_jsonb_and_fk` still references pre-rename events shape (out of 01-09 scope)
 - DI-2: intermittent flake on `test_collect_dart_writes_collector_runs_row` (couldn't reproduce in final state)
 
@@ -99,6 +100,7 @@ encoded as Hard Vetoes in `CLAUDE.md`. Recent decisions affecting Phase 1+:
 - **Postgres is source of truth.** Markdown vault폐기. 사용자 thesis 메모만 `notes/private/`에 잔존.
 - **Collectors write directly to typed Postgres tables** (Phase 1). `vault_root` 인자 + `heartbeat`
   stub 제거.
+
 - **MCP 도구는 타입드 코드 API.** `run_sql` escape hatch 금지. (Phase 3)
 - **decision_card schema가 분석 출력의 표준.** 만료일·assumptions·contradictions 강제. (Phase 2-4)
 - **Auto-trade는 paper-shadow ≥30일 + Gates A-D 통과만.** Default disabled per-ticker. (Phase 6-7)
@@ -114,16 +116,20 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - **CPython 3.12 + uv** — Python 3.13은 ML deps 안정성 부족
 - **Postgres 17 + pgvector 0.8 (`halfvec`) + VectorChord-BM25** — testcontainer parity 위해 마이그
   레이션 안에서 `CREATE EXTENSION` 실행
+
 - **psycopg3 driver** (`postgresql+psycopg://`) — testcontainers URL normalization 픽스처 경계에서
 - **`corp_code` (DART 8-digit)가 canonical entity PK** — KRX 6-digit ticker 재활용 위험
 - **Alembic `target_metadata=None`** — 손으로 작성한 마이그레이션만, autogenerate X
 - **Content-hash dedup** (sha256) — primitive로만, 보안 아님
 - **mecab-ko 한국어 tokenizer 전처리** — VectorChord-BM25는 whitespace tokenizer로 동작, 한국어
   복합어는 Python에서 사전 토큰화 필수
+
 - **Half-open temporal interval `[valid_from, valid_to)` + depth<20 recursive CTE 가드** — entity
   history walk
+
 - **dart-fss의 attachment parsing** — Open DART API가 노출 안 하는 항목 (linked-note financials)
   커버
+
 - **CI guard: collectors/는 `anthropic`/`openai` import 금지** — Sonnet은 Claude Code 세션을 통해서만
   접근. (이 가드는 Phase 1 재작성 시 다시 추가 필요 — `tests/test_import_guard.py` 이미 잔존)
 
@@ -138,6 +144,7 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 
 - **Phase 1 우선 결정 필요**: Phase 4 (analysis runner)에서 Sonnet sub-agent를 어떻게 spawn할지 —
   Claude Code session 내 Task tool? 별도 Claude Schedule routine? quota 영향 측정 필요. Phase 4 plan 단계에서 확정.
+
 - **KIS API 모의 환경 접근권**: Phase 6 시작 전 모의투자 계정 발급 및 API 키 확보 필요.
 - **`notes/private/portfolio.md` schema 미정**: Phase 1에서 entity seed + Phase 6에서 auto_trade_enabled
   토글까지 사용. 한 번에 결정 vs 점진 진화 — Phase 1 plan에서 결정.
@@ -152,6 +159,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-05-29 (ROADMAP v2.0 publication)
-Stopped at: ROADMAP v2.0 published; ready for `/gsd:plan-phase 1`
-Resume file: None
+Last session: 2026-05-29T09:31:54.748Z
+Stopped at: Phase 2 context gathered
+Resume file: .planning/phases/02-decision-card-schema-storage/02-CONTEXT.md
