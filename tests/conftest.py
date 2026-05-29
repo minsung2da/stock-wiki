@@ -86,14 +86,34 @@ def pg_engine() -> Engine:
             engine.dispose()
 
 
-# Tables created by Phase 2 migration (Plan 02). Listed here so pg_clean is
-# ready for Plan 02/03 tests without further conftest edits.
-_PHASE2_TABLES = (
-    "ingest_runs",
+# Tables present in the live schema after `alembic upgrade head`. Listed in
+# TRUNCATE-safe order: child tables (with FKs into the others) come first so
+# `TRUNCATE ... CASCADE` cannot blow up on dependency cycles.
+#
+# Phase 1 (migration 0006) added the six v2.0 domain tables. The Phase 2
+# dormant tables (documents/chunks/edges/ingest_runs) remain — Q3 Option B —
+# and `events_legacy` is the renamed Phase 2 events table. All are TRUNCATEd
+# for hygiene even though most stay empty.
+_LIVE_TABLES = (
+    # Phase 1 observability — independent of FK graph, safe to truncate first
+    "collector_runs",
+    # Phase 1 KIND classifier — FKs into filings, must precede filings
     "events",
+    # Phase 1 body-bearing tables
+    "news",
+    "filings",
+    # Phase 1 pure numeric tables — no FK chains into the others
+    "ohlcv",
+    "macro_series",
+    # Renamed legacy table from migration 0001 (empty post-shutdown, but
+    # TRUNCATE keeps cross-test hygiene)
+    "events_legacy",
+    # Phase 2 dormant tables — kept per Q3 Option B
+    "ingest_runs",
     "edges",
     "chunks",
     "documents",
+    # Phase 2 entity tables (entities is the FK target of nearly everything)
     "entity_aliases",
     "entities",
 )
@@ -101,7 +121,7 @@ _PHASE2_TABLES = (
 
 @pytest.fixture
 def pg_clean(pg_engine: Engine) -> Engine:
-    """Function-scoped: TRUNCATE Phase 2 tables if they exist, then return the engine."""
+    """Function-scoped: TRUNCATE live-schema tables if they exist, then return the engine."""
     with pg_engine.begin() as conn:
         # Tables may not exist yet in this plan — guard with information_schema check.
         existing = {
@@ -112,10 +132,10 @@ def pg_clean(pg_engine: Engine) -> Engine:
                 )
             )
         }
-        to_truncate = [t for t in _PHASE2_TABLES if t in existing]
+        to_truncate = [t for t in _LIVE_TABLES if t in existing]
         for tbl in to_truncate:
             # Assert safe identifier before interpolation: guards against future
-            # _PHASE2_TABLES entries that contain SQL metacharacters.
+            # _LIVE_TABLES entries that contain SQL metacharacters.
             assert _SAFE_TABLE_RE.match(tbl), f"unsafe table name: {tbl!r}"
             conn.execute(sa.text(f"TRUNCATE {tbl} RESTART IDENTITY CASCADE"))
     return pg_engine
