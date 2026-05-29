@@ -20,7 +20,7 @@ truth, Markdown vault는 폐기, 사용자 thesis 메모만 disk에 잔존.
 ## Phases
 
 - [x] **Phase 1: Collector DB-Direct Cutover** — 5개 collector가 Markdown 출력을 멈추고 Postgres에 직접 INSERT ✓ 2026-05-29
-- [ ] **Phase 2: Decision Card Schema & Storage** — `decision_cards` 테이블 + Pydantic 모델 + 마이그레이션
+- [x] **Phase 2: Decision Card Schema & Storage** — `decision_cards` 테이블 + Pydantic 모델 + 마이그레이션 ✓ 2026-05-30
 - [ ] **Phase 3: MCP Tool Surface (Read-Side)** — 타입드 MCP 도구로 stock-mcp 대체
 - [ ] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성
 - [ ] **Phase 5: Briefing Renderer** — 일/주 top-N 변화 요약
