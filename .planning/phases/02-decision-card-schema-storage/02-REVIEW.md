@@ -21,8 +21,22 @@ findings:
   warning: 6
   info: 4
   total: 11
-status: issues_found
+resolved:
+  fixed: 7        # CR-01, WR-01, WR-02, WR-03, WR-04, IN-01, IN-02 (commit 41e63a7)
+  deferred: 3     # WR-05, WR-06, IN-04 (rationale below)
+  no_action: 1    # IN-03 (empty package marker — correct as-is)
+resolution_commit: 41e63a7
+status: resolved
 ---
+
+> **Resolution (2026-05-30, commit `41e63a7`):** The BLOCKER and all actionable
+> warnings/info were fixed and verified (mypy clean, full cards suite green, 2 new
+> regression tests added). See the **## Resolution** section at the bottom for the
+> per-finding disposition. CR-01 was fixed with `AND status <> 'invalidated'` (not the
+> reviewer's `AND status = 'active'`), because the existing, intentional
+> `test_walk_includes_invalidated` test relies on the `superseded → invalidated`
+> transition — the genuine defect was silent re-invalidation reason-clobbering, which
+> the chosen guard fixes without breaking tested behavior.
 
 # Phase 2: Code Review Report
 
@@ -316,6 +330,27 @@ the revision graph). A broken `down_revision` would surface only at `alembic upg
 
 ---
 
+## Resolution (commit `41e63a7`)
+
+| ID | Severity | Disposition | Notes |
+|----|----------|-------------|-------|
+| CR-01 | BLOCKER | ✅ Fixed | `invalidate()` now guards `AND status <> 'invalidated'` → idempotent, no reason-clobbering. Used `<> 'invalidated'` (not `= 'active'`) because `test_walk_includes_invalidated` relies on the intended `superseded → invalidated` transition. New test `test_invalidate_twice_is_noop_and_preserves_reason` locks it. |
+| WR-01 | Warning | ✅ Fixed | `body_md` excluded from payload JSONB (`_PAYLOAD_EXCLUDE`). Direct test assertion `payload ? 'body_md' IS false` added — protects Veto #13. |
+| WR-02 | Warning | ✅ Fixed | `status` (+ `invalidation_reason`) excluded from payload; stored payload is now exactly the §3 schema. |
+| WR-03 | Warning | ✅ Fixed | `get_active` ORDER BY now `generated_at DESC, card_id DESC` (deterministic). |
+| WR-04 | Warning | ✅ Fixed | Dead `getattr(card, 'supersedes', None)` fallback removed. |
+| IN-01 | Info | ✅ Fixed | Magic `100` hoisted to `_MAX_SUPERSEDE_DEPTH` with rationale comment. |
+| IN-02 | Info | ✅ Fixed | Inline comment added in `_row_to_card` documenting the column-injection of `body_md`/`status`. |
+| WR-05 | Warning | ⏸ Deferred | The `RETURNING` collapse is a perf/round-trip optimization only; CR-01's guard fully addresses the correctness concern (no false "success" on a no-op). Optional Phase 3+ cleanup. |
+| WR-06 | Warning | ⏸ Deferred | A JSONB CHECK enforcing `assumptions` is a **schema change** (new migration) and a design decision: Pydantic (`save_card`) is the documented single write-gate for app code; the only bypass is the test's raw insert. Tracked as a follow-up (defense-in-depth, not a bug). |
+| IN-03 | Info | — No action | Empty `tests/cards/__init__.py` is a correct package marker. |
+| IN-04 | Info | ⏸ Deferred | Optional `alembic history` linearity test — low priority; revision chain (`0007`→`0006`) is intact. |
+
+**Verification after fix:** `mypy --strict` clean on `store.py`/`models.py`; `tests/cards` + `tests/db/test_migration_0007.py` → **19 passed**; full non-slow suite re-run pending in completion gate.
+
+---
+
 _Reviewed: 2026-05-30T00:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+_Resolved: 2026-05-30 (commit 41e63a7) — orchestrator_
