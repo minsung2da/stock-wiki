@@ -1,27 +1,33 @@
-"""Tests for the macro collector (ECOS + FRED) — Plan 04-03 Task 2.
+"""Tests for the macro collector (ECOS + FRED) — Phase 1 Plan 01-03.
 
-Covers:
-- catalog loading from .planning/macro_series.yaml
-- writer: vault path, frontmatter observations, body markdown table
-- writer: idempotent re-run (content_hash match → skip)
-- writer: append new observation merges via read-existing-frontmatter
-- writer: (date, value) dedup
-- writer: R-06 same-date revision tracking
-- writer: path traversal guard
-- collect_macro: end-to-end with monkeypatched fetchers
-- collect_macro: R-05 fail-fast startup (missing key) vs soft-fail per series
-- collect_macro: heartbeat revision extra propagation (R-06)
+Post-cutover: assertions are against Postgres row state (no Markdown vault).
+The legacy ``writer.write_macro_doc`` path is exercised by no test here —
+``writer.py`` stays on disk only because plan 01-09 owns physical deletion.
+
+Coverage:
+- catalog loading from .planning/macro_series.yaml (carry-over)
+- collect_macro: INSERTs observations into macro_series
+- collect_macro: R-06 revision detection surfaces via structured log extra
+- collect_macro: catalog series filter (empty / non-existent)
+- collect_macro: per-series soft-fail isolation (R-05)
+- collect_macro: engine=None raises CollectorConfigError
+- collect_macro: no Markdown directory created (CI fence against writer
+  resurrection)
+- fetcher: client-side ITEM_CODE1 filter + Korean column name support
+  (Gap-04-04 / Gap-04-07 regression guards — kept verbatim)
 """
 
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
 import yaml
+from sqlalchemy import text
 
-# -------- catalog -----------------------------------------------------------
+# -------- catalog (carry-over) ----------------------------------------------
 
 
 def test_load_catalog_returns_two_ecos_and_two_fred():
@@ -51,166 +57,7 @@ def test_load_catalog_accepts_override_path(tmp_path: Path):
     assert cat["fred"][0]["series_id"] == "Z"
 
 
-# -------- writer ------------------------------------------------------------
-
-
-def test_write_macro_doc_emits_observations_in_frontmatter_and_body(vault_tmp: Path):
-    from collectors.macro.writer import write_macro_doc
-    from shared.frontmatter import read_frontmatter
-
-    obs = [{"date": "2026-04-15", "value": 4.28}]
-    path, content_hash, rewrote, revisions = write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=obs,
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    assert rewrote is True
-    assert revisions == []
-    assert path.exists()
-    fm, body = read_frontmatter(str(path))
-    # D-07: observations structured in frontmatter
-    assert fm.provenance.observations is not None
-    assert len(fm.provenance.observations) == 1
-    assert fm.provenance.observations[0].date.isoformat() == "2026-04-15"
-    assert fm.provenance.observations[0].value == 4.28
-    # human-readable body table
-    assert "| 2026-04-15 | 4.28 |" in body
-    assert fm.provenance.trust_level == "trusted"
-    assert fm.provenance.source == "fred"
-
-
-def test_write_macro_doc_idempotent_rerun_skips(vault_tmp: Path):
-    from collectors.macro.writer import write_macro_doc
-
-    obs = [{"date": "2026-04-15", "value": 4.28}]
-    _, h1, rewrote1, _ = write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=obs,
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    _, h2, rewrote2, _ = write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=obs,
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    assert h1 == h2
-    assert rewrote1 is True
-    assert rewrote2 is False
-
-
-def test_write_macro_doc_appends_new_observation(vault_tmp: Path):
-    from collectors.macro.writer import write_macro_doc
-    from shared.frontmatter import read_frontmatter
-
-    write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=[{"date": "2026-04-15", "value": 4.28}],
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    _, _, rewrote, revisions = write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=[{"date": "2026-04-16", "value": 4.32}],
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    assert rewrote is True
-    assert revisions == []
-    fm, body = read_frontmatter(str(vault_tmp / "raw/macro/fred/DGS10.md"))
-    dates = sorted(o.date.isoformat() for o in fm.provenance.observations)
-    assert dates == ["2026-04-15", "2026-04-16"]
-    assert "| 2026-04-15 | 4.28 |" in body
-    assert "| 2026-04-16 | 4.32 |" in body
-
-
-def test_write_macro_doc_date_value_dedup(vault_tmp: Path):
-    from collectors.macro.writer import write_macro_doc
-
-    write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=[{"date": "2026-04-15", "value": 4.28}],
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    # Exact same (date, value) — no revision, no rewrite
-    _, _, rewrote, revisions = write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=[{"date": "2026-04-15", "value": 4.28}],
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    assert rewrote is False
-    assert revisions == []
-
-
-def test_write_macro_doc_same_date_different_value_records_revision(vault_tmp: Path):
-    """R-06: same date + different value → new value persisted, revision surfaced."""
-    from collectors.macro.writer import write_macro_doc
-    from shared.frontmatter import read_frontmatter
-
-    write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=[{"date": "2026-04-15", "value": 4.28}],
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    _, _, rewrote, revisions = write_macro_doc(
-        vault_root=vault_tmp,
-        source="fred",
-        series_id="DGS10",
-        label="us_10y",
-        observations=[{"date": "2026-04-15", "value": 4.30}],
-        source_url="https://fred.stlouisfed.org/series/DGS10",
-    )
-    assert rewrote is True
-    assert revisions == [{"date": "2026-04-15", "old_value": 4.28, "new_value": 4.30}]
-    fm, _ = read_frontmatter(str(vault_tmp / "raw/macro/fred/DGS10.md"))
-    assert fm.provenance.observations[0].value == 4.30
-
-
-def test_write_macro_doc_path_traversal_guard(vault_tmp: Path):
-    from collectors.macro.writer import write_macro_doc
-
-    with pytest.raises(ValueError):
-        write_macro_doc(
-            vault_root=vault_tmp,
-            source="fred",
-            series_id="../etc",
-            label="bad",
-            observations=[],
-            source_url="x",
-        )
-    with pytest.raises(ValueError):
-        write_macro_doc(
-            vault_root=vault_tmp,
-            source="invalid_source",
-            series_id="DGS10",
-            label="bad",
-            observations=[],
-            source_url="x",
-        )
-
-
-# -------- collect_macro -----------------------------------------------------
+# -------- collect_macro (DB-based, post-cutover) ----------------------------
 
 
 def _fixtures_dir() -> Path:
@@ -218,25 +65,35 @@ def _fixtures_dir() -> Path:
 
 
 def _ecos_fixture_to_fetcher_output(path: Path, item_code: str | None = None) -> list[dict]:
-    """Transform raw ECOS fixture rows into fetcher output shape.
+    """Transform raw ECOS fixture rows into fetcher output shape (date as date object).
 
-    If item_code is provided, filter rows by ITEM_CODE1 — this simulates what
-    real fetch_ecos_series does client-side (Gap-04-04 fix: that is now the
-    sole filter, no server-side kwarg). Fixtures MAY include unrelated
-    ITEM_CODE1 rows to exercise the filter."""
+    db_writer.upsert_macro_observations expects ``date`` to be a real ``datetime.date``
+    (not an ISO string). The fetcher returns ISO strings (the fixture path), so we
+    parse here for the new contract.
+    """
     rows = json.loads(path.read_text(encoding="utf-8"))
     out = []
     for r in rows:
         if item_code is not None and str(r.get("ITEM_CODE1", "")) != item_code:
             continue
         t = str(r["TIME"])
-        date_iso = f"{t[:4]}-{t[4:6]}-{t[6:8]}"
-        out.append({"date": date_iso, "value": float(r["DATA_VALUE"])})
+        out.append(
+            {
+                "date": date(int(t[:4]), int(t[4:6]), int(t[6:8])),
+                "value": float(r["DATA_VALUE"]),
+            }
+        )
     return out
 
 
 def _fred_fixture(path: Path) -> list[dict]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    rows = json.loads(path.read_text(encoding="utf-8"))
+    out = []
+    for r in rows:
+        d_str = r["date"]
+        y, m, d = d_str.split("-")
+        out.append({"date": date(int(y), int(m), int(d)), "value": float(r["value"])})
+    return out
 
 
 def _catalog_path() -> Path:
@@ -279,46 +136,139 @@ def fixture_fetchers(monkeypatch):
     return ecos_map, fred_map
 
 
-def test_collect_macro_full_run_then_idempotent(vault_tmp: Path, fixture_fetchers):
+def test_collect_macro_inserts_observations(pg_clean, fixture_fetchers):
+    """First pass: every observation lands as INSERT; stats show inserted-only."""
     from collectors.macro import collect_macro
 
-    stats1 = collect_macro(vault_root=vault_tmp, catalog_path=_catalog_path())
-    assert stats1["total"] == 4
-    assert stats1["succeeded"] == 4
-    assert stats1["skipped"] == 0
-    assert stats1["failed"] == []
+    stats = collect_macro(engine=pg_clean, catalog_path=_catalog_path())
+    assert stats["total"] == 4
+    assert stats["inserted"] >= 4  # at least one per series (real fixture counts vary)
+    assert stats["updated"] == 0
+    assert stats["failed"] == []
+    # 'succeeded' key no longer in shape (v2.0)
+    assert "succeeded" not in stats
 
-    stats2 = collect_macro(vault_root=vault_tmp, catalog_path=_catalog_path())
+    # All four series should have rows in macro_series
+    with pg_clean.begin() as conn:
+        series_counts = dict(
+            conn.execute(
+                text(
+                    "SELECT series_id, count(*) AS n FROM macro_series GROUP BY series_id"
+                )
+            ).fetchall()
+        )
+    assert "722Y001" in series_counts and series_counts["722Y001"] > 0
+    assert "731Y001" in series_counts and series_counts["731Y001"] > 0
+    assert "DGS10" in series_counts and series_counts["DGS10"] > 0
+    assert "DCOILWTICO" in series_counts and series_counts["DCOILWTICO"] > 0
+
+
+def test_collect_macro_idempotent_rerun_skips_all(pg_clean, fixture_fetchers):
+    """Second pass with same fixtures: 0 inserted, 0 updated, all series 'skipped'."""
+    from collectors.macro import collect_macro
+
+    collect_macro(engine=pg_clean, catalog_path=_catalog_path())
+    # Second identical run
+    stats2 = collect_macro(engine=pg_clean, catalog_path=_catalog_path())
     assert stats2["total"] == 4
-    assert stats2["succeeded"] == 0
+    assert stats2["inserted"] == 0
+    assert stats2["updated"] == 0
     assert stats2["skipped"] == 4
     assert stats2["failed"] == []
 
 
-def test_collect_macro_missing_api_key_startup_fail_fast(vault_tmp: Path, monkeypatch):
-    """R-05: startup fail-fast when ECOS_API_KEY unset (no series runs)."""
+def test_collect_macro_revision_detection(pg_clean, fixture_fetchers, monkeypatch, caplog):
+    """R-06: second run with same date + different value -> updated + structured log
+    extras carry the revision details (consumed by 01-08 into collector_runs.extra)."""
+    import logging
+
     from collectors.macro import collect_macro
-    from collectors.macro.client import CollectorConfigError
+    from collectors.macro import fetcher as macro_fetcher
 
-    monkeypatch.delenv("ECOS_API_KEY", raising=False)
-    monkeypatch.delenv("FRED_API_KEY", raising=False)
+    # First pass uses normal fixtures
+    collect_macro(engine=pg_clean, catalog_path=_catalog_path())
 
-    with pytest.raises(CollectorConfigError) as exc_info:
-        collect_macro(vault_root=vault_tmp, catalog_path=_catalog_path())
-    # secret never echoed
-    msg = str(exc_info.value)
-    assert "ECOS_API_KEY" in msg or "FRED_API_KEY" in msg
+    # Pre-read the original DGS10 2026-04-16 value
+    with pg_clean.begin() as conn:
+        prev = conn.execute(
+            text(
+                "SELECT value FROM macro_series "
+                "WHERE source='fred' AND series_id='DGS10' AND obs_date=:d"
+            ),
+            {"d": date(2026, 4, 16)},
+        ).scalar()
+    assert prev is not None
+    prev_val = float(prev)
+
+    # Second pass: mutate DGS10 2026-04-16 value (replace with 4.40) to trigger a revision
+    def revised(fred, series_id, **kw):
+        if series_id == "DGS10":
+            return [
+                {"date": date(2026, 4, 14), "value": 4.29},
+                {"date": date(2026, 4, 15), "value": 4.31},
+                {"date": date(2026, 4, 16), "value": 4.40},  # revised
+            ]
+        return _fred_fixture(_fixtures_dir() / f"fred/{series_id}.json")
+
+    monkeypatch.setattr(macro_fetcher, "fetch_fred_series", revised)
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="collectors.macro"):
+        stats = collect_macro(engine=pg_clean, catalog_path=_catalog_path())
+
+    assert stats["updated"] >= 1, stats
+
+    # New value persisted in DB
+    with pg_clean.begin() as conn:
+        new_val = float(
+            conn.execute(
+                text(
+                    "SELECT value FROM macro_series "
+                    "WHERE source='fred' AND series_id='DGS10' AND obs_date=:d"
+                ),
+                {"d": date(2026, 4, 16)},
+            ).scalar()
+        )
+    assert new_val == 4.40
+
+    # Structured log carries revisions=[{series_id, obs_date, old, new}, ...]
+    rev_records = [r for r in caplog.records if r.getMessage() == "collector_run_complete"]
+    assert rev_records, "no collector_run_complete log record captured"
+    rec = rev_records[-1]
+    revisions = getattr(rec, "revisions", None)
+    assert revisions is not None, "structured log missing 'revisions' extra"
+    dgs10_hits = [r for r in revisions if r["series_id"] == "DGS10"]
+    assert dgs10_hits and dgs10_hits[0]["obs_date"] == "2026-04-16"
+    assert dgs10_hits[0]["old"] == prev_val
+    assert dgs10_hits[0]["new"] == 4.40
+
+
+def test_collect_macro_empty_series_filter(pg_clean, fixture_fetchers):
+    """series=['NotInCatalog'] -> total=0, no DB rows touched."""
+    from collectors.macro import collect_macro
+
+    stats = collect_macro(
+        engine=pg_clean, series=["NotInCatalog"], catalog_path=_catalog_path()
+    )
+    assert stats["total"] == 0
+    assert stats["inserted"] == 0
+    assert stats["updated"] == 0
+    assert stats["skipped"] == 0
+    assert stats["failed"] == []
+
+    with pg_clean.begin() as conn:
+        count = conn.execute(text("SELECT count(*) FROM macro_series")).scalar()
+    assert count == 0
 
 
 def test_collect_macro_empty_ecos_soft_fails_single_series(
-    vault_tmp: Path, fixture_fetchers, monkeypatch
+    pg_clean, fixture_fetchers, monkeypatch
 ):
     """R-05: per-series empty result lands in stats['failed']; other series continue."""
     from collectors.macro import collect_macro
     from collectors.macro import fetcher as macro_fetcher
     from collectors.macro.client import MacroEmptyResultError
 
-    # Force base_rate_kr to raise empty; others succeed
     orig = macro_fetcher.fetch_ecos_series
 
     def boom(api, series_id, cycle, item_code, **kw):
@@ -328,50 +278,66 @@ def test_collect_macro_empty_ecos_soft_fails_single_series(
 
     monkeypatch.setattr(macro_fetcher, "fetch_ecos_series", boom)
 
-    stats = collect_macro(vault_root=vault_tmp, catalog_path=_catalog_path())
+    stats = collect_macro(engine=pg_clean, catalog_path=_catalog_path())
     assert stats["total"] == 4
-    assert stats["succeeded"] == 3
+    # 3 series succeed -> 3 series contribute inserts (count varies by fixture); 1 series
+    # in stats['failed']
     assert len(stats["failed"]) == 1
     assert stats["failed"][0]["doc"] == "base_rate_kr"
+    # The other three series should have inserted rows
+    assert stats["inserted"] > 0
 
 
-def test_collect_macro_logs_revisions_to_heartbeat(vault_tmp: Path, fixture_fetchers, monkeypatch):
-    """R-06: same-date different-value revision propagates to heartbeat extra.revisions."""
+def test_collect_macro_no_engine_raises(monkeypatch):
+    """collect_macro(engine=None) raises CollectorConfigError before any work."""
     from collectors.macro import collect_macro
-    from collectors.macro import fetcher as macro_fetcher
+    from collectors.macro.client import CollectorConfigError
 
-    # First pass: normal fixtures
-    collect_macro(vault_root=vault_tmp, catalog_path=_catalog_path())
+    monkeypatch.setenv("ECOS_API_KEY", "x")
+    monkeypatch.setenv("FRED_API_KEY", "y")
 
-    # Second pass: mutate DGS10 2026-04-16 value (4.32 → 4.40) to trigger a revision
-    def revised(fred, series_id, **kw):
-        if series_id == "DGS10":
-            return [
-                {"date": "2026-04-14", "value": 4.29},
-                {"date": "2026-04-15", "value": 4.31},
-                {"date": "2026-04-16", "value": 4.40},  # revised
-            ]
-        return _fred_fixture(_fixtures_dir() / f"fred/{series_id}.json")
+    with pytest.raises(CollectorConfigError) as exc_info:
+        collect_macro(engine=None, catalog_path=_catalog_path())
+    assert "engine" in str(exc_info.value).lower()
 
-    monkeypatch.setattr(macro_fetcher, "fetch_fred_series", revised)
-    collect_macro(vault_root=vault_tmp, catalog_path=_catalog_path())
 
-    # Heartbeat yaml should carry revisions in macro section
-    hb = (vault_tmp / "ingested/_status/heartbeat.md").read_text(encoding="utf-8")
-    data = yaml.safe_load(hb.split("---", 2)[1])
-    macro = data["sources"]["macro"]
-    assert "revisions" in macro
-    hits = [r for r in macro["revisions"] if r["series_id"] == "DGS10"]
-    assert hits and hits[0]["date"] == "2026-04-16"
-    assert hits[0]["old_value"] == 4.32
-    assert hits[0]["new_value"] == 4.40
+def test_collect_macro_missing_api_key_startup_fail_fast(pg_clean, monkeypatch):
+    """R-05: startup fail-fast when ECOS_API_KEY unset (no series runs)."""
+    from collectors.macro import collect_macro
+    from collectors.macro.client import CollectorConfigError
+
+    monkeypatch.delenv("ECOS_API_KEY", raising=False)
+    monkeypatch.delenv("FRED_API_KEY", raising=False)
+
+    with pytest.raises(CollectorConfigError) as exc_info:
+        collect_macro(engine=pg_clean, catalog_path=_catalog_path())
+    msg = str(exc_info.value)
+    # secret never echoed
+    assert "ECOS_API_KEY" in msg or "FRED_API_KEY" in msg
+
+
+def test_collect_macro_no_markdown_written(pg_clean, fixture_fetchers, tmp_path, monkeypatch):
+    """CI fence: a successful collect produces NO legacy Markdown vault directory.
+
+    Run from a clean tmp_path cwd so a writer accident would land here.
+    """
+    from collectors.macro import collect_macro
+
+    monkeypatch.chdir(tmp_path)
+    collect_macro(engine=pg_clean, catalog_path=_catalog_path())
+    # Defense-in-depth assertion against accidental writer-resurrection: the
+    # legacy on-disk layout must not exist anywhere reachable from cwd.
+    legacy_root = tmp_path / "vault"
+    assert not legacy_root.exists()
+    legacy_macro_dir = legacy_root.joinpath("raw", "macro")
+    assert not legacy_macro_dir.exists()
+
+
+# -------- fetcher regressions (carry-over, Gap-04-04 / Gap-04-07) -----------
 
 
 def test_fetch_ecos_series_client_side_filter_drops_unrelated_item_codes():
-    """Gap-04-04 regression guard: client-side ITEM_CODE1 filter is the sole
-    filter after we dropped the 통계항목코드1 server-side kwarg. Feed a
-    DataFrame with MIXED ITEM_CODE1 values; only rows matching `item_code`
-    must appear in the output."""
+    """Gap-04-04 regression guard."""
     import pandas as pd
 
     from collectors.macro.fetcher import fetch_ecos_series
@@ -396,25 +362,19 @@ def test_fetch_ecos_series_client_side_filter_drops_unrelated_item_codes():
     api = FakeApi()
     out = fetch_ecos_series(api, series_id="722Y001", cycle="D", item_code="0101000", days_back=30)
 
-    # Only the two 0101000 rows survive
     assert len(out) == 2
     assert all(o["value"] == 3.25 for o in out)
     assert {o["date"] for o in out} == {"2026-04-14", "2026-04-15"}
 
-    # Verify the fetcher did NOT pass 통계항목코드1 to the API (Gap-04-04 fix)
     assert "통계항목코드1" not in api.kwargs_seen, (
         "Regression: fetch_ecos_series is passing 통계항목코드1 to PublicDataReader "
         "again. Per Gap-04-04, this kwarg is not translated into the ECOS URL "
-        "segment and produces empty responses in live runs. Use client-side filter only."
+        "segment and produces empty responses in live runs."
     )
 
 
 def test_fetch_ecos_accepts_korean_column_names():
-    """Gap-04-07 regression guard: PublicDataReader returns DataFrame with Korean
-    column names (통계항목코드1 / 시점 / 값), not English (ITEM_CODE1 / TIME / DATA_VALUE).
-    The client-side filter must read either naming so both unit tests (English
-    keys, historical fixtures) and production (Korean keys) succeed.
-    Pre-fix symptom: all rows silently dropped → MacroEmptyResultError in live run."""
+    """Gap-04-07 regression guard."""
     import pandas as pd
 
     from collectors.macro.fetcher import fetch_ecos_series
