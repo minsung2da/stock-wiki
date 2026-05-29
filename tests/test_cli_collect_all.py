@@ -3,12 +3,17 @@
 Exercises ``cli.__main__:main`` via in-process monkeypatching of
 ``cli.commands._dispatch`` to inject fake collector callables. No network, no
 DB, no sentence-transformers. Every D-18..D-21 behavior is asserted.
+
+Plan 01-02 (Wave 0): ``--vault-root`` flag removed from argparse; the fakes
+no longer receive a ``vault_root`` kwarg, and every CLI invocation drops
+``["--vault-root", str(tmp_path)]`` from its argv. Each `cmd_collect_all`
+per-source entry now exposes ``inserted`` / ``updated`` (default 0 until
+Wave 1/2 collectors emit real values).
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -64,22 +69,24 @@ def _patch_dispatch(monkeypatch: pytest.MonkeyPatch, mapping: dict) -> None:
 
 
 def test_CA1_collect_krx_exit_0(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     fake = _fake_ok("krx")
     _patch_dispatch(monkeypatch, {"krx": fake})
-    exit_code = main(["--vault-root", str(tmp_path), "collect", "krx"])
+    exit_code = main(["collect", "krx"])
     assert exit_code == 0
     assert len(fake.calls) == 1  # type: ignore[attr-defined]
+    # 01-02: fake never receives vault_root since the flag is gone.
+    assert "vault_root" not in fake.calls[0]["kwargs"], fake.calls[0]["kwargs"]  # type: ignore[attr-defined]
     out = capsys.readouterr().out
     assert json.loads(out)["succeeded"] == 3
 
 
 def test_CA1b_collect_krx_exit_1_on_failed(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     _patch_dispatch(monkeypatch, {"krx": _fake_partial("krx")})
-    exit_code = main(["--vault-root", str(tmp_path), "collect", "krx"])
+    exit_code = main(["collect", "krx"])
     assert exit_code == 1
 
 
@@ -87,13 +94,15 @@ def test_CA1b_collect_krx_exit_1_on_failed(
 
 
 def test_CA2_collect_all_subset_order(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     order: list[str] = []
+    captured_kwargs: dict[str, dict[str, Any]] = {}
 
     def _make(name: str):
         def _fn(**kwargs: Any) -> dict:
             order.append(name)
+            captured_kwargs[name] = kwargs
             return {"succeeded": 1, "failed": [], "elapsed_ms": 1}
 
         return _fn
@@ -107,16 +116,19 @@ def test_CA2_collect_all_subset_order(
             "kind": _make("kind"),
         },
     )
-    exit_code = main(["--vault-root", str(tmp_path), "collect", "all", "--sources=krx,news"])
+    exit_code = main(["collect", "all", "--sources=krx,news"])
     assert exit_code == 0
     assert order == ["krx", "news"]
+    # 01-02: dispatch kwargs no longer carry vault_root.
+    for name in ("krx", "news"):
+        assert "vault_root" not in captured_kwargs[name], captured_kwargs[name]
 
 
 # ---------- CA3: unknown --sources entry fails fast with exit 2 ----------
 
 
 def test_CA3_collect_all_unknown_source_exits_2(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     called: list[str] = []
 
@@ -128,7 +140,7 @@ def test_CA3_collect_all_unknown_source_exits_2(
         return _fn
 
     _patch_dispatch(monkeypatch, {n: _make(n) for n in ("krx", "news", "macro", "kind")})
-    exit_code = main(["--vault-root", str(tmp_path), "collect", "all", "--sources=krx,nope"])
+    exit_code = main(["collect", "all", "--sources=krx,nope"])
     assert exit_code == 2
     # No collectors ran
     assert called == []
@@ -138,7 +150,7 @@ def test_CA3_collect_all_unknown_source_exits_2(
 
 
 def test_CA4_collect_all_default_excludes_dart(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     order: list[str] = []
 
@@ -159,7 +171,7 @@ def test_CA4_collect_all_default_excludes_dart(
             "kind": _make("kind"),
         },
     )
-    exit_code = main(["--vault-root", str(tmp_path), "collect", "all"])
+    exit_code = main(["collect", "all"])
     assert exit_code == 0
     assert order == ["krx", "news", "macro", "kind"]
     assert "dart" not in order
@@ -169,7 +181,7 @@ def test_CA4_collect_all_default_excludes_dart(
 
 
 def test_CA5_collect_all_isolates_exception(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     _patch_dispatch(
         monkeypatch,
@@ -180,7 +192,7 @@ def test_CA5_collect_all_isolates_exception(
             "kind": _fake_ok("kind"),
         },
     )
-    exit_code = main(["--vault-root", str(tmp_path), "collect", "all"])
+    exit_code = main(["collect", "all"])
     assert exit_code == 1
     err = capsys.readouterr().err
     # stderr carries exactly one JSON-parseable line
@@ -198,7 +210,7 @@ def test_CA5_collect_all_isolates_exception(
 
 
 def test_CA6_collect_all_partial_marks_exit_1(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     _patch_dispatch(
         monkeypatch,
@@ -209,7 +221,7 @@ def test_CA6_collect_all_partial_marks_exit_1(
             "kind": _fake_ok("kind"),
         },
     )
-    exit_code = main(["--vault-root", str(tmp_path), "collect", "all"])
+    exit_code = main(["collect", "all"])
     assert exit_code == 1
     err = capsys.readouterr().err
     json_line = [line for line in err.strip().splitlines() if line.strip().startswith("{")][-1]
@@ -222,7 +234,7 @@ def test_CA6_collect_all_partial_marks_exit_1(
 
 
 def test_CA7_collect_all_success_schema(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     _patch_dispatch(
         monkeypatch,
@@ -233,7 +245,7 @@ def test_CA7_collect_all_success_schema(
             "kind": _fake_ok("kind", succeeded=1),
         },
     )
-    exit_code = main(["--vault-root", str(tmp_path), "collect", "all"])
+    exit_code = main(["collect", "all"])
     assert exit_code == 0
     err = capsys.readouterr().err
     json_line = [line for line in err.strip().splitlines() if line.strip().startswith("{")][-1]
@@ -246,19 +258,24 @@ def test_CA7_collect_all_success_schema(
         assert entry["docs_processed"] == docs
         assert "elapsed_ms" in entry
         assert isinstance(entry["elapsed_ms"], int)
+        # 01-02: writers still author files (no DB inserts), so the new
+        # inserted/updated keys are present with default 0. Wave 1/2 collectors
+        # surface real values once db_writer.* lands.
+        assert entry.get("inserted") == 0, entry
+        assert entry.get("updated") == 0, entry
 
 
 # ---------- CA8: stderr JSON is machine-parseable ----------
 
 
 def test_CA8_stderr_json_parseable(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     _patch_dispatch(
         monkeypatch,
         {n: _fake_ok(n) for n in ("krx", "news", "macro", "kind")},
     )
-    main(["--vault-root", str(tmp_path), "collect", "all"])
+    main(["collect", "all"])
     err = capsys.readouterr().err
     json_line = [line for line in err.strip().splitlines() if line.strip().startswith("{")][-1]
     # Must parse without raising
@@ -269,15 +286,17 @@ def test_CA8_stderr_json_parseable(
 
 
 def test_CA9_collect_dart_backward_compat(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     captured: dict = {}
     sentinel_engine = object()
 
-    def fake_collect_dart(*, corp_code, since, max_docs, vault_root, engine):  # noqa: ANN001
+    # 01-02 Task 2: collect_dart is keyword-only; vault_root has been removed.
+    def fake_collect_dart(*, corp_code, since, max_docs, engine):  # noqa: ANN001
         captured["corp_code"] = corp_code
         captured["since"] = since
         captured["max_docs"] = max_docs
+        captured["engine_is_sentinel"] = engine is sentinel_engine
         return {"total": 2, "succeeded": 2, "skipped": 0, "failed": []}
 
     import collectors.dart as dart_mod
@@ -288,8 +307,6 @@ def test_CA9_collect_dart_backward_compat(
 
     exit_code = main(
         [
-            "--vault-root",
-            str(tmp_path),
             "collect",
             "dart",
             "--corp-code=00126380",
@@ -301,6 +318,7 @@ def test_CA9_collect_dart_backward_compat(
     assert captured["corp_code"] == "00126380"
     assert captured["since"] == "2026-01-01"
     assert captured["max_docs"] == 2
+    assert captured["engine_is_sentinel"] is True
 
 
 # ---------- CA10: all four subparsers present in --help ----------

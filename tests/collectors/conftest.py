@@ -39,6 +39,12 @@ def vault_tmp(tmp_path: Path) -> Path:
     where `repo_root = vault_root.parent`. We materialize tmp_path as the repo
     root and return tmp_path/"vault" as the vault_root so collectors can
     derive repo_root via .parent.
+
+    DEPRECATED after Phase 1 Wave 2: plan 01-09 deletes the writer modules
+    that consume this fixture. The vault_tmp fixture is retained through
+    Wave 1/2 only so legacy per-collector tests in tests/collectors/<src>/
+    that still exercise writer.* (and not yet db_writer.*) keep working.
+    Remove it when 01-09 lands.
     """
     vault = tmp_path / "vault"
     for sub in ("raw", "notes", "ingested/_status"):
