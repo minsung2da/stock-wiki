@@ -6,22 +6,22 @@ this phase and missed by the planner.
 
 ## Items
 
-### DI-1 — `tests/test_migration.py::test_events_jsonb_and_fk` references the renamed table
+### DI-1 — `tests/test_migration.py::test_events_jsonb_and_fk` references the renamed table  ✅ RESOLVED 2026-05-29 (commit `19c1b16`)
 
 - **Discovered during:** 01-09 Task 1 fast-suite sanity check.
 - **Root cause:** Plan 01-01 migration 0006 renamed `events` → `events_legacy`
   and created a new `events` table with a different shape (KIND classifier:
   no `payload` JSONB column, no `entities` FK constraint).
-  `tests/test_migration.py::test_events_jsonb_and_fk` still asserts the
-  Phase 2 shape (`payload` column = jsonb, FK to entities).
-- **Why this is pre-existing:** present on `HEAD` before 01-09 started; my
-  Task 1 commit (writer.py deletion) does not touch this file.
-- **Recommended fix:** point the test at `events_legacy` so it continues
-  to validate the Phase 2 shape on the renamed table; add separate tests
-  for the new Phase 1 `events` shape (already present in
-  `tests/db/test_migration_0006.py`).
-- **Disposition:** flagged here, not patched in 01-09. Belongs to a 01-01
-  follow-up or a Phase 1 cleanup commit.
+  `tests/test_migration.py::test_events_jsonb_and_fk` still asserted the
+  Phase 2 shape.
+- **Resolution applied:**
+  - Renamed test to `test_events_legacy_jsonb_and_fk`; queries point at
+    `events_legacy`.
+  - Added `events_legacy` to `REQUIRED_TABLES` set so future drop is
+    caught by `test_all_tables_exist`.
+  - New `events` table shape stays owned by
+    `tests/db/test_migration_0006.py` (01-01).
+  - 12/12 tests in `tests/test_migration.py` now pass.
 
 ### DI-2 — `test_collect_dart_writes_collector_runs_row` flakiness under suite-wide ordering
 
