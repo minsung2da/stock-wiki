@@ -5,6 +5,10 @@ shutdown (see git tag ``pre-llm-wiki-shutdown`` / branch
 ``archive/llm-wiki-2026-04``). What remains is the raw-data collection layer;
 the DB-direct write path is pending redesign.
 
+Phase 1 v2.0: ``--vault-root`` removed (collectors INSERT directly to
+Postgres; ``DATABASE_URL`` env drives connection). Collector bodies still
+call ``writer.*`` in Wave 0; those call sites are replaced in 01-03..01-07.
+
 Usage examples::
 
     stock --help
@@ -36,11 +40,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="stock",
         description="stock CLI: collect raw market data",
-    )
-    parser.add_argument(
-        "--vault-root",
-        default="vault",
-        help="Vault root directory (default: vault)",
     )
     subs = parser.add_subparsers(dest="command", required=True)
 

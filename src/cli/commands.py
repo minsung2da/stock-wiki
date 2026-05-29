@@ -17,7 +17,6 @@ import json
 import sys
 import time
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 __all__ = [
@@ -82,7 +81,6 @@ def cmd_collect_dart(args) -> int:  # noqa: ANN001
         corp_code=args.corp_code,
         since=args.since,
         max_docs=args.max_docs,
-        vault_root=Path(args.vault_root),
         engine=get_engine(),
     )
     print(json.dumps(stats, ensure_ascii=False, default=str))
@@ -92,7 +90,6 @@ def cmd_collect_dart(args) -> int:  # noqa: ANN001
 def cmd_collect_krx(args) -> int:  # noqa: ANN001
     """Handle `stock collect krx ...` (COLL-02)."""
     stats = _dispatch()["krx"](
-        vault_root=Path(args.vault_root),
         engine=_engine(),
         since=args.since,
     )
@@ -103,7 +100,6 @@ def cmd_collect_krx(args) -> int:  # noqa: ANN001
 def cmd_collect_news(args) -> int:  # noqa: ANN001
     """Handle `stock collect news ...` (COLL-03)."""
     stats = _dispatch()["news"](
-        vault_root=Path(args.vault_root),
         engine=_engine(),
         since=args.since,
         max_per_feed=args.max_per_feed,
@@ -116,7 +112,6 @@ def cmd_collect_macro(args) -> int:  # noqa: ANN001
     """Handle `stock collect macro ...` (COLL-04)."""
     series = [s.strip() for s in args.series.split(",") if s.strip()] if args.series else None
     stats = _dispatch()["macro"](
-        vault_root=Path(args.vault_root),
         engine=_engine(),
         series=series,
     )
@@ -127,7 +122,6 @@ def cmd_collect_macro(args) -> int:  # noqa: ANN001
 def cmd_collect_kind(args) -> int:  # noqa: ANN001
     """Handle `stock collect kind ...` (COLL-05)."""
     stats = _dispatch()["kind"](
-        vault_root=Path(args.vault_root),
         engine=_engine(),
         since=args.since,
     )
@@ -157,7 +151,6 @@ def cmd_collect_all(args) -> int:  # noqa: ANN001
         return 2
 
     dispatch = _dispatch()
-    vault_root = Path(args.vault_root)
     engine = _engine()
     since = getattr(args, "since", None)
 
@@ -165,7 +158,7 @@ def cmd_collect_all(args) -> int:  # noqa: ANN001
     for src in requested:
         t0 = time.monotonic()
         try:
-            kwargs: dict[str, Any] = {"vault_root": vault_root, "engine": engine}
+            kwargs: dict[str, Any] = {"engine": engine}
             if src in ("krx", "news", "kind"):
                 kwargs["since"] = since
             src_stats = dispatch[src](**kwargs)
@@ -173,6 +166,8 @@ def cmd_collect_all(args) -> int:  # noqa: ANN001
             entry: dict[str, Any] = {
                 "status": status,
                 "docs_processed": int(src_stats.get("succeeded", 0)),
+                "inserted": int(src_stats.get("inserted", 0)),
+                "updated": int(src_stats.get("updated", 0)),
                 "elapsed_ms": int((time.monotonic() - t0) * 1000),
             }
             if src_stats.get("failed"):
