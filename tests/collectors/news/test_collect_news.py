@@ -1,8 +1,10 @@
-"""Writer + client + collect_news behavior tests.
+"""client + collect_news behavior tests.
 
-Phase 1 plan 01-06 cutover: ``collect_news`` tests now assert DB state in the
-``news`` table instead of vault path existence. Writer module tests are
-retained until plan 01-09 deletes ``writer.py``.
+Phase 1 plan 01-06 cutover: ``collect_news`` tests assert DB state in the
+``news`` table instead of vault path existence.
+
+Phase 1 plan 01-09 cleanup: writer module is deleted; the writer-unit-test
+block previously at the top of this file is gone with it.
 """
 
 from __future__ import annotations
@@ -14,83 +16,9 @@ import pytest
 from sqlalchemy import text
 
 from collectors.news import client as news_client
-from collectors.news.writer import (
-    _assert_two_paragraph_cap,
-    vault_path_for_news,
-    write_news_doc,
-)
-from shared.frontmatter import read_frontmatter
 
 _FIXTURE_RSS = Path("tests/fixtures/rss")
 _FIXTURE_NEWS = Path("tests/fixtures/news")
-
-
-# ---- Writer ------------------------------------------------------------------
-
-
-def test_vault_path_for_news_canonical(tmp_path: Path) -> None:
-    p = vault_path_for_news(tmp_path, "hankyung", "202604", "abcd1234")
-    assert p == tmp_path / "raw" / "news" / "2026-04" / "hankyung_abcd1234.md"
-
-
-def test_vault_path_for_news_rejects_bad_outlet(tmp_path: Path) -> None:
-    with pytest.raises(ValueError):
-        vault_path_for_news(tmp_path, "../etc", "202604", "abcd1234")
-
-
-def test_vault_path_for_news_rejects_uppercase_hash(tmp_path: Path) -> None:
-    with pytest.raises(ValueError):
-        vault_path_for_news(tmp_path, "hankyung", "202604", "ABCDEF12")
-
-
-def test_vault_path_for_news_rejects_bad_yyyymm(tmp_path: Path) -> None:
-    with pytest.raises(ValueError):
-        vault_path_for_news(tmp_path, "hankyung", "26-04", "abcd1234")
-
-
-def test_assert_two_paragraph_cap_rejects_three(tmp_path: Path) -> None:
-    body = "p1\n\np2\n\np3"
-    with pytest.raises(ValueError, match="2-paragraph cap"):
-        _assert_two_paragraph_cap(body)
-
-
-def test_write_news_doc_rejects_three_paragraph_body(tmp_path: Path) -> None:
-    with pytest.raises(ValueError):
-        write_news_doc(
-            vault_root=tmp_path,
-            outlet="hankyung",
-            url="https://www.hankyung.com/article/123",
-            url_hash8="deadbeef",
-            yyyymm="202604",
-            title="t",
-            published_iso="2026-04-20T00:00:00+09:00",
-            tickers=[{"corp_code": "00126380", "ticker": "005930", "name": "삼성전자"}],
-            body="p1\n\np2\n\np3",
-        )
-
-
-def test_write_news_doc_happy_path(tmp_path: Path) -> None:
-    path, content_hash = write_news_doc(
-        vault_root=tmp_path,
-        outlet="hankyung",
-        url="https://www.hankyung.com/article/123",
-        url_hash8="deadbeef",
-        yyyymm="202604",
-        title="삼성전자 최대실적",
-        published_iso="2026-04-20T00:00:00+09:00",
-        tickers=[{"corp_code": "00126380", "ticker": "005930", "name": "삼성전자"}],
-        body="첫 번째 문단.\n\n두 번째 문단.",
-    )
-    assert path.exists()
-    fm, body = read_frontmatter(str(path))
-    assert fm.provenance.source == "news"
-    assert fm.provenance.outlet == "hankyung"
-    assert fm.provenance.license_flag == "summary_only"
-    assert fm.provenance.trust_level == "semi_trusted"
-    assert fm.provenance.content_hash == content_hash
-    assert fm.provenance.tickers and fm.provenance.tickers[0].ticker == "005930"
-    assert "첫 번째 문단" in body
-    assert "두 번째 문단" in body
 
 
 # ---- Client ------------------------------------------------------------------
@@ -172,10 +100,31 @@ def _single_feed(monkeypatch, outlet: str, feed_url: str) -> None:
     monkeypatch.setattr(news_pkg, "FEEDS_BY_OUTLET", {outlet: [feed_url]})
 
 
-def _seed_portfolio(monkeypatch, vault_tmp_dir: Path) -> None:
-    """Chdir into the vault_tmp parent so Portfolio.load(Path(".")) finds the
-    seeded notes/private/portfolio.md materialized by the vault_tmp fixture."""
-    monkeypatch.chdir(vault_tmp_dir.parent)
+_PORTFOLIO_MD = (
+    "---\n"
+    "holdings:\n"
+    '  - ticker: "005930"\n'
+    "    qty: 1\n"
+    "    avg_cost: 70000\n"
+    "watchlist:\n"
+    '  - "000660"\n'
+    "---\n"
+    "# Portfolio\n"
+)
+
+
+def _seed_portfolio(monkeypatch, repo_root: Path) -> None:
+    """Materialize notes/private/portfolio.md under ``repo_root`` and chdir
+    so Portfolio.load(Path(".")) finds it.
+
+    Plan 01-09 retired the ``vault_tmp`` fixture (Veto #9: no Markdown vault
+    revival). Tests pass ``tmp_path`` directly; this helper does the disk
+    setup + chdir inline so we never rely on a vault-shaped scaffold.
+    """
+    private = repo_root / "notes" / "private"
+    private.mkdir(parents=True, exist_ok=True)
+    (private / "portfolio.md").write_text(_PORTFOLIO_MD, encoding="utf-8")
+    monkeypatch.chdir(repo_root)
 
 
 def _rss_one_item(title_utf8_bytes: bytes, url: bytes) -> bytes:
@@ -216,12 +165,12 @@ def test_collect_news_no_engine_raises() -> None:
 
 
 def test_collect_news_assert_aliases_seeded_raises(
-    vault_tmp, pg_clean, monkeypatch
+    tmp_path, pg_clean, monkeypatch
 ) -> None:
     """R-09: refuses to operate when entity_aliases is empty — BEFORE any HTTP call."""
     from collectors.news import NoAliasesSeededError, collect_news
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     fetched: list[str] = []
 
@@ -235,12 +184,12 @@ def test_collect_news_assert_aliases_seeded_raises(
     assert fetched == []
 
 
-def test_collect_news_inserts_row(vault_tmp, seeded_engine, monkeypatch) -> None:
+def test_collect_news_inserts_row(tmp_path, seeded_engine, monkeypatch) -> None:
     """End-to-end: RSS parsed → article fetched → matcher hits 삼성전자 → DB row UPSERTed."""
     from collectors.news import collect_news
     from collectors.news.client import url_hash64
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     # CDATA bytes = 삼성전자 최대실적
     rss = _rss_one_item(
@@ -277,11 +226,11 @@ def test_collect_news_inserts_row(vault_tmp, seeded_engine, monkeypatch) -> None
     assert row.license_flag == "summary_only"
 
 
-def test_collect_news_idempotent(vault_tmp, seeded_engine, monkeypatch) -> None:
+def test_collect_news_idempotent(tmp_path, seeded_engine, monkeypatch) -> None:
     """Re-run with identical body → 2nd call: skipped=1; no new row."""
     from collectors.news import collect_news
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     rss = _rss_one_item(
         b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90",
@@ -309,12 +258,12 @@ def test_collect_news_idempotent(vault_tmp, seeded_engine, monkeypatch) -> None:
     assert _select_news_count(seeded_engine) == 1  # still one row
 
 
-def test_collect_news_body_edited_updates(vault_tmp, seeded_engine, monkeypatch) -> None:
+def test_collect_news_body_edited_updates(tmp_path, seeded_engine, monkeypatch) -> None:
     """2nd run with edited body → outcome=updated; content_hash differs."""
     from collectors.news import collect_news
     from collectors.news.client import url_hash64
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     rss = _rss_one_item(
         b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90",
@@ -356,11 +305,11 @@ def test_collect_news_body_edited_updates(vault_tmp, seeded_engine, monkeypatch)
     assert "수정된" in row2.body_md
 
 
-def test_collect_news_no_match_skipped(vault_tmp, seeded_engine, monkeypatch) -> None:
+def test_collect_news_no_match_skipped(tmp_path, seeded_engine, monkeypatch) -> None:
     """Body with no alias matches → skipped; no DB row written."""
     from collectors.news import collect_news
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     rss = _rss_one_item(
         b"unrelated headline",
@@ -386,7 +335,7 @@ def test_collect_news_no_match_skipped(vault_tmp, seeded_engine, monkeypatch) ->
 
 
 def test_collect_news_multiple_tickers_array(
-    vault_tmp, seeded_engine, monkeypatch
+    tmp_path, seeded_engine, monkeypatch
 ) -> None:
     """Body mentioning both Samsung + SK Hynix → tickers TEXT[] = ['005930','000660'].
 
@@ -395,7 +344,7 @@ def test_collect_news_multiple_tickers_array(
     from collectors.news import collect_news
     from collectors.news.client import url_hash64
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     # Pre-seed SK Hynix entity + alias (seeded_engine already has Samsung).
     with seeded_engine.begin() as conn:
@@ -453,12 +402,12 @@ def test_collect_news_multiple_tickers_array(
 
 
 def test_collect_news_no_markdown_written(
-    vault_tmp, seeded_engine, monkeypatch
+    tmp_path, seeded_engine, monkeypatch
 ) -> None:
     """Veto #9: after successful run, no vault/raw/news/ directory exists in CWD."""
     from collectors.news import collect_news
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     rss = _rss_one_item(
         b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90",
@@ -478,19 +427,19 @@ def test_collect_news_no_markdown_written(
     collect_news(engine=seeded_engine)
 
     # No vault/raw/news/ subdir was created by collect_news under cwd.
-    # (chdir is to vault_tmp.parent, which has only notes/private/.)
+    # (chdir target is tmp_path, which has only notes/private/.)
     cwd_path = Path(".").resolve()
     assert not (cwd_path / "vault" / "raw" / "news").exists()
 
 
 def test_collect_news_truncates_body_to_two_paragraphs(
-    vault_tmp, seeded_engine, monkeypatch
+    tmp_path, seeded_engine, monkeypatch
 ) -> None:
     """D-13 cap: trafilatura returns 5 paragraphs → DB row body_md has only 2."""
     from collectors.news import collect_news
     from collectors.news.client import url_hash64
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     rss = _rss_one_item(
         b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90",
@@ -519,12 +468,12 @@ def test_collect_news_truncates_body_to_two_paragraphs(
 
 
 def test_collect_news_soft_skips_when_trafilatura_returns_none(
-    vault_tmp, seeded_engine, monkeypatch
+    tmp_path, seeded_engine, monkeypatch
 ) -> None:
     """trafilatura.extract → None: counted as skipped, no failure, no DB row."""
     from collectors.news import collect_news
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     rss = _rss_one_item(b"x", b"https://www.hankyung.com/article/NOBODY1")
     monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
@@ -543,12 +492,12 @@ def test_collect_news_soft_skips_when_trafilatura_returns_none(
 
 
 def test_collect_news_cross_url_dedup_writes_two_rows_same_content_hash(
-    vault_tmp, seeded_engine, monkeypatch
+    tmp_path, seeded_engine, monkeypatch
 ) -> None:
     """R-11: two distinct URLs with identical body → two news rows, identical content_hash."""
     from collectors.news import collect_news
 
-    _seed_portfolio(monkeypatch, vault_tmp)
+    _seed_portfolio(monkeypatch, tmp_path)
 
     rss_two = (
         b"<?xml version='1.0' encoding='UTF-8'?>\n"

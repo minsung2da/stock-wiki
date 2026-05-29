@@ -1,57 +1,23 @@
-"""Shared fixtures for Phase 4 collector tests.
-
-`vault_tmp` — an empty vault scaffolded with raw/, notes/, and
-ingested/_status/ subdirs plus a minimal portfolio.md so Portfolio.load
-succeeds.
+"""Shared fixtures for collector tests.
 
 `seeded_engine` — the session `pg_engine` (from tests/conftest.py) with
 Phase 2 tables truncated and Samsung Electronics pre-seeded (entities row
 + ticker alias + name alias), ready for collector tests that invoke
 resolve_entity / resolve_entity_by_alias.
+
+Plan 01-09 retired the ``vault_tmp`` fixture (Veto #9: Markdown vault is
+dead). Tests that need a portfolio file on disk write it directly under
+``tmp_path / "notes" / "private" / "portfolio.md"`` and ``monkeypatch.chdir``
+into ``tmp_path`` — see ``tests/collectors/news/test_collect_news.py`` for
+the established pattern.
 """
 
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
 
 import pytest
 from sqlalchemy import text
-
-_SEED_PORTFOLIO = (
-    "---\n"
-    "holdings:\n"
-    '  - ticker: "005930"\n'
-    "    qty: 1\n"
-    "    avg_cost: 70000\n"
-    "watchlist:\n"
-    '  - "000660"\n'
-    "---\n"
-    "# Portfolio\n"
-)
-
-
-@pytest.fixture
-def vault_tmp(tmp_path: Path) -> Path:
-    """Empty vault with raw/ + notes/ + ingested/_status/ subdirs + seed portfolio.
-
-    Phase 6 P-01: portfolio lives at `<repo_root>/notes/private/portfolio.md`
-    where `repo_root = vault_root.parent`. We materialize tmp_path as the repo
-    root and return tmp_path/"vault" as the vault_root so collectors can
-    derive repo_root via .parent.
-
-    DEPRECATED after Phase 1 Wave 2: plan 01-09 deletes the writer modules
-    that consume this fixture. The vault_tmp fixture is retained through
-    Wave 1/2 only so legacy per-collector tests in tests/collectors/<src>/
-    that still exercise writer.* (and not yet db_writer.*) keep working.
-    Remove it when 01-09 lands.
-    """
-    vault = tmp_path / "vault"
-    for sub in ("raw", "notes", "ingested/_status"):
-        (vault / sub).mkdir(parents=True, exist_ok=True)
-    (tmp_path / "notes" / "private").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "notes" / "private" / "portfolio.md").write_text(_SEED_PORTFOLIO, encoding="utf-8")
-    return vault
 
 
 @pytest.fixture
