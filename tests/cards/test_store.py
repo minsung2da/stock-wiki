@@ -165,6 +165,38 @@ def test_invalidate_missing_returns_none(seeded_engine, decision_card_yaml) -> N
     assert invalidate(seeded_engine, "no_such_card", "n/a") is None
 
 
+def test_invalidate_twice_is_noop_and_preserves_reason(
+    seeded_engine, decision_card_yaml
+) -> None:
+    """Re-invalidating an already-invalidated card is a no-op (CR-01 guard).
+
+    The ``AND status <> 'invalidated'`` guard makes ``invalidate`` idempotent: the
+    second call returns ``None`` and must NOT clobber the original
+    ``invalidation_reason`` written by the first call.
+    """
+    save_card(seeded_engine, _make_card(decision_card_yaml, card_id="card_A"))
+
+    first = invalidate(seeded_engine, "card_A", "reason A")
+    assert first is not None
+    assert first.status == "invalidated"
+    assert first.invalidation_reason == "reason A"
+
+    # Second invalidate is a no-op — no row matches the status guard.
+    again = invalidate(seeded_engine, "card_A", "reason B")
+    assert again is None
+
+    # The original reason survives (was not overwritten by "reason B").
+    with seeded_engine.begin() as conn:
+        reason = conn.execute(
+            text(
+                "SELECT payload->>'invalidation_reason' AS reason "
+                "FROM decision_cards WHERE card_id = :cid"
+            ),
+            {"cid": "card_A"},
+        ).scalar()
+    assert reason == "reason A"
+
+
 def test_walk_includes_invalidated(seeded_engine, decision_card_yaml) -> None:
     base = datetime.fromisoformat("2026-05-28T17:42+09:00")
     card_a = _make_card(decision_card_yaml, card_id="card_A", generated_at=base)
@@ -192,11 +224,18 @@ def test_jsonb_payload_roundtrip(seeded_engine, decision_card_yaml) -> None:
     save_card(seeded_engine, card)
 
     with seeded_engine.begin() as conn:
-        stance = conn.execute(
+        row = conn.execute(
             text(
-                "SELECT payload->'decision'->>'stance' "
+                "SELECT payload->'decision'->>'stance' AS stance, "
+                "       payload ? 'body_md'  AS has_body, "
+                "       payload ? 'status'   AS has_status "
                 "FROM decision_cards WHERE card_id = :cid"
             ),
             {"cid": "card_A"},
-        ).scalar()
-    assert stance == card.decision.stance == "HOLD"
+        ).first()
+    assert row.stance == card.decision.stance == "HOLD"
+    # Veto #13 / WR-01,WR-02: body_md (its own column) and status (lifecycle column)
+    # are NOT duplicated into the payload JSONB, so the default view="payload"
+    # projection stays compact and §3-conformant.
+    assert row.has_body is False
+    assert row.has_status is False

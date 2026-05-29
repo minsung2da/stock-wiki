@@ -48,6 +48,21 @@ if TYPE_CHECKING:
 
 __all__ = ["save_card", "get_active", "walk_supersedes", "invalidate"]
 
+# Secondary depth cap for walk_supersedes. The ``seen`` set already guarantees
+# termination on any true cycle; this is a belt-and-suspenders ceiling that bounds
+# an unexpectedly long (but acyclic) chain. 100 supersessions for one corp would
+# itself be an anomaly worth investigating.
+_MAX_SUPERSEDE_DEPTH = 100
+
+# Store-layer-only fields kept OUT of the payload JSONB:
+#   - body_md: owned by its dedicated TEXT column (Veto #8/#13 — excluding it keeps the
+#     default view="payload" projection compact instead of leaking the full body).
+#   - status: owned by the decision_cards.status lifecycle column.
+#   - invalidation_reason: written into payload by invalidate()'s jsonb_set, never at save.
+# Excluding all three keeps a freshly-saved payload exactly the §3 schema; _row_to_card
+# re-injects body_md + status from their columns on read.
+_PAYLOAD_EXCLUDE = {"body_md", "status", "invalidation_reason"}
+
 
 # --- SQL constants (bind params only — Veto #7, never f-string) ---------------
 
@@ -86,7 +101,7 @@ _SELECT_ACTIVE_SQL = text(
      WHERE corp_code = :cc
        AND status = 'active'
        AND superseded_by IS NULL
-     ORDER BY generated_at DESC
+     ORDER BY generated_at DESC, card_id DESC
      LIMIT 1
     """
 )
@@ -105,6 +120,7 @@ _INVALIDATE_SQL = text(
        SET status = 'invalidated',
            payload = jsonb_set(payload, '{invalidation_reason}', to_jsonb(CAST(:reason AS text)))
      WHERE card_id = :cid
+       AND status <> 'invalidated'
     """
 )
 
@@ -121,6 +137,9 @@ def _row_to_card(
     The payload may also already carry ``invalidation_reason`` (after ``invalidate``);
     the Plan-02 optional fields accept both under ``extra='forbid'``.
     """
+    # ``body_md`` and ``status`` are intentionally injected from their dedicated
+    # columns (they are excluded from the stored payload — see ``_PAYLOAD_EXCLUDE``),
+    # so these explicit keys are the SOLE source for them, not a same-named override.
     data = {**payload, "body_md": body_md, "status": status}
     return DecisionCard.model_validate(data)
 
@@ -154,11 +173,11 @@ def save_card(
     Returns:
         ``card.card_id``.
     """
-    # The locked DecisionCard model carries no `supersedes` field, so the supersede
-    # id comes from the keyword arg; getattr is a defensive fallback only.
-    effective_supersedes = supersedes or getattr(card, "supersedes", None)
+    # The supersede id comes solely from the keyword arg; the DecisionCard model
+    # (extra="forbid") declares no `supersedes` field to fall back on.
+    effective_supersedes = supersedes
 
-    payload = card.model_dump(mode="json")
+    payload = card.model_dump(mode="json", exclude=_PAYLOAD_EXCLUDE)
     params: dict[str, Any] = {
         "card_id": card.card_id,
         "corp_code": card.corp_code,
@@ -214,7 +233,11 @@ def walk_supersedes(engine: Engine, card_id: str) -> list[DecisionCard]:
     current: str | None = card_id
 
     with engine.begin() as conn:
-        while current is not None and current not in seen and len(chain) < 100:
+        while (
+            current is not None
+            and current not in seen
+            and len(chain) < _MAX_SUPERSEDE_DEPTH
+        ):
             seen.add(current)
             row = conn.execute(_SELECT_BY_ID_SQL, {"cid": current}).first()
             if row is None:
@@ -231,8 +254,15 @@ def invalidate(engine: Engine, card_id: str, reason: str) -> DecisionCard | None
     ``jsonb_set(payload, '{invalidation_reason}', to_jsonb(:reason))`` (OQ-1 — the
     reason lives inside payload; NO new column, so the SC#1 column set is untouched).
     Re-selects and returns the updated ``DecisionCard`` (with ``.status ==
-    'invalidated'`` and ``.invalidation_reason == reason``), or ``None`` if no card
-    with that id existed.
+    'invalidated'`` and ``.invalidation_reason == reason``).
+
+    The UPDATE carries ``AND status <> 'invalidated'`` so the call is idempotent and
+    chain-safe: re-invalidating an already-invalidated card is a no-op (``rowcount==0``
+    → returns ``None``) that does NOT clobber the original ``invalidation_reason``.
+    A currently-``active`` or ``superseded`` card CAN be invalidated — the
+    ``active → invalidated`` and ``superseded → invalidated`` transitions are both
+    intended (an invalidated card may legitimately sit mid-chain). Returns ``None`` if
+    no card with that id existed OR the card was already invalidated.
 
     The reconstruct round-trips ONLY because Plan 02 declared the optional
     ``invalidation_reason`` field — the payload now contains that key, which
