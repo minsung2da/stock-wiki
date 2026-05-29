@@ -21,6 +21,7 @@ from collectors.news import client, db_writer, fetcher, matcher
 from collectors.news.feeds import FEEDS_BY_OUTLET
 from collectors.news.matcher import NoAliasesSeededError
 from shared.portfolio import Portfolio
+from shared.run_log import record_collector_run
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -141,4 +142,8 @@ def collect_news(
             "elapsed_ms": stats["elapsed_ms"],
         },
     )
+    # Plan 01-08: dual-sink DB row (RESEARCH.md Q5). News collector has no
+    # per-source extras at Phase 1 (matcher/RSS retry info already lives in
+    # stats.failed); pass extra=None.
+    record_collector_run(engine, "news", stats, stats["elapsed_ms"], extra=None)
     return stats

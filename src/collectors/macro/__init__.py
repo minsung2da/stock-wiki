@@ -33,6 +33,7 @@ from collectors.macro.client import (
     MacroEmptyResultError,
     require_env,
 )
+from shared.run_log import record_collector_run
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -150,5 +151,14 @@ def collect_macro(
             "elapsed_ms": stats["elapsed_ms"],
             "revisions": all_revisions if all_revisions else None,
         },
+    )
+    # Plan 01-08: dual-sink — record_collector_run is the DB row half of the
+    # observability contract (RESEARCH.md Q5). Best-effort: a DB outage here
+    # logs a WARNING but does NOT fail the collect run.
+    run_extra: dict[str, Any] | None = (
+        {"revisions": all_revisions} if all_revisions else None
+    )
+    record_collector_run(
+        engine, "macro", stats, stats["elapsed_ms"], extra=run_extra
     )
     return stats

@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any
 from collectors.krx import db_writer, fetcher
 from db.entity import resolve_entity
 from shared.portfolio import Portfolio
+from shared.run_log import record_collector_run
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -223,5 +224,10 @@ def collect_krx(
             "elapsed_ms": stats["elapsed_ms"],
             "extra": extra or None,
         },
+    )
+    # Plan 01-08: dual-sink DB row (RESEARCH.md Q5). Best-effort: a DB
+    # outage on this call logs a WARNING but does NOT fail the collect.
+    record_collector_run(
+        engine, "krx", stats, stats["elapsed_ms"], extra=extra or None
     )
     return stats

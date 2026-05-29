@@ -36,6 +36,7 @@ from zoneinfo import ZoneInfo
 
 from collectors.dart import client, db_writer, fetcher
 from db.entity import upsert_entity
+from shared.run_log import record_collector_run
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -165,4 +166,7 @@ def collect_dart(
             "elapsed_ms": stats["elapsed_ms"],
         },
     )
+    # Plan 01-08: dual-sink DB row (RESEARCH.md Q5). DART has no per-source
+    # extras at Phase 1 (Phase 9 may add); pass extra=None.
+    record_collector_run(engine, "dart", stats, stats["elapsed_ms"], extra=None)
     return stats

@@ -48,6 +48,7 @@ from collectors.kind.selectors import ParseError
 from collectors.kind.sources import KindEventType
 from db.entity import resolve_entity, resolve_entity_by_alias
 from shared.portfolio import Portfolio
+from shared.run_log import record_collector_run
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -286,5 +287,20 @@ def collect_kind(
             "suspension_cross_check_mismatch": cross_check_mismatch,
             "dart_suspended_tickers": sorted(dart_suspended_tickers),
         },
+    )
+    # Plan 01-08: dual-sink DB row (RESEARCH.md Q5). KIND has the richest
+    # per-source extras; collapse them into a single dict for the
+    # ``collector_runs.extra`` JSONB column. ``suspension_cross_check_mismatch``
+    # is a Phase 9 placeholder (always [] in Phase 1) and ``dart_suspended_tickers``
+    # is observability-only.
+    kind_extra: dict[str, Any] = {
+        "dart_events": dart_events_stats,
+        "kind_scrape": kind_scrape_stats,
+        "kind_parse_error": parse_error,
+        "suspension_cross_check_mismatch": cross_check_mismatch,
+        "dart_suspended_tickers": sorted(dart_suspended_tickers),
+    }
+    record_collector_run(
+        engine, "kind", stats, stats["elapsed_ms"], extra=kind_extra
     )
     return stats
