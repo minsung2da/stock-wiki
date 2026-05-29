@@ -433,6 +433,47 @@ def test_collect_dart_max_docs_cap(seeded_engine, monkeypatch) -> None:
     assert _filings_count(seeded_engine) == 100
 
 
+def test_collect_dart_routes_through_list_ab_filings(
+    seeded_engine, monkeypatch
+) -> None:
+    """collect_dart calls fetcher.list_ab_filings (the A+B filter live there).
+
+    Coverage carry-over from legacy tests/test_collect_dart.py
+    ``test_only_ab_filing_types``: D-01 mandates pblntf_ty in {'A','B'} for
+    DART regular. That filter is enforced inside list_ab_filings (fetcher.py
+    line 65 — pblntf_ty=['A','B']) and we verify here that collect_dart
+    routes through that function rather than a custom call path.
+    """
+    captured: dict[str, Any] = {}
+
+    def fake_list(corp_code, since, max_docs):
+        captured["corp_code"] = corp_code
+        captured["since"] = since
+        captured["max_docs"] = max_docs
+        return []
+
+    monkeypatch.setattr("collectors.dart.client.get_client", lambda: None)
+    monkeypatch.setattr(
+        "collectors.dart.client.find_corp", lambda cc: FakeCorp()
+    )
+    monkeypatch.setattr(
+        "collectors.dart.fetcher.list_ab_filings", fake_list
+    )
+
+    from collectors.dart import collect_dart
+
+    collect_dart(
+        corp_code="00126380", since="2026-01-01", max_docs=50,
+        engine=seeded_engine,
+    )
+
+    assert captured == {
+        "corp_code": "00126380",
+        "since": "2026-01-01",
+        "max_docs": 50,
+    }
+
+
 def test_collect_dart_filed_at_kst_close(seeded_engine, monkeypatch) -> None:
     """rcept_dt YYYYMMDD → filed_at TIMESTAMPTZ at 15:30 Asia/Seoul.
 
