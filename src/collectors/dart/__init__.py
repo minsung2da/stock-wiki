@@ -1,10 +1,13 @@
 """DART collector — A+B filings only (D-01), no LLM, no DB (COLL-06).
 
+PHASE 1 TRANSITION (v2.0): this collector still writes via writer.py but no
+longer receives ``vault_root`` via CLI. ``_LEGACY_VAULT_ROOT`` will be
+removed when ``db_writer.*`` replaces ``writer.*`` in plan 01-07.
+
 Writes minimal-frontmatter Markdown to `raw/dart/YYYY/{rcept_no}_{corp_code}.md`
-(under `vault_root`, which defaults to the repo root = Obsidian vault root per
-Phase 1 D-01/D-02). Content-hash idempotency (COLL-08) and per-filing error
-isolation. Updates `ingested/_status/heartbeat.md` atomically after the run
-(COLL-09).
+under the legacy vault placeholder. Content-hash idempotency (COLL-08) and
+per-filing error isolation. Updates `ingested/_status/heartbeat.md` atomically
+after the run (COLL-09).
 
 NO imports of `anthropic` or `openai` — guarded by tests/test_import_guard.py
 (COLL-07 CI discipline).
@@ -21,14 +24,17 @@ from shared.heartbeat import record_source_run
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
+# Phase 1 transition placeholder; removed in 01-07 (DART DB-direct cutover).
+_LEGACY_VAULT_ROOT = Path("vault")
+
 __all__ = ["collect_dart"]
 
 
 def collect_dart(
+    *,
     corp_code: str,
     since: str,
     max_docs: int = 100,
-    vault_root: Path = Path("."),
     engine: Engine | None = None,
 ) -> dict[str, Any]:
     """Collect DART A+B filings for a single corp into `raw/dart/YYYY/`.
@@ -41,9 +47,6 @@ def collect_dart(
         ISO date "YYYY-MM-DD" — earliest filing receipt date to include.
     max_docs : int
         Phase-3 cap (D-03). Phase 4 removes this.
-    vault_root : Path
-        Root of the Obsidian vault. Defaults to current working directory
-        (repo root = Obsidian vault root per Phase 1 D-01).
     engine : sqlalchemy.Engine | None
         If provided AND at least one filing write succeeds, `upsert_entity` is
         called once with (corp_code, corp_name, ticker) so `resolve_entity(ticker)`
@@ -72,7 +75,7 @@ def collect_dart(
     }
 
     for filing in filings:
-        path = writer.vault_path_for(filing, corp_code, vault_root)
+        path = writer.vault_path_for(filing, corp_code, _LEGACY_VAULT_ROOT)
         try:
             # Fetch body up-front so the content-hash comparison reflects
             # the current remote state (COLL-08: dedup on content, not URL).
@@ -86,7 +89,7 @@ def collect_dart(
                     continue
 
             writer.write_filing(
-                filing, body, corp_code, ticker, vault_root, company_name=company_name
+                filing, body, corp_code, ticker, _LEGACY_VAULT_ROOT, company_name=company_name
             )
             stats["succeeded"] += 1
         except Exception as exc:  # per-filing isolation (COLL-08)
@@ -107,7 +110,7 @@ def collect_dart(
     record_source_run(
         "dart",
         stats,
-        heartbeat_path=vault_root / "ingested/_status/heartbeat.md",
+        heartbeat_path=_LEGACY_VAULT_ROOT / "ingested/_status/heartbeat.md",
     )
     return stats
 

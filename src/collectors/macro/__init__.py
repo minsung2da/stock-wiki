@@ -1,5 +1,9 @@
 """Macro collector (ECOS + FRED) — COLL-04.
 
+PHASE 1 TRANSITION (v2.0): this collector still writes via writer.py but no
+longer receives ``vault_root`` via CLI. ``_LEGACY_VAULT_ROOT`` will be
+removed when ``db_writer.*`` replaces ``writer.*`` in plan 01-03.
+
 R-05 semantics:
   STARTUP fail-fast: missing API key / unreadable catalog → CollectorConfigError
   before any series runs.
@@ -44,6 +48,9 @@ _CATALOG_PATH = _REPO_ROOT / ".planning" / "macro_series.yaml"
 _ECOS_URL = "https://ecos.bok.or.kr/"
 _FRED_URL = "https://fred.stlouisfed.org/series/"
 
+# Phase 1 transition placeholder; removed in 01-03 (macro DB-direct cutover).
+_LEGACY_VAULT_ROOT = Path("vault")
+
 __all__ = ["collect_macro", "load_catalog"]
 
 
@@ -60,7 +67,6 @@ def load_catalog(path: Path | None = None) -> dict:
 
 def collect_macro(
     *,
-    vault_root: Path = Path("."),
     engine: Engine | None = None,  # noqa: ARG001 — R-12 signature parity
     series: list[str] | None = None,
     catalog_path: Path | None = None,
@@ -114,7 +120,7 @@ def collect_macro(
                 url = _FRED_URL + entry["series_id"]
 
             _, _, rewrote, revs = writer.write_macro_doc(
-                vault_root=vault_root,
+                vault_root=_LEGACY_VAULT_ROOT,
                 source=source,
                 series_id=entry["series_id"],
                 label=label,
@@ -138,7 +144,7 @@ def collect_macro(
     record_source_run(
         "macro",
         stats,
-        heartbeat_path=vault_root / "ingested/_status/heartbeat.md",
+        heartbeat_path=_LEGACY_VAULT_ROOT / "ingested/_status/heartbeat.md",
         extra=extra,
     )
     return stats

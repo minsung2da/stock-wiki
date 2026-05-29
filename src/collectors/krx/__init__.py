@@ -1,4 +1,9 @@
-"""KRX collector — COLL-02. No anthropic/openai imports (CI guarded)."""
+"""KRX collector — COLL-02. No anthropic/openai imports (CI guarded).
+
+PHASE 1 TRANSITION (v2.0): this collector still writes via writer.py but no
+longer receives ``vault_root`` via CLI. ``_LEGACY_VAULT_ROOT`` will be
+removed when ``db_writer.*`` replaces ``writer.*`` in plan 01-04.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +21,9 @@ if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
 _log = logging.getLogger(__name__)
+
+# Phase 1 transition placeholder; removed in 01-04 (KRX DB-direct cutover).
+_LEGACY_VAULT_ROOT = Path("vault")
 
 __all__ = ["collect_krx"]
 
@@ -42,7 +50,6 @@ def _read_existing_hash(path: Path) -> str | None:
 
 def collect_krx(
     *,
-    vault_root: Path = Path("."),
     engine: Engine | None = None,
     since: str | None = None,
 ) -> dict[str, Any]:
@@ -62,8 +69,8 @@ def collect_krx(
     start = time.monotonic()
     date_iso = since or _today_iso_krx()
     date_str = date_iso.replace("-", "")
-    # repo_root = vault_root.parent (Phase 6 P-01: portfolio moved to notes/private/)
-    repo_root = vault_root.parent
+    # repo_root = _LEGACY_VAULT_ROOT.parent → Path(".") (Phase 6 P-01: portfolio at notes/private/)
+    repo_root = _LEGACY_VAULT_ROOT.parent
     portfolio = Portfolio.load(repo_root)
     scope = portfolio.scope_tickers()
 
@@ -94,7 +101,7 @@ def collect_krx(
             flow = fetcher.fetch_trading_value(ticker, date_str)
             short = fetcher.fetch_shorting_balance(ticker, date_str)
 
-            path = writer.vault_path_for_krx(vault_root, date_iso, ticker)
+            path = writer.vault_path_for_krx(_LEGACY_VAULT_ROOT, date_iso, ticker)
             if path.exists():
                 new_body = writer._render_body(ohlcv, flow, short)
                 new_hash = writer.compute_body_hash(new_body)
@@ -104,7 +111,7 @@ def collect_krx(
                     continue
 
             writer.write_krx_doc(
-                vault_root=vault_root,
+                vault_root=_LEGACY_VAULT_ROOT,
                 ticker=ticker,
                 date_iso=date_iso,
                 corp_code=ent.corp_code,
@@ -131,7 +138,7 @@ def collect_krx(
     record_source_run(
         "krx",
         stats,
-        heartbeat_path=vault_root / "ingested/_status/heartbeat.md",
+        heartbeat_path=_LEGACY_VAULT_ROOT / "ingested/_status/heartbeat.md",
         extra=extra,
     )
     return stats

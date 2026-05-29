@@ -1,4 +1,9 @@
-"""News collector (COLL-03, D-09..D-13). No anthropic/openai imports (COLL-07)."""
+"""News collector (COLL-03, D-09..D-13). No anthropic/openai imports (COLL-07).
+
+PHASE 1 TRANSITION (v2.0): this collector still writes via writer.py but no
+longer receives ``vault_root`` via CLI. ``_LEGACY_VAULT_ROOT`` will be
+removed when ``db_writer.*`` replaces ``writer.*`` in plan 01-06.
+"""
 
 from __future__ import annotations
 
@@ -19,6 +24,9 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
+# Phase 1 transition placeholder; removed in 01-06 (news DB-direct cutover).
+_LEGACY_VAULT_ROOT = Path("vault")
+
 __all__ = ["collect_news", "NoAliasesSeededError", "FEEDS_BY_OUTLET"]
 
 
@@ -32,7 +40,6 @@ def _read_existing_hash(path: Path) -> str | None:
 
 def collect_news(
     *,
-    vault_root: Path = Path("."),
     engine: Engine,
     since: str | None = None,
     max_per_feed: int = 100,
@@ -58,8 +65,8 @@ def collect_news(
     # R-09: refuse to run when aliases are not seeded (BEFORE any HTTP call).
     matcher.assert_aliases_seeded(engine)
 
-    # repo_root = vault_root.parent (Phase 6 P-01: portfolio moved to notes/private/)
-    repo_root = vault_root.parent
+    # repo_root = _LEGACY_VAULT_ROOT.parent → Path(".") (Phase 6 P-01: portfolio at notes/private/)
+    repo_root = _LEGACY_VAULT_ROOT.parent
     portfolio = Portfolio.load(repo_root)
     scope = portfolio.scope_tickers()
     # R-01: single DB round-trip for the scoped alias inventory.
@@ -93,13 +100,15 @@ def collect_news(
                             stats["skipped"] += 1
                             continue
                         # Idempotency: skip if an existing file has the same content_hash.
-                        path = writer.vault_path_for_news(vault_root, outlet, yyyymm, url_hash)
+                        path = writer.vault_path_for_news(
+                            _LEGACY_VAULT_ROOT, outlet, yyyymm, url_hash
+                        )
                         new_hash = writer.compute_news_content_hash(item.title, body)
                         if path.exists() and _read_existing_hash(path) == new_hash:
                             stats["skipped"] += 1
                             continue
                         writer.write_news_doc(
-                            vault_root=vault_root,
+                            vault_root=_LEGACY_VAULT_ROOT,
                             outlet=outlet,
                             url=item.url,
                             url_hash8=url_hash,
@@ -119,6 +128,8 @@ def collect_news(
 
     stats["elapsed_ms"] = int((time.monotonic() - start) * 1000)
     record_source_run(
-        "news", stats, heartbeat_path=vault_root / "ingested" / "_status" / "heartbeat.md"
+        "news",
+        stats,
+        heartbeat_path=_LEGACY_VAULT_ROOT / "ingested" / "_status" / "heartbeat.md",
     )
     return stats

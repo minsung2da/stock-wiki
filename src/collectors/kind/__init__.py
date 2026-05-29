@@ -1,5 +1,9 @@
 """KIND collector — exchange status events (Plan 05, Option D).
 
+PHASE 1 TRANSITION (v2.0): this collector still writes via writer.py but no
+longer receives ``vault_root`` via CLI. ``_LEGACY_VAULT_ROOT`` will be
+removed when ``db_writer.*`` replaces ``writer.*`` in plan 01-05.
+
 Orchestrates two fundamental-axis sources (see sources.py docstring):
 
 1. DART `pblntf_ty="I"` (primary) — suspension / watchlist_designation /
@@ -38,6 +42,9 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
+# Phase 1 transition placeholder; removed in 01-05 (KIND DB-direct cutover).
+_LEGACY_VAULT_ROOT = Path("vault")
+
 __all__ = ["collect_kind"]
 
 
@@ -68,7 +75,6 @@ def _read_heartbeat_extra(vault_root: Path, source: str, key: str) -> Any:
 
 def collect_kind(
     *,
-    vault_root: Path = Path("."),
     engine: Engine | None = None,
     since: str | None = None,
     enable_kind_scrape: bool = False,
@@ -82,8 +88,8 @@ def collect_kind(
     start = time.monotonic()
     bgn_de, end_de = _default_window(since)
 
-    # repo_root = vault_root.parent (Phase 6 P-01: portfolio moved to notes/private/)
-    repo_root = vault_root.parent
+    # repo_root = _LEGACY_VAULT_ROOT.parent → Path(".") (Phase 6 P-01: portfolio at notes/private/)
+    repo_root = _LEGACY_VAULT_ROOT.parent
     portfolio = Portfolio.load(repo_root)
     scope = set(portfolio.scope_tickers())
 
@@ -175,7 +181,7 @@ def collect_kind(
             corp_code = (ent.corp_code if ent else None) or e.get("corp_code")
             company_name = (ent.canonical_name if ent else None) or e.get("company_name")
             _path, _hash, rewrote = writer.write_kind_event(
-                vault_root=vault_root,
+                vault_root=_LEGACY_VAULT_ROOT,
                 event_type=event_type,
                 ticker=ticker,
                 event_date=event_date,
@@ -200,7 +206,7 @@ def collect_kind(
     stats["elapsed_ms"] = int((time.monotonic() - start) * 1000)
 
     # 4) Cross-check DART suspension set against Plan 02's heartbeat (INFO-only)
-    krx_suspended = _read_heartbeat_extra(vault_root, "krx", "suspended_tickers")
+    krx_suspended = _read_heartbeat_extra(_LEGACY_VAULT_ROOT, "krx", "suspended_tickers")
     cross_check_mismatch: list[str] = []
     if isinstance(krx_suspended, list):
         krx_set = {t for t in krx_suspended if isinstance(t, str)}
@@ -219,7 +225,7 @@ def collect_kind(
     record_source_run(
         "kind",
         stats,
-        heartbeat_path=vault_root / "ingested/_status/heartbeat.md",
+        heartbeat_path=_LEGACY_VAULT_ROOT / "ingested/_status/heartbeat.md",
         extra=extra,
     )
     return stats
