@@ -1,22 +1,25 @@
 """News collector (COLL-03, D-09..D-13). No anthropic/openai imports (COLL-07).
 
-PHASE 1 TRANSITION (v2.0): this collector still writes via writer.py but no
-longer receives ``vault_root`` via CLI. ``_LEGACY_VAULT_ROOT`` will be
-removed when ``db_writer.*`` replaces ``writer.*`` in plan 01-06.
+PHASE 1 v2.0 (plan 01-06): cutover from ``vault/raw/news/*.md`` Markdown writes
+to direct UPSERTs into the ``news`` Postgres table via ``db_writer``.
+
+The collector still extracts the same 2-paragraph body (D-13 cap), still
+respects the R-08 retry semantics, and still runs the R-09 startup guard
+that refuses to operate without seeded entity aliases. Only the persistence
+backend changed.
 """
 
 from __future__ import annotations
 
 import logging
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from collectors.news import client, fetcher, matcher, writer
+from collectors.news import client, db_writer, fetcher, matcher
 from collectors.news.feeds import FEEDS_BY_OUTLET
 from collectors.news.matcher import NoAliasesSeededError
-from shared.heartbeat import record_source_run
-from shared.frontmatter import read_frontmatter
 from shared.portfolio import Portfolio
 
 if TYPE_CHECKING:
@@ -24,18 +27,7 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-# Phase 1 transition placeholder; removed in 01-06 (news DB-direct cutover).
-_LEGACY_VAULT_ROOT = Path("vault")
-
 __all__ = ["collect_news", "NoAliasesSeededError", "FEEDS_BY_OUTLET"]
-
-
-def _read_existing_hash(path: Path) -> str | None:
-    try:
-        fm, _ = read_frontmatter(str(path))
-        return fm.provenance.content_hash
-    except Exception:
-        return None
 
 
 def collect_news(
@@ -51,12 +43,13 @@ def collect_news(
     D-12: scope = portfolio.holdings ∪ portfolio.watchlist (single DB query
     loads alias inventory once per run — R-01).
     D-13: body hard-capped to 2 paragraphs, license_flag='summary_only'.
-    D-24: trust_level='semi_trusted'.
+    D-24: license_flag='summary_only' persisted on the news row.
     R-08: RSS fetched via requests; article HTML via trafilatura — independent
     retry scopes, shared scheme guard.
     R-09: startup guard raises NoAliasesSeededError if entity_aliases unseeded.
     R-11: content_hash is URL-independent; two distinct URLs with identical
-    body yield two files with identical content_hash (accepted tradeoff).
+    body produce two news rows with identical ``content_hash`` (accepted
+    tradeoff — surfaces in DB queries as duplicate-body detection).
     """
     start = time.monotonic()
     if engine is None:
@@ -65,14 +58,22 @@ def collect_news(
     # R-09: refuse to run when aliases are not seeded (BEFORE any HTTP call).
     matcher.assert_aliases_seeded(engine)
 
-    # repo_root = _LEGACY_VAULT_ROOT.parent → Path(".") (Phase 6 P-01: portfolio at notes/private/)
-    repo_root = _LEGACY_VAULT_ROOT.parent
+    # Portfolio still lives on disk at <repo_root>/notes/private/portfolio.md
+    # (Phase 6 P-01). repo_root is the current working directory under v2.0
+    # — the CLI no longer accepts ``--vault-root``.
+    repo_root = Path(".")
     portfolio = Portfolio.load(repo_root)
     scope = portfolio.scope_tickers()
     # R-01: single DB round-trip for the scoped alias inventory.
     alias_map = matcher.load_scoped_aliases(engine, scope)
 
-    stats: dict[str, Any] = {"total": 0, "succeeded": 0, "skipped": 0, "failed": []}
+    stats: dict[str, Any] = {
+        "total": 0,
+        "inserted": 0,
+        "updated": 0,
+        "skipped": 0,
+        "failed": [],
+    }
 
     for outlet, urls in FEEDS_BY_OUTLET.items():
         for feed_url in urls:
@@ -84,9 +85,6 @@ def collect_news(
                 for item in items:
                     stats["total"] += 1
                     try:
-                        url_hash = client.url_hash8(item.url)
-                        pub_iso = item.published.isoformat() if item.published else "1970-01-01"
-                        yyyymm = pub_iso[:7].replace("-", "")
                         html = client.fetch_article_html(item.url)  # R-08: trafilatura
                         if not html:
                             stats["skipped"] += 1
@@ -95,30 +93,38 @@ def collect_news(
                         if not body:
                             stats["skipped"] += 1
                             continue
-                        tickers = matcher.match_tickers_in_text(f"{item.title}\n{body}", alias_map)
-                        if not tickers:
-                            stats["skipped"] += 1
-                            continue
-                        # Idempotency: skip if an existing file has the same content_hash.
-                        path = writer.vault_path_for_news(
-                            _LEGACY_VAULT_ROOT, outlet, yyyymm, url_hash
+                        matches = matcher.match_tickers_in_text(
+                            f"{item.title}\n{body}", alias_map
                         )
-                        new_hash = writer.compute_news_content_hash(item.title, body)
-                        if path.exists() and _read_existing_hash(path) == new_hash:
+                        if not matches:
                             stats["skipped"] += 1
                             continue
-                        writer.write_news_doc(
-                            vault_root=_LEGACY_VAULT_ROOT,
-                            outlet=outlet,
+                        # matcher returns [{"corp_code", "ticker", "name"}, ...].
+                        # Extract ticker strings for the TEXT[] column, and use
+                        # the first match's corp_code for the FK (Q1 §news).
+                        tickers = [m["ticker"] for m in matches]
+                        primary_corp_code = matches[0].get("corp_code")
+                        published_at = (
+                            item.published
+                            if item.published is not None
+                            else datetime.fromtimestamp(0, tz=UTC)
+                        )
+                        outcome = db_writer.upsert_news_article(
+                            engine,
                             url=item.url,
-                            url_hash8=url_hash,
-                            yyyymm=yyyymm,
+                            outlet=outlet,
+                            published_at=published_at,
                             title=item.title,
-                            published_iso=pub_iso,
+                            body_md=body,
                             tickers=tickers,
-                            body=body,
+                            corp_code=primary_corp_code,
                         )
-                        stats["succeeded"] += 1
+                        if outcome == "inserted":
+                            stats["inserted"] += 1
+                        elif outcome == "updated":
+                            stats["updated"] += 1
+                        else:
+                            stats["skipped"] += 1
                     except Exception as exc:
                         _log.exception("news item failed")
                         stats["failed"].append({"doc": item.url, "error": str(exc)})
@@ -127,9 +133,12 @@ def collect_news(
                 stats["failed"].append({"doc": feed_url, "error": str(exc)})
 
     stats["elapsed_ms"] = int((time.monotonic() - start) * 1000)
-    record_source_run(
-        "news",
-        stats,
-        heartbeat_path=_LEGACY_VAULT_ROOT / "ingested" / "_status" / "heartbeat.md",
+    _log.info(
+        "collector_run_complete",
+        extra={
+            "source": "news",
+            "stats": stats,
+            "elapsed_ms": stats["elapsed_ms"],
+        },
     )
     return stats
