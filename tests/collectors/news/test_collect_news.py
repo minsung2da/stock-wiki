@@ -1,10 +1,17 @@
-"""Writer + client + collect_news behavior tests (D-06, D-10..D-13, R-08, R-11)."""
+"""Writer + client + collect_news behavior tests.
+
+Phase 1 plan 01-06 cutover: ``collect_news`` tests now assert DB state in the
+``news`` table instead of vault path existence. Writer module tests are
+retained until plan 01-09 deletes ``writer.py``.
+"""
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 from collectors.news import client as news_client
 from collectors.news.writer import (
@@ -151,10 +158,10 @@ def test_fetch_article_html_uses_trafilatura(monkeypatch) -> None:
     assert called["trafilatura_fetch"] is True
 
 
-# ---- collect_news ------------------------------------------------------------
+# ---- collect_news (DB-backed; plan 01-06) -----------------------------------
 
 
-def _single_feed(monkeypatch, outlet: str, feed_url: str, rss_path: Path) -> None:
+def _single_feed(monkeypatch, outlet: str, feed_url: str) -> None:
     """Restrict FEEDS_BY_OUTLET to a single feed for deterministic tests."""
     from collectors.news import feeds as feeds_mod
 
@@ -165,9 +172,56 @@ def _single_feed(monkeypatch, outlet: str, feed_url: str, rss_path: Path) -> Non
     monkeypatch.setattr(news_pkg, "FEEDS_BY_OUTLET", {outlet: [feed_url]})
 
 
-def test_collect_news_startup_guard_raises_before_fetch(vault_tmp, pg_clean, monkeypatch) -> None:
-    """R-09: no HTTP call must be issued when entity_aliases is empty."""
+def _seed_portfolio(monkeypatch, vault_tmp_dir: Path) -> None:
+    """Chdir into the vault_tmp parent so Portfolio.load(Path(".")) finds the
+    seeded notes/private/portfolio.md materialized by the vault_tmp fixture."""
+    monkeypatch.chdir(vault_tmp_dir.parent)
+
+
+def _rss_one_item(title_utf8_bytes: bytes, url: bytes) -> bytes:
+    return (
+        b"<?xml version='1.0' encoding='UTF-8'?>\n"
+        b"<rss version='2.0'><channel><title>test</title>"
+        b"<item>"
+        b"<title><![CDATA[" + title_utf8_bytes + b"]]></title>"
+        b"<link>" + url + b"</link>"
+        b"<pubDate>Mon, 20 Apr 2026 21:00:01 +0900</pubDate>"
+        b"</item></channel></rss>"
+    )
+
+
+def _select_news_count(engine) -> int:
+    with engine.begin() as conn:
+        return conn.execute(text("SELECT count(*) FROM news")).scalar() or 0
+
+
+def _select_news_row(engine, url_hash: str):
+    with engine.begin() as conn:
+        return conn.execute(
+            text(
+                "SELECT url_hash, url, outlet, corp_code, tickers, title, "
+                "       content_hash, body_md, license_flag "
+                "FROM news WHERE url_hash=:uh"
+            ),
+            {"uh": url_hash},
+        ).first()
+
+
+def test_collect_news_no_engine_raises() -> None:
+    """Engine is required; calling without it raises RuntimeError."""
+    from collectors.news import collect_news
+
+    with pytest.raises(RuntimeError):
+        collect_news(engine=None)
+
+
+def test_collect_news_assert_aliases_seeded_raises(
+    vault_tmp, pg_clean, monkeypatch
+) -> None:
+    """R-09: refuses to operate when entity_aliases is empty — BEFORE any HTTP call."""
     from collectors.news import NoAliasesSeededError, collect_news
+
+    _seed_portfolio(monkeypatch, vault_tmp)
 
     fetched: list[str] = []
 
@@ -177,113 +231,325 @@ def test_collect_news_startup_guard_raises_before_fetch(vault_tmp, pg_clean, mon
 
     monkeypatch.setattr(news_client, "fetch_rss_feed", _boom_rss)
     with pytest.raises(NoAliasesSeededError):
-        collect_news(vault_root=vault_tmp, engine=pg_clean)
+        collect_news(engine=pg_clean)
     assert fetched == []
 
 
-def test_collect_news_matches_samsung_and_writes_file(
+def test_collect_news_inserts_row(vault_tmp, seeded_engine, monkeypatch) -> None:
+    """End-to-end: RSS parsed → article fetched → matcher hits 삼성전자 → DB row UPSERTed."""
+    from collectors.news import collect_news
+    from collectors.news.client import url_hash64
+
+    _seed_portfolio(monkeypatch, vault_tmp)
+
+    # CDATA bytes = 삼성전자 최대실적
+    rss = _rss_one_item(
+        b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90 "
+        b"\xec\xb5\x9c\xeb\x8c\x80\xec\x8b\xa4\xec\xa0\x81",
+        b"https://www.hankyung.com/article/INSERT01",
+    )
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
+    # Stub trafilatura.extract so the matcher gets text containing 삼성전자.
+    import trafilatura
+
+    monkeypatch.setattr(
+        trafilatura,
+        "extract",
+        lambda *a, **kw: "삼성전자 1분기 매출 사상 최대.\n\n메모리 사이클 회복.",
+    )
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
+
+    stats = collect_news(engine=seeded_engine)
+    assert stats["inserted"] == 1, stats
+    assert stats["updated"] == 0
+    assert stats["skipped"] == 0
+    assert stats["failed"] == []
+
+    row = _select_news_row(
+        seeded_engine, url_hash64("https://www.hankyung.com/article/INSERT01")
+    )
+    assert row is not None
+    assert row.outlet == "hankyung"
+    assert row.tickers == ["005930"]
+    assert row.corp_code == "00126380"
+    assert "삼성전자" in row.body_md
+    assert row.license_flag == "summary_only"
+
+
+def test_collect_news_idempotent(vault_tmp, seeded_engine, monkeypatch) -> None:
+    """Re-run with identical body → 2nd call: skipped=1; no new row."""
+    from collectors.news import collect_news
+
+    _seed_portfolio(monkeypatch, vault_tmp)
+
+    rss = _rss_one_item(
+        b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90",
+        b"https://www.hankyung.com/article/IDEMP01",
+    )
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
+    import trafilatura
+
+    monkeypatch.setattr(
+        trafilatura,
+        "extract",
+        lambda *a, **kw: "삼성전자 1분기 매출.\n\n메모리 사이클 회복.",
+    )
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
+
+    s1 = collect_news(engine=seeded_engine)
+    assert s1["inserted"] == 1
+    assert _select_news_count(seeded_engine) == 1
+
+    s2 = collect_news(engine=seeded_engine)
+    assert s2["inserted"] == 0
+    assert s2["updated"] == 0
+    assert s2["skipped"] == 1
+    assert _select_news_count(seeded_engine) == 1  # still one row
+
+
+def test_collect_news_body_edited_updates(vault_tmp, seeded_engine, monkeypatch) -> None:
+    """2nd run with edited body → outcome=updated; content_hash differs."""
+    from collectors.news import collect_news
+    from collectors.news.client import url_hash64
+
+    _seed_portfolio(monkeypatch, vault_tmp)
+
+    rss = _rss_one_item(
+        b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90",
+        b"https://www.hankyung.com/article/EDITED01",
+    )
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
+    import trafilatura
+
+    monkeypatch.setattr(
+        trafilatura,
+        "extract",
+        lambda *a, **kw: "삼성전자 원본 본문.\n\n원본 두 번째 문단.",
+    )
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
+
+    s1 = collect_news(engine=seeded_engine)
+    assert s1["inserted"] == 1
+    row1 = _select_news_row(
+        seeded_engine, url_hash64("https://www.hankyung.com/article/EDITED01")
+    )
+    hash_1 = row1.content_hash
+
+    # Second run with EDITED body (publisher revised the article).
+    monkeypatch.setattr(
+        trafilatura,
+        "extract",
+        lambda *a, **kw: "삼성전자 수정된 본문.\n\n수정된 두 번째 문단.",
+    )
+    s2 = collect_news(engine=seeded_engine)
+    assert s2["updated"] == 1
+    assert s2["inserted"] == 0
+    assert s2["skipped"] == 0
+
+    row2 = _select_news_row(
+        seeded_engine, url_hash64("https://www.hankyung.com/article/EDITED01")
+    )
+    assert row2.content_hash != hash_1
+    assert "수정된" in row2.body_md
+
+
+def test_collect_news_no_match_skipped(vault_tmp, seeded_engine, monkeypatch) -> None:
+    """Body with no alias matches → skipped; no DB row written."""
+    from collectors.news import collect_news
+
+    _seed_portfolio(monkeypatch, vault_tmp)
+
+    rss = _rss_one_item(
+        b"unrelated headline",
+        b"https://www.hankyung.com/article/NOMATCH01",
+    )
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
+    import trafilatura
+
+    # Body contains NO seeded ticker aliases (Samsung 삼성전자 not mentioned).
+    monkeypatch.setattr(
+        trafilatura,
+        "extract",
+        lambda *a, **kw: "Apple iPhone launch.\n\nMore iPhone news.",
+    )
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
+
+    stats = collect_news(engine=seeded_engine)
+    assert stats["inserted"] == 0
+    assert stats["updated"] == 0
+    assert stats["skipped"] >= 1
+    assert _select_news_count(seeded_engine) == 0
+
+
+def test_collect_news_multiple_tickers_array(
     vault_tmp, seeded_engine, monkeypatch
 ) -> None:
-    """End-to-end: RSS parsed, article fetched, matcher hits 삼성전자 → file written."""
+    """Body mentioning both Samsung + SK Hynix → tickers TEXT[] = ['005930','000660'].
+
+    GIN @> query returns the row.
+    """
+    from collectors.news import collect_news
+    from collectors.news.client import url_hash64
+
+    _seed_portfolio(monkeypatch, vault_tmp)
+
+    # Pre-seed SK Hynix entity + alias (seeded_engine already has Samsung).
+    with seeded_engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO entities (corp_code, canonical_name, current_ticker, market) "
+                "VALUES ('00164779','SK하이닉스','000660','KOSPI')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO entity_aliases (corp_code, kind, value, valid_from, valid_to) "
+                "VALUES ('00164779','ticker','000660',:vf,NULL),"
+                "       ('00164779','name','SK하이닉스',:vf,NULL)"
+            ),
+            {"vf": date(2020, 1, 1)},
+        )
+    # Portfolio watchlist already contains 000660 (per conftest seed).
+
+    rss = _rss_one_item(
+        b"\xeb\xb0\x98\xeb\x8f\x84\xec\xb2\xb4",  # 반도체
+        b"https://www.hankyung.com/article/MULTI01",
+    )
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
+    import trafilatura
+
+    monkeypatch.setattr(
+        trafilatura,
+        "extract",
+        lambda *a, **kw: "삼성전자와 SK하이닉스 동반 호조.\n\n반도체 사이클 회복.",
+    )
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
+
+    stats = collect_news(engine=seeded_engine)
+    assert stats["inserted"] == 1
+
+    row = _select_news_row(
+        seeded_engine, url_hash64("https://www.hankyung.com/article/MULTI01")
+    )
+    assert row is not None
+    # Both tickers present in the array (order from matcher = longest alias first).
+    assert set(row.tickers) == {"005930", "000660"}
+
+    # GIN @> query works
+    with seeded_engine.begin() as conn:
+        n_samsung = conn.execute(
+            text("SELECT count(*) FROM news WHERE tickers @> ARRAY['005930']")
+        ).scalar()
+        n_hynix = conn.execute(
+            text("SELECT count(*) FROM news WHERE tickers @> ARRAY['000660']")
+        ).scalar()
+    assert n_samsung == 1
+    assert n_hynix == 1
+
+
+def test_collect_news_no_markdown_written(
+    vault_tmp, seeded_engine, monkeypatch
+) -> None:
+    """Veto #9: after successful run, no vault/raw/news/ directory exists in CWD."""
     from collectors.news import collect_news
 
-    rss_bytes = (_FIXTURE_RSS / "hankyung_economy.xml").read_bytes()
-    html_sample = (_FIXTURE_NEWS / "hankyung_sample.html").read_text(encoding="utf-8")
+    _seed_portfolio(monkeypatch, vault_tmp)
 
-    # Craft an RSS with a single item whose title mentions 삼성전자.
-    rss_single = (
-        b"<?xml version='1.0' encoding='UTF-8'?>\n"
-        b"<rss version='2.0'><channel><title>test</title>"
-        b"<item>"
-        b"<title><![CDATA[\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90 "
-        b"\xec\xb5\x9c\xeb\x8c\x80\xec\x8b\xa4\xec\xa0\x81]]></title>"
-        b"<link>https://www.hankyung.com/article/SAMPLE001</link>"
-        b"<pubDate>Mon, 20 Apr 2026 21:00:01 +0900</pubDate>"
-        b"</item></channel></rss>"
+    rss = _rss_one_item(
+        b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90",
+        b"https://www.hankyung.com/article/NOMD01",
     )
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
+    import trafilatura
 
-    def _fake_rss(url):
-        return rss_single
+    monkeypatch.setattr(
+        trafilatura,
+        "extract",
+        lambda *a, **kw: "삼성전자 호조.\n\n반도체 회복.",
+    )
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    def _fake_article(url):
-        return html_sample
+    collect_news(engine=seeded_engine)
 
-    monkeypatch.setattr(news_client, "fetch_rss_feed", _fake_rss)
-    monkeypatch.setattr(news_client, "fetch_article_html", _fake_article)
-    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy", rss_bytes)
-
-    stats = collect_news(vault_root=vault_tmp, engine=seeded_engine)
-    assert stats["succeeded"] == 1, stats
-    # Title contains 삼성전자 → matcher hits → file written.
-    files = list((vault_tmp / "raw" / "news").rglob("*.md"))
-    assert len(files) == 1
-    fm, body = read_frontmatter(str(files[0]))
-    assert fm.provenance.outlet == "hankyung"
-    assert fm.provenance.license_flag == "summary_only"
-    assert fm.provenance.trust_level == "semi_trusted"
-    assert fm.provenance.tickers and fm.provenance.tickers[0].ticker == "005930"
-    # Body must be ≤2 paragraphs (heading takes its own block; strip it first).
-    body_after_heading = body.split("\n\n", 1)[1] if "\n\n" in body else ""
-    bp = [p for p in body_after_heading.split("\n\n") if p.strip()]
-    assert len(bp) <= 2
+    # No vault/raw/news/ subdir was created by collect_news under cwd.
+    # (chdir is to vault_tmp.parent, which has only notes/private/.)
+    cwd_path = Path(".").resolve()
+    assert not (cwd_path / "vault" / "raw" / "news").exists()
 
 
-def test_collect_news_drops_unmatched_article(vault_tmp, seeded_engine, monkeypatch) -> None:
-    """Article whose matched tickers intersect scope = ∅ → not written."""
+def test_collect_news_truncates_body_to_two_paragraphs(
+    vault_tmp, seeded_engine, monkeypatch
+) -> None:
+    """D-13 cap: trafilatura returns 5 paragraphs → DB row body_md has only 2."""
+    from collectors.news import collect_news
+    from collectors.news.client import url_hash64
+
+    _seed_portfolio(monkeypatch, vault_tmp)
+
+    rss = _rss_one_item(
+        b"\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90",
+        b"https://www.hankyung.com/article/TRUNC1",
+    )
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
+    raw_5para = "삼성전자 p1.\n\np2.\n\np3.\n\np4.\n\np5."
+    import trafilatura
+
+    monkeypatch.setattr(trafilatura, "extract", lambda *a, **kw: raw_5para)
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
+
+    stats = collect_news(engine=seeded_engine)
+    assert stats["inserted"] == 1
+
+    row = _select_news_row(
+        seeded_engine, url_hash64("https://www.hankyung.com/article/TRUNC1")
+    )
+    # Body kept first two paragraphs only.
+    assert "p1" in row.body_md
+    assert "p2" in row.body_md
+    assert "p3" not in row.body_md
+    assert "p4" not in row.body_md
+    assert "p5" not in row.body_md
+
+
+def test_collect_news_soft_skips_when_trafilatura_returns_none(
+    vault_tmp, seeded_engine, monkeypatch
+) -> None:
+    """trafilatura.extract → None: counted as skipped, no failure, no DB row."""
     from collectors.news import collect_news
 
-    html_sample = (_FIXTURE_NEWS / "hankyung_sample.html").read_text(encoding="utf-8")
-    rss_single = (
-        b"<?xml version='1.0' encoding='UTF-8'?>\n"
-        b"<rss version='2.0'><channel><title>test</title>"
-        b"<item><title>unrelated news</title>"
-        b"<link>https://www.hankyung.com/article/SAMPLE999</link>"
-        b"<pubDate>Mon, 20 Apr 2026 21:00:01 +0900</pubDate>"
-        b"</item></channel></rss>"
-    )
+    _seed_portfolio(monkeypatch, vault_tmp)
 
-    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss_single)
-    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: html_sample)
-    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy", Path("x"))
+    rss = _rss_one_item(b"x", b"https://www.hankyung.com/article/NOBODY1")
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html>x</html>")
+    from collectors.news import fetcher as fetcher_mod
 
-    stats = collect_news(vault_root=vault_tmp, engine=seeded_engine)
-    assert stats["succeeded"] == 0
+    monkeypatch.setattr(fetcher_mod, "extract_first_two_paragraphs", lambda html: None)
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
+
+    stats = collect_news(engine=seeded_engine)
+    assert stats["inserted"] == 0
+    assert stats["updated"] == 0
     assert stats["skipped"] >= 1
-    assert list((vault_tmp / "raw" / "news").rglob("*.md")) == []
+    assert stats["failed"] == []
+    assert _select_news_count(seeded_engine) == 0
 
 
-def test_collect_news_idempotent_second_run(vault_tmp, seeded_engine, monkeypatch) -> None:
-    """Rerun with identical inputs → content_hash match → skipped."""
+def test_collect_news_cross_url_dedup_writes_two_rows_same_content_hash(
+    vault_tmp, seeded_engine, monkeypatch
+) -> None:
+    """R-11: two distinct URLs with identical body → two news rows, identical content_hash."""
     from collectors.news import collect_news
 
-    html_sample = (_FIXTURE_NEWS / "hankyung_sample.html").read_text(encoding="utf-8")
-    rss_single = (
-        b"<?xml version='1.0' encoding='UTF-8'?>\n"
-        b"<rss version='2.0'><channel><title>test</title>"
-        b"<item>"
-        b"<title><![CDATA[\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90 "
-        b"\xec\xb5\x9c\xeb\x8c\x80\xec\x8b\xa4\xec\xa0\x81]]></title>"
-        b"<link>https://www.hankyung.com/article/SAMPLE001</link>"
-        b"<pubDate>Mon, 20 Apr 2026 21:00:01 +0900</pubDate>"
-        b"</item></channel></rss>"
-    )
-    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss_single)
-    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: html_sample)
-    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy", Path("x"))
+    _seed_portfolio(monkeypatch, vault_tmp)
 
-    s1 = collect_news(vault_root=vault_tmp, engine=seeded_engine)
-    assert s1["succeeded"] == 1
-
-    s2 = collect_news(vault_root=vault_tmp, engine=seeded_engine)
-    assert s2["succeeded"] == 0
-    assert s2["skipped"] >= 1
-
-
-def test_collect_news_cross_url_dedup(vault_tmp, seeded_engine, monkeypatch) -> None:
-    """R-11: two distinct URLs with identical body → two files, identical content_hash."""
-    from collectors.news import collect_news
-
-    html_sample = (_FIXTURE_NEWS / "hankyung_sample.html").read_text(encoding="utf-8")
     rss_two = (
         b"<?xml version='1.0' encoding='UTF-8'?>\n"
         b"<rss version='2.0'><channel><title>test</title>"
@@ -300,93 +566,24 @@ def test_collect_news_cross_url_dedup(vault_tmp, seeded_engine, monkeypatch) -> 
         b"</channel></rss>"
     )
     monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss_two)
-    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: html_sample)
-    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy", Path("x"))
-
-    stats = collect_news(vault_root=vault_tmp, engine=seeded_engine)
-    assert stats["succeeded"] == 2
-    files = sorted((vault_tmp / "raw" / "news").rglob("*.md"))
-    assert len(files) == 2
-    fm_a, _ = read_frontmatter(str(files[0]))
-    fm_b, _ = read_frontmatter(str(files[1]))
-    assert files[0] != files[1]
-    assert fm_a.provenance.content_hash == fm_b.provenance.content_hash
-
-
-def test_collect_news_records_heartbeat(vault_tmp, seeded_engine, monkeypatch) -> None:
-    from collectors.news import collect_news
-
-    rss_empty = b"<?xml version='1.0'?><rss version='2.0'><channel><title>t</title></channel></rss>"
-    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss_empty)
-    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy", Path("x"))
-    collect_news(vault_root=vault_tmp, engine=seeded_engine)
-    hb = vault_tmp / "ingested" / "_status" / "heartbeat.md"
-    assert hb.exists()
-    content = hb.read_text(encoding="utf-8")
-    assert "news:" in content
-
-
-def test_collect_news_soft_skips_when_trafilatura_returns_none(
-    vault_tmp, seeded_engine, monkeypatch
-) -> None:
-    from collectors.news import collect_news
-
-    rss_single = (
-        b"<?xml version='1.0' encoding='UTF-8'?>\n"
-        b"<rss version='2.0'><channel><title>test</title>"
-        b"<item><title>x</title>"
-        b"<link>https://www.hankyung.com/article/SAMPLE002</link>"
-        b"<pubDate>Mon, 20 Apr 2026 21:00:01 +0900</pubDate>"
-        b"</item></channel></rss>"
-    )
-    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss_single)
-    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html>no body</html>")
-    # Also patch extract to return None to be deterministic.
-    from collectors.news import fetcher as fetcher_mod
-
-    monkeypatch.setattr(fetcher_mod, "extract_first_two_paragraphs", lambda html: None)
-    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy", Path("x"))
-
-    stats = collect_news(vault_root=vault_tmp, engine=seeded_engine)
-    assert stats["failed"] == [] or all(
-        "extract" not in str(x) for x in stats["failed"]
-    )  # no hard failure
-    assert stats["succeeded"] == 0
-
-
-def test_collect_news_truncates_body_to_two_paragraphs(
-    vault_tmp, seeded_engine, monkeypatch
-) -> None:
-    from collectors.news import collect_news
-    from collectors.news import fetcher as fetcher_mod
-
-    rss_single = (
-        b"<?xml version='1.0' encoding='UTF-8'?>\n"
-        b"<rss version='2.0'><channel><title>test</title>"
-        b"<item>"
-        b"<title><![CDATA[\xec\x82\xbc\xec\x84\xb1\xec\xa0\x84\xec\x9e\x90]]></title>"
-        b"<link>https://www.hankyung.com/article/TRUNC1</link>"
-        b"<pubDate>Mon, 20 Apr 2026 21:00:01 +0900</pubDate>"
-        b"</item></channel></rss>"
-    )
-    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss_single)
     monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
-    # Stub trafilatura output: 5 paragraphs → fetcher truncates to 2.
-    raw_5para = "p1.\n\np2.\n\np3.\n\np4.\n\np5."
     import trafilatura
 
-    monkeypatch.setattr(trafilatura, "extract", lambda *a, **kw: raw_5para)
-    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy", Path("x"))
+    monkeypatch.setattr(
+        trafilatura,
+        "extract",
+        lambda *a, **kw: "삼성전자 동일 본문.\n\n동일 두 번째 문단.",
+    )
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    stats = collect_news(vault_root=vault_tmp, engine=seeded_engine)
-    assert stats["succeeded"] == 1
-    files = list((vault_tmp / "raw" / "news").rglob("*.md"))
-    assert len(files) == 1
-    _fm, body = read_frontmatter(str(files[0]))
-    # Body should contain only p1. and p2., not p3/p4/p5.
-    assert "p1." in body and "p2." in body
-    assert "p3." not in body
-    assert "p4." not in body
-    assert "p5." not in body
-    # Verify fetcher truncation helper directly too.
-    assert fetcher_mod.extract_first_two_paragraphs.__name__ == "extract_first_two_paragraphs"
+    stats = collect_news(engine=seeded_engine)
+    assert stats["inserted"] == 2  # 2 distinct url_hashes
+    with seeded_engine.begin() as conn:
+        rows = conn.execute(
+            text("SELECT url, content_hash FROM news ORDER BY url")
+        ).fetchall()
+    assert len(rows) == 2
+    # Same content_hash (R-11 accepted tradeoff)
+    assert rows[0].content_hash == rows[1].content_hash
+    # Different url
+    assert rows[0].url != rows[1].url
