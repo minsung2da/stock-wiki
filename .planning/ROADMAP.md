@@ -58,8 +58,8 @@ Postgres 테이블에 직접 INSERT한다. `shared/heartbeat.py` no-op stub과 `
 **Plans:** 9 plans across 4 waves
 - [x] 01-01-PLAN.md — Schema migration 0006 + ORM models (Wave 0)
 - [x] 01-02-PLAN.md — CLI cleanup + collector signature strip (Wave 0)
-- [ ] 01-03-PLAN.md — macro collector cutover → `macro_series` (Wave 1)
-- [ ] 01-04-PLAN.md — krx collector cutover → `ohlcv` (Wave 1)
+- [x] 01-03-PLAN.md — macro collector cutover → `macro_series` (Wave 1)
+- [x] 01-04-PLAN.md — krx collector cutover → `ohlcv` (Wave 1)
 - [ ] 01-05-PLAN.md — kind collector cutover → `filings` + `events` (Wave 2)
 - [ ] 01-06-PLAN.md — news collector cutover → `news` (Wave 2)
 - [ ] 01-07-PLAN.md — dart collector cutover → `filings` (Wave 2)
