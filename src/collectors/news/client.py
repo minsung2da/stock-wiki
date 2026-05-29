@@ -47,6 +47,21 @@ def url_hash8(url: str) -> str:
     return hashlib.sha256(url.encode("utf-8")).hexdigest()[:8]
 
 
+def url_hash64(url: str) -> str:
+    """Full 64-char sha256 of canonical URL — v2.0 dedup key for ``news.url_hash``.
+
+    Plan 01-06 replaces the v1.0 ``url_hash8`` (8-char prefix, collision risk
+    at scale) with the full sha256 hex digest as the natural UNIQUE key for
+    the ``news`` table. ``url_hash8`` is retained for backward compatibility
+    with any non-collector code.
+
+    Surface whitespace is stripped (RSS feeds occasionally surface URLs with
+    trailing newlines or spaces from CDATA wrapping); the canonical URL string
+    is the post-strip value.
+    """
+    return hashlib.sha256(url.strip().encode("utf-8")).hexdigest()
+
+
 def _scheme_ok(url: str) -> bool:
     return url.startswith(("http://", "https://"))
 
