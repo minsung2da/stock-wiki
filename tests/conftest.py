@@ -99,6 +99,10 @@ _LIVE_TABLES = (
     "collector_runs",
     # Phase 1 KIND classifier — FKs into filings, must precede filings
     "events",
+    # Phase 2 decision cards — corp_code FK → entities; self-ref
+    # supersedes/superseded_by handled by TRUNCATE ... CASCADE. Must precede
+    # entities (its FK target).
+    "decision_cards",
     # Phase 1 body-bearing tables
     "news",
     "filings",

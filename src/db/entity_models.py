@@ -40,6 +40,7 @@ __all__ = [
     "MacroSeries",
     "Event",
     "CollectorRun",
+    "DecisionCard",
 ]
 
 
@@ -357,5 +358,85 @@ class CollectorRun(Base):
             "ix_collector_runs_source_time",
             "source",
             sa.text("run_at DESC"),
+        ),
+    )
+
+
+class DecisionCard(Base):
+    """Canonical v2.0 analysis-output row — one decision card.
+
+    Authoritative DDL is the Alembic migration
+    (``0007_decision_cards.py``). This ORM class exists only so
+    ``Base.metadata`` lists ``decision_cards`` and column-set parity is
+    enforced by ``tests/db/test_migration_0007.py::test_orm_round_trip``.
+
+    Hard Veto reminders:
+
+      * Veto #2 — ``expires_at`` is NOT NULL (no default, no Optional);
+        every card is a timed thesis.
+      * Veto #3 — contradictions live structured inside ``payload`` JSONB.
+      * Veto #6 — no embedding column here (CONTEXT lock); decision_cards is
+        excluded from Phase 3 ``hybrid_search``. Do NOT add ``_HalfVec``.
+      * Veto #8 — ``body_md`` is whole-card TEXT; no chunking column.
+
+    ``body_tsv`` is a GENERATED ALWAYS AS (...) STORED column in the DB
+    (the app never writes it). It is declared here as a plain nullable
+    ``TSVECTOR`` so ``sa.inspect`` column-set parity with the live table
+    holds — we never INSERT into it from the ORM.
+    """
+
+    __tablename__ = "decision_cards"
+
+    card_id = sa.Column(sa.Text, primary_key=True)
+    corp_code = sa.Column(
+        sa.CHAR(8),
+        sa.ForeignKey("entities.corp_code", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ticker = sa.Column(sa.CHAR(6), nullable=True)
+    generated_at = sa.Column(sa.DateTime(timezone=True), nullable=False)
+    as_of = sa.Column(sa.DateTime(timezone=True), nullable=False)
+    payload = sa.Column(postgresql.JSONB, nullable=False)
+    body_md = sa.Column(sa.Text, nullable=False)
+    status = sa.Column(
+        sa.Text,
+        nullable=False,
+        server_default=sa.text("'active'"),
+    )
+    supersedes = sa.Column(
+        sa.Text,
+        sa.ForeignKey("decision_cards.card_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    superseded_by = sa.Column(
+        sa.Text,
+        sa.ForeignKey("decision_cards.card_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    expires_at = sa.Column(sa.DateTime(timezone=True), nullable=False)
+    schema_version = sa.Column(
+        sa.SmallInteger,
+        nullable=False,
+        server_default=sa.text("1"),
+    )
+    body_tsv = sa.Column(postgresql.TSVECTOR, nullable=True)
+
+    __table_args__ = (
+        sa.CheckConstraint(
+            "status IN ('active','superseded','invalidated')",
+            name="ck_decision_cards_status",
+        ),
+        sa.Index(
+            "ix_decision_cards_corp_status_gen",
+            "corp_code",
+            "status",
+            sa.text("generated_at DESC"),
+        ),
+        sa.Index("ix_decision_cards_supersedes", "supersedes"),
+        sa.Index("ix_decision_cards_expires", "expires_at"),
+        sa.Index(
+            "ix_decision_cards_body_tsv",
+            "body_tsv",
+            postgresql_using="gin",
         ),
     )
