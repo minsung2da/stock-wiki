@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
-stopped_at: Phase 02 complete (3/3) — ready to discuss Phase 03
-last_updated: 2026-05-29T22:44:49.510Z
+stopped_at: Phase 3 context gathered
+last_updated: "2026-06-01T13:01:06.662Z"
 progress:
   total_phases: 9
   completed_phases: 2
@@ -27,13 +27,13 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 03 — one company walking skeleton
+**Current focus:** Phase 03 — MCP Tool Surface (Read-Side)
 
 ## Current Position
 
 Phase: 03
-Plan: Not started
-Next: Phase 2 (Decision Card Schema & Storage) — awaiting `/gsd:plan-phase 2`
+Plan: Not started (context gathered)
+Next: Phase 3 (MCP Tool Surface — Read-Side) — awaiting `/gsd:plan-phase 3`
 
 Progress: [██████████] 100%
 
@@ -171,6 +171,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-05-29T22:26:51.144Z
-Stopped at: Completed 02-03-PLAN.md
-Resume file: None
+Last session: 2026-06-01T13:01:06.641Z
+Stopped at: Phase 3 context gathered
+Resume file: .planning/phases/03-mcp-tool-surface-read-side/03-CONTEXT.md
