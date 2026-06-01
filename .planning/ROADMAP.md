@@ -131,7 +131,17 @@ graph and Success Criteria Coverage table.
   5. 모든 도구는 prompt-injection defense (XML delimiter + 패턴 prefilter)를 통과한 본문만 LLM
      pipeline으로 흘려보낸다.
 
-**Plans**: TBD
+**범위 확장 (2026-06-01, D-05/D-06):** notes 적재(`notes` 테이블 + ingest) 및 재무 데이터 수집
+(`fundamentals` 테이블 + collector)이 Phase 3 IN-SCOPE로 확정됨 — `hybrid_search`가 메모까지
+검색(SC#4 글자 그대로), `peer_view`가 실제 동종업종 median을 계산.
+
+**Plans:** 6 plans across 3 waves
+- [ ] 03-01-PLAN.md — Wave 0: deps re-add + migration 0008 (notes/fundamentals 테이블, bm25/HNSW 인덱스) + ORM + .mcp.json + [BLOCKING] alembic upgrade head [SC#1, SC#4, D-05, D-06]
+- [ ] 03-02-PLAN.md — Wave 0: embedding/tokenizer leaves + notes-ingest + filings/news backfill + SC#3 run_sql 가드 + seeded fixtures [SC#3, SC#4, D-05]
+- [ ] 03-03-PLAN.md — Wave 1: leaf utils (errors/models/injection/paths) + 공유 mcp 인스턴스 [SC#2, SC#5, D-01, D-03]
+- [ ] 03-04-PLAN.md — Wave 1: get_filing/search_filings/get_decision_card/get_note/list_portfolio/get_briefing [SC#2, SC#5, D-01, D-04, Veto#13]
+- [ ] 03-05-PLAN.md — Wave 1: fundamentals collector + ohlcv_range/flow_range/peer_view [SC#2, D-01, D-04, D-06, Veto#6]
+- [ ] 03-06-PLAN.md — Wave 2: hybrid_search RRF k=60 + server.py stdio + SC#1/SC#3 registry enforced [SC#1, SC#2, SC#3, SC#4, SC#5, D-02]
 
 ---
 
