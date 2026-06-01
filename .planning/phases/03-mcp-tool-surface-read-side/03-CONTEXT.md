@@ -76,6 +76,32 @@ Depends on Phase 1 (filings/news/ohlcv/macro_series/notes 데이터) + Phase 2 (
 - **근거:** 토큰 예산 보호와 유연성의 균형. 무제한은 실수로 폭주, 엄격 하드 캡은 대량 조회 시
   여러 번 호출 강제. 기본값으로 보호하되 호출자가 명시적으로 늘릴 수 있게.
 
+### 영역 5 — 범위 확장 결정 (plan-phase 2026-06-01, RESEARCH 발견 후 사용자 확정)
+
+RESEARCH가 두 가지를 발견함: ① `notes` 테이블이 Phase 1에 없음, ② PER/PBR/ROE 재무
+데이터 소스가 DB 어디에도 없음. 두 항목 모두 CONTEXT 최초 작성 시 "데이터가 존재한다"는
+전제로 planner에 위임됐으나, 그 전제가 깨져 사용자에게 재확인 → **풀스코프로 확정.**
+
+- **D-05 (notes 검색 풀스코프 — Q1=B):** `hybrid_search`는 공시/뉴스/**메모** 3개 narrative를
+  모두 검색한다 (SC#4 글자 그대로 충족). Wave-0 migration이 `notes` 테이블을 생성하고,
+  `notes/private/` 디스크 메모를 DB로 적재한다 (bge-m3 임베딩 + mecab-ko BM25 토큰).
+  - **시사:** Wave-0에 `notes` 테이블 + 적재 backfill 포함. 개인 메모(gitignored)가 **로컬
+    Postgres에만** 적재됨 (git 커밋 안 됨, 로컬 전용). `get_note`는 별개로 디스크
+    화이트리스트 read-only 유지(D-03/path-traversal 방어).
+
+- **D-06 (peer_view 재무 수집 풀스코프 — Q2=C):** `peer_view(corp_code, metric)`는 PER/PBR/ROE
+  **실제** 동종업종 median을 계산한다. 데이터 소스 수집기를 Phase 3에 도입:
+  - **PER/PBR/EPS/BPS** → `pykrx get_market_fundamental` (종목·날짜별 스냅샷).
+  - **ROE** → `dart-fss` 재무제표(순이익/자본) 파싱 → ROE 산출.
+  - 신규 `fundamentals` 테이블 + migration + collector/backfill. `peer_view`는
+    `entities.sector` 그룹핑 + `percentile_cont(0.5)` median.
+  - **출처:** `redesign-2026-05.md` §2 line 189 (`peer_view` purpose = "동종업종 median
+    PER/PBR/ROE"); ROADMAP SC#2가 이를 "동종업종 median"으로 축약.
+  - **시사:** Phase 3 범위가 read-side 도구 + **재무 데이터 수집**까지 확장됨 (사용자 명시
+    결정 — 통상 분리 권장되나 사용자가 통합 선택). collector는 `src/collectors/`에 추가,
+    기존 pykrx/dart-fss collector 패턴 재사용. 가중(시총 가중 등) median은 후속 개선으로
+    남기되, 반환 모델은 metric별 값 + 표본수(n)를 담아 추후 확장 가능하게 설계.
+
 ### Claude's Discretion (planner / research에 위임)
 
 사용자 선호 없음 — RESEARCH best-practice 확인 후 planner 결정:
@@ -89,7 +115,8 @@ Depends on Phase 1 (filings/news/ohlcv/macro_series/notes 데이터) + Phase 2 (
    Phase 1/2의 `body_tsv` config 및 `body_emb halfvec(1024)` 패턴 재사용.
 5. **`.mcp.json` 등록 + stdio 서버 기동** 방식 (Claude Code config / systemd 등).
 6. **각 도구 반환 Pydantic 모델 정의** (빈 상태 표현 가능하게 — D-01).
-7. **`peer_view` "동종업종 median PER/PBR/ROE" 계산** — `entities.sector` 그룹핑 + 재무 소스.
+7. ~~**`peer_view` 계산**~~ → **D-06으로 확정** (PER/PBR/ROE 실제 수집·계산). planner는 수집기
+   구현 디테일(pykrx/dart-fss 호출, `fundamentals` 테이블 스키마, backfill 범위)만 결정.
 8. **`get_decision_card`가 `src/cards/store.get_active`를 wrapping** — view="payload"(기본)|
    "both" serialize-time exclude (Phase 2에서 get_active가 full DecisionCard 반환하도록 설계됨).
 9. **`get_briefing` 구현 시점** — ROADMAP SC#2는 Phase 3 도구로 나열하나 briefing row(report_type)
@@ -182,6 +209,9 @@ Depends on Phase 1 (filings/news/ohlcv/macro_series/notes 데이터) + Phase 2 (
 
 <deferred>
 ## Deferred Ideas
+
+> **범위 변경 (2026-06-01):** notes 적재(D-05)와 재무 데이터 수집(D-06)은 이제 **Phase 3 IN-SCOPE**.
+> 아래 deferred 목록과 혼동 금지.
 
 논의 중 surface된 비-Phase-3 아이디어 / 후속 phase 의존:
 
