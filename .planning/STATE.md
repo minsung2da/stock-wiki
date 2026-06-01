@@ -4,11 +4,11 @@ milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
 stopped_at: Phase 3 context gathered
-last_updated: "2026-06-01T13:01:06.662Z"
+last_updated: "2026-06-01T15:19:01.302Z"
 progress:
   total_phases: 9
   completed_phases: 2
-  total_plans: 12
+  total_plans: 18
   completed_plans: 12
   percent: 22
 ---
