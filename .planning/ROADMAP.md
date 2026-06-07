@@ -21,7 +21,7 @@ truth, Markdown vault는 폐기, 사용자 thesis 메모만 disk에 잔존.
 
 - [x] **Phase 1: Collector DB-Direct Cutover** — 5개 collector가 Markdown 출력을 멈추고 Postgres에 직접 INSERT ✓ 2026-05-29
 - [x] **Phase 2: Decision Card Schema & Storage** — `decision_cards` 테이블 + Pydantic 모델 + 마이그레이션 ✓ 2026-05-30
-- [ ] **Phase 3: MCP Tool Surface (Read-Side)** — 타입드 MCP 도구로 stock-mcp 대체
+- [x] **Phase 3: MCP Tool Surface (Read-Side)** — 타입드 MCP 도구로 stock-mcp 대체 (completed 2026-06-07)
 - [ ] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성
 - [ ] **Phase 5: Briefing Renderer** — 일/주 top-N 변화 요약
 - [ ] **Phase 6: Paper-Trade Action Layer** — Gates A–D + KIS 모의 API + ≥30일 shadow
@@ -135,13 +135,13 @@ graph and Success Criteria Coverage table.
 (`fundamentals` 테이블 + collector)이 Phase 3 IN-SCOPE로 확정됨 — `hybrid_search`가 메모까지
 검색(SC#4 글자 그대로), `peer_view`가 실제 동종업종 median을 계산.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 - [x] 03-01-PLAN.md — Wave 0: deps re-add + migration 0008 (notes/fundamentals 테이블, bm25/HNSW 인덱스) + ORM + .mcp.json + [BLOCKING] alembic upgrade head [SC#1, SC#4, D-05, D-06]
 - [x] 03-02-PLAN.md — Wave 0: embedding/tokenizer leaves + notes-ingest + filings/news backfill + SC#3 run_sql 가드 + seeded fixtures [SC#3, SC#4, D-05]
 - [x] 03-03-PLAN.md — Wave 1: leaf utils (errors/models/injection/paths) + 공유 mcp 인스턴스 [SC#2, SC#5, D-01, D-03]
 - [x] 03-04-PLAN.md — Wave 1: get_filing/search_filings/get_decision_card/get_note/list_portfolio/get_briefing [SC#2, SC#5, D-01, D-04, Veto#13]
 - [x] 03-05-PLAN.md — Wave 1: fundamentals collector + ohlcv_range/flow_range/peer_view [SC#2, D-01, D-04, D-06, Veto#6]
-- [ ] 03-06-PLAN.md — Wave 2: hybrid_search RRF k=60 + server.py stdio + SC#1/SC#3 registry enforced [SC#1, SC#2, SC#3, SC#4, SC#5, D-02]
+- [x] 03-06-PLAN.md — Wave 2: hybrid_search RRF k=60 + server.py stdio + SC#1/SC#3 registry enforced [SC#1, SC#2, SC#3, SC#4, SC#5, D-02]
 
 ---
 

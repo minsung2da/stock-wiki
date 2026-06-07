@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
-status: ready_to_plan
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-06-07T11:16:05.849Z"
+status: ready_for_verification
+stopped_at: Completed 03-06-PLAN.md (phase 03 final plan)
+last_updated: "2026-06-07T11:39:03.601Z"
 progress:
   total_phases: 9
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 18
-  completed_plans: 17
-  percent: 22
+  completed_plans: 18
+  percent: 33
 ---
 
 # Project State
@@ -31,11 +31,18 @@ See:
 
 ## Current Position
 
-Phase: 03 (mcp-tool-surface-read-side) — EXECUTING
+Phase: 03 (mcp-tool-surface-read-side) — COMPLETE (6 of 6 plans done; ready for verification)
 Plan: 6 of 6
-Next: Phase 3 (MCP Tool Surface — Read-Side) — awaiting `/gsd:plan-phase 3`
+Next: Phase 4 (Analysis Runner — Bull/Bear/Judge → decision_card) — awaiting `/gsd:plan-phase 4`
 
-Progress: [█████████░] 94%
+Progress: [██████████] 100%
+
+**Phase 3 closed (2026-06-07):** all 10 locked read-side MCP tools (get_filing,
+search_filings, ohlcv_range, flow_range, peer_view, hybrid_search, get_note,
+get_decision_card, list_portfolio, get_briefing) implemented + registered on the
+FastMCP stdio server (`python -m mcp_v2`); SC#1 (10-tool registry), SC#2 (Pydantic
+returns), SC#3 (no run_sql / AST guard enforced), SC#4 (hybrid_search RRF k=60
+narrative-only), SC#5/D-02/D-03/D-04 all green.
 
 ## Phase 1 Outcomes (2026-05-29)
 
@@ -99,6 +106,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 03 P03-03 | 8 min | 3 tasks | 9 files |
 | Phase 03 P03-04 | 14 min | 3 tasks | 10 files |
 | Phase 03 P03-05 | 12 | 3 tasks | 12 files |
+| Phase 03 P03-06 | 11 min | 3 tasks | 8 files |
 
 ## Accumulated Context (v2.0)
 
@@ -138,6 +146,9 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase ?]: [Phase 03-04]: 6 read-side tools registered via mcp.tool(...)(fn) CALL form, not @mcp.tool decoration — the decorator yields a non-callable FunctionTool; call form keeps tools plain callables for in-process callers while still registering on the shared mcp
 - [Phase ?]: [Phase 03-04]: get_filing whole body_md (Veto #8); get_decision_card view=payload serialize-time exclude (Veto #13); all narrative bodies WRAP+FLAG (D-03); search_filings NULL-cast guards keep one parameterized text() (SC#3); get_briefing honest empty model (no report_type)
 - [Phase ?]: 03-05: fundamentals collector (pykrx PER/PBR/EPS/BPS + dart-fss ROE) DB-direct to typed NUMERIC fundamentals table (Veto #6); peer_view computes real same-sector percentile_cont(0.5) median (D-06)
+- [Phase 03-06]: hybrid_search RRF k=60 fuses pgvector HNSW (halfvec <=>) + VectorChord-BM25 (search_bm25query — verified the live tensorchord/vchord-suite:pg17-latest exposes search_bm25query/to_bm25query, NOT the <&> operator; A1 resolved) over WHOLE-body filings/news/notes (Veto #8); k=60 is an inline SQL literal AND _RRF_K constant (never a bind, SC#4); SET hnsw.iterative_scan='relaxed_order' per session; NULL-cast filter guards
+- [Phase 03-06]: hybrid_search returns references+snippet only (D-02 — SearchHit has no body_md field), default top-10 (D-04); snippet = ±200 match-window (300-char head fallback), wrapped+flagged (D-03/SC#5); forbidden numeric sources (ohlcv/macro_series/decision_cards) rejected at BOTH the tool boundary AND the retrieval layer (SC#4, Veto #6)
+- [Phase 03-06]: FastMCP server aggregation = _mcp.py (shared instance) + server.py (side-effect-imports 7 tool modules → 10 locked tools, SC#1; _check_db_connection SELECT 1 → DataBackendError) + __main__.py (python -m mcp_v2 stdio boot, stderr-only diagnostics — Pitfall 7); the SC#3 registry guard flipped from skip to ENFORCED (==10 names, no run_sql). Phase 03 CLOSED.
 
 ### Lessons Carried Over from v1.0
 
@@ -189,6 +200,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-06-07T11:16:05.813Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-06-07T11:39:03.570Z
+Stopped at: Completed 03-06-PLAN.md (phase 03 final plan)
 Resume file: None
