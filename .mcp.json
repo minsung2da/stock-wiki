@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "stock-mcp-v2": {
+      "command": ".venv/Scripts/python.exe",
+      "args": ["-m", "mcp_v2"],
+      "cwd": ".",
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
+    }
+  }
+}
