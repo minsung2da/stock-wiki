@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-06-07T10:08:56.263Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-06-07T10:33:38.469Z"
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 22
 ---
 
@@ -32,10 +32,10 @@ See:
 ## Current Position
 
 Phase: 03 (mcp-tool-surface-read-side) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Next: Phase 3 (MCP Tool Surface — Read-Side) — awaiting `/gsd:plan-phase 3`
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 83%
 
 ## Phase 1 Outcomes (2026-05-29)
 
@@ -96,6 +96,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 02-decision-card-schema-storage P03 | 8 min | 2 tasks | 4 files |
 | Phase 03 P03-01 | 22 min | 3 tasks | 9 files |
 | Phase 03 P03-02 | 22 | 3 tasks | 11 files |
+| Phase 03 P03-03 | 8 min | 3 tasks | 9 files |
 
 ## Accumulated Context (v2.0)
 
@@ -128,6 +129,10 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase ?]: [Phase 03-02]: bge-m3 embedder + mecab-ko tokenizer ported to src/mcp_v2/ as siblings (importable by the notes-ingest backfill outside the MCP server); torch import lazy inside Embedder.__init__ (version constant imports torch-free)
 - [Phase ?]: [Phase 03-02]: notes-ingest (ingest_notes) loads notes/private/**/*.md into the notes table (whole content_md, sha256 dedup, idempotent skip on unchanged; portfolio.md excluded); backfill_narrative fills NULL filings/news body_embedding/bm25_tokens/body_tsv (D-05 -> SC#4 full narrative coverage)
 - [Phase ?]: [Phase 03-02]: SC#3 run_sql guard — AST layer ENFORCED (every text() arg is a string constant or module-level name) over src/mcp_v2; registry layer (==10 locked names, no run_sql/execute_sql/raw_sql/query) skip-tolerant until 03-06; get_tools() is a coroutine in fastmcp 2.14.7 (awaited via asyncio.run)
+- [Phase 03-03]: Shared FastMCP instance lives in src/mcp_v2/_mcp.py (not server.py) to break the server<->tool-module import cycle; tool plans import 'from mcp_v2._mcp import mcp'
+- [Phase 03-03]: D-01 leaf layer: McpToolError(ToolError) hierarchy raised on faults + 12 empty-able Pydantic return models (extra='forbid'); mask_error_details=True VERIFIED on fastmcp 2.14.7 (keeps ToolError messages, masks other bugs)
+- [Phase 03-03]: injection.py WRAP+FLAG (D-03/SC#5): PATTERNS ported verbatim (6 ids) + detect() + wrap_untrusted() <untrusted> XML delimiter, never block/strip; archive is_adversarial/trust_level gate dropped; _SAFE_ATTR widened to allow dot/colon provenance ids
+- [Phase 03-03]: paths.safe_resolve read-only whitelist = ('notes/private/',) only (vault dropped, Veto #9); Path.resolve()+is_relative_to symlink/.. safe; NotePathForbidden/NoteNotFound (V12)
 
 ### Lessons Carried Over from v1.0
 
@@ -179,6 +184,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-06-07T10:08:18.805Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-06-07T10:33:22.023Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
