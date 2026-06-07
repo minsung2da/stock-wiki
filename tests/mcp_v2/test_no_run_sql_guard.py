@@ -4,10 +4,10 @@ Two layers, both runnable WITHOUT a DB (fast CI step, like tests/test_import_gua
 
 1. ``test_only_locked_tools_registered`` — the FastMCP instance must register
    EXACTLY the 10 locked read-side tool names and nothing else (no ``run_sql`` /
-   ``execute_sql`` / ``raw_sql`` / ``query`` tool). ``mcp_v2.server`` is wired by
-   Plan 03-06, so until it exists this test SKIPS (the locked-name set is still
-   asserted as a string literal so the contract is visible now). Once 03-06
-   lands, the import succeeds and the assertion is enforced.
+   ``execute_sql`` / ``raw_sql`` / ``query`` tool). Plan 03-06 wired
+   ``mcp_v2.server`` (it side-effect-imports every tool module), so this test is
+   now ENFORCED (no longer skip-tolerant) — importing the server registers the 10
+   tools and the equality assertion runs.
 
 2. ``test_no_fstring_sql_in_mcp_v2`` — ENFORCED now (not skip/xfail). AST-walks
    every ``src/mcp_v2/**.py`` and asserts every ``text(...)`` call's first arg is
@@ -21,8 +21,6 @@ from __future__ import annotations
 
 import ast
 import pathlib
-
-import pytest
 
 # The 10 LOCKED tool names (SC#2/SC#3 registry guard). Any extra or any rename is
 # a regression. NO arbitrary-SQL tool may ever be added.
@@ -53,27 +51,24 @@ def _registered_tool_names() -> set[str]:
     """Return the FastMCP instance's registered tool names.
 
     FastMCP 2.14.x exposes ``get_tools()`` as an async coroutine returning a
-    ``dict[name -> Tool]``; await it via ``asyncio.run``.
+    ``dict[name -> Tool]``; await it via ``asyncio.run``. Importing ``mcp_v2.server``
+    side-effect-registers all 10 tools (Plan 03-06 wired the server).
     """
     import asyncio
 
-    from mcp_v2.server import mcp  # type: ignore[import-not-found]
+    from mcp_v2.server import mcp
 
     tools = asyncio.run(mcp.get_tools())
     return set(tools.keys())
 
 
 def test_only_locked_tools_registered() -> None:
-    """Registry == exactly the 10 locked names; no forbidden SQL tool.
+    """Registry == exactly the 10 locked names; no forbidden SQL tool (SC#3).
 
-    Skips until Plan 03-06 wires ``mcp_v2.server``. The locked-name contract is
-    still asserted (string-literal set present) so the surface is pinned now.
+    ENFORCED (no longer skip-tolerant) now that Plan 03-06 wired ``mcp_v2.server``:
+    importing it registers EXACTLY the 10 locked tools and no arbitrary-SQL tool.
     """
-    try:
-        names = _registered_tool_names()
-    except ImportError:
-        pytest.skip("mcp_v2.server not wired yet (Plan 03-06); registry assertion staged")
-        return
+    names = _registered_tool_names()
 
     # No arbitrary-SQL escape hatch may ever slip in.
     leaked = names & FORBIDDEN_TOOL_NAMES
