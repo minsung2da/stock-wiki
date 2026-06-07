@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
-stopped_at: Phase 3 context gathered
-last_updated: "2026-06-01T15:19:01.302Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-06-07T09:43:39.097Z"
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 18
-  completed_plans: 12
+  completed_plans: 13
   percent: 22
 ---
 
@@ -27,15 +27,15 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 03 — MCP Tool Surface (Read-Side)
+**Current focus:** Phase 03 — mcp-tool-surface-read-side
 
 ## Current Position
 
-Phase: 03
-Plan: Not started (context gathered)
+Phase: 03 (mcp-tool-surface-read-side) — EXECUTING
+Plan: 2 of 6
 Next: Phase 3 (MCP Tool Surface — Read-Side) — awaiting `/gsd:plan-phase 3`
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 72%
 
 ## Phase 1 Outcomes (2026-05-29)
 
@@ -94,6 +94,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 02-decision-card-schema-storage P01 | 12 min | 3 tasks | 5 files |
 | Phase 02-decision-card-schema-storage P02 | 11 min | 3 tasks | 5 files |
 | Phase 02-decision-card-schema-storage P03 | 8 min | 2 tasks | 4 files |
+| Phase 03 P03-01 | 22 min | 3 tasks | 9 files |
 
 ## Accumulated Context (v2.0)
 
@@ -120,6 +121,9 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase 02-decision-card-schema-storage]: Added optional invalidation_reason field to DecisionCard (not in §3 YAML) — redesign §4 payload field; Plan 03 invalidate() writes it into payload JSONB so extra='forbid' reconstruct must accept it; adds no DB column (SC#1 untouched)
 - [Phase 02-decision-card-schema-storage]: src/cards/store.py: 4 typed SC#4 CRUD helpers (save_card/get_active/walk_supersedes/invalidate), atomic single-txn supersession, jsonb_set invalidation reason in payload (OQ-1, no new column); no run_sql escape hatch (Veto #7) — Phase 3 MCP get_decision_card + Phase 4 analyze_ticker call this storage API; supersession must be atomic, all SQL parameterized, get_active returns full typed DecisionCard so view=payload|both is a serialize-time exclude (Veto #13)
 - [Phase 02-decision-card-schema-storage]: Added optional status: str|None=None to DecisionCard (Rule 2) so invalidate/get_active/walk return cards surfacing the DB lifecycle status; merged in at reconstruct, defaults None (SC#3 round-trip unaffected, no new DB column) — Plan 02-03 acceptance criteria require invalidate() to return a card with .status=='invalidated'; status is a DB column not §3 payload, mirrors the existing optional invalidation_reason precedent
+- [Phase ?]: [Phase 03-01]: fastmcp pinned 2.x (>=2.11,<3.0, 2.14.7 installed) per SC#1; mcp + ingest dep groups re-added; CI uv sync gap closed
+- [Phase ?]: [Phase 03-01]: migration 0008 — notes (Veto #8 whole content_md + halfvec content_emb + bm25_tokens) + fundamentals (Veto #6 pure numeric, no embedding); BM25 (bm25_catalog.bm25_ops) + HNSW (halfvec_cosine_ops) indexes on filings/news/notes; APPLIED to live DB (alembic current==0008)
+- [Phase ?]: [Phase 03-01]: Plan 03-01 is SINGLE OWNER of collector_runs.source CHECK widening + run_log._ALLOWED_SOURCES (7 sources incl fundamentals/notes_ingest); Plans 02/05 only call record_collector_run
 
 ### Lessons Carried Over from v1.0
 
@@ -171,6 +175,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-06-01T13:01:06.641Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-mcp-tool-surface-read-side/03-CONTEXT.md
+Last session: 2026-06-07T09:43:39.075Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None
