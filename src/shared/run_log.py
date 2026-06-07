@@ -33,10 +33,16 @@ if TYPE_CHECKING:
 
 _log = logging.getLogger(__name__)
 
-# Mirrors the CHECK constraint on collector_runs.source (migration 0006).
-# Surfaced here as a Python-side gate so an unknown source name fails fast
-# with a clear ValueError instead of a less-informative DB-side rollback.
-_ALLOWED_SOURCES: frozenset[str] = frozenset({"dart", "krx", "news", "macro", "kind"})
+# Mirrors the CHECK constraint on collector_runs.source. Migration 0006 created
+# the original 5-source set; migration 0008 (Plan 03-01) widens both the DB CHECK
+# AND this frozenset to the full 7-source set in lockstep — Plan 03-01 is the
+# SINGLE OWNER of both edits. Plans 02 (notes_ingest) and 05 (fundamentals) only
+# CALL record_collector_run against this set; they do NOT touch it.
+# Surfaced here as a Python-side gate so an unknown source name fails fast with a
+# clear ValueError instead of a less-informative DB-side rollback.
+_ALLOWED_SOURCES: frozenset[str] = frozenset(
+    {"dart", "krx", "news", "macro", "kind", "fundamentals", "notes_ingest"}
+)
 
 __all__ = ["record_collector_run"]
 
@@ -56,8 +62,9 @@ def record_collector_run(
         Live engine; if ``None`` the helper returns ``None`` without raising
         (lets tests and dry-runs skip the observability sink cleanly).
     source : str
-        One of ``{'dart','krx','news','macro','kind'}``. Anything else
-        raises ``ValueError`` — programmer error, not runtime data.
+        One of ``{'dart','krx','news','macro','kind','fundamentals',
+        'notes_ingest'}``. Anything else raises ``ValueError`` — programmer
+        error, not runtime data.
     stats : dict
         Per-source counter shape ``{total, inserted, updated, skipped,
         failed[]}``. Stored as JSONB. Non-JSON-serializable values
@@ -88,9 +95,7 @@ def record_collector_run(
     try:
         stats_json = json.dumps(stats, default=str, ensure_ascii=False)
         extra_json = (
-            json.dumps(extra, default=str, ensure_ascii=False)
-            if extra is not None
-            else None
+            json.dumps(extra, default=str, ensure_ascii=False) if extra is not None else None
         )
         with engine.begin() as conn:
             row_id = conn.execute(

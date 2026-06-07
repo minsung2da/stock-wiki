@@ -23,7 +23,6 @@ from __future__ import annotations
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
-
 # ---------------------------------------------------------------------------
 # filings
 # ---------------------------------------------------------------------------
@@ -341,8 +340,7 @@ def test_events_legacy_exists(pg_engine) -> None:
     # The legacy table SHOULD still have the legacy 'payload' JSONB column.
     legacy_cols = {c["name"] for c in insp.get_columns("events_legacy")}
     assert "payload" in legacy_cols, (
-        "events_legacy is missing 'payload' — the rename moved the wrong "
-        "table or DDL was corrupted"
+        "events_legacy is missing 'payload' — the rename moved the wrong table or DDL was corrupted"
     )
 
 
@@ -380,13 +378,13 @@ def test_orm_round_trip(pg_engine) -> None:
     and ``src/db/entity_models.py`` (collector-facing types).
     """
     from db.entity_models import (
+        OHLCV,
         Base,
         CollectorRun,
         Event,
         Filing,
         MacroSeries,
         News,
-        OHLCV,
     )
 
     insp = inspect(pg_engine)
@@ -396,16 +394,13 @@ def test_orm_round_trip(pg_engine) -> None:
         orm_cols = {c.name for c in model.__table__.columns}
         missing = orm_cols - db_cols
         extra = db_cols - orm_cols
-        assert not missing, (
-            f"{table_name}: ORM declares columns absent from DB: {sorted(missing)}"
-        )
-        assert not extra, (
-            f"{table_name}: DB has columns not declared in ORM: {sorted(extra)}"
-        )
+        assert not missing, f"{table_name}: ORM declares columns absent from DB: {sorted(missing)}"
+        assert not extra, f"{table_name}: DB has columns not declared in ORM: {sorted(extra)}"
 
     # Base.metadata table set: the six Phase 1 tables plus decision_cards
-    # (Phase 2 declares DecisionCard on the SAME shared declarative Base, so it
-    # registers here too — see entity_models.DecisionCard / migration 0007).
+    # (Phase 2) plus notes + fundamentals (Phase 3) — all Phase 2/3 models declare
+    # on the SAME shared declarative Base, so they register here too. See
+    # entity_models.{DecisionCard,Note,Fundamentals} / migrations 0007, 0008.
     assert set(Base.metadata.tables) == {
         "filings",
         "news",
@@ -414,4 +409,6 @@ def test_orm_round_trip(pg_engine) -> None:
         "events",
         "collector_runs",
         "decision_cards",
+        "notes",
+        "fundamentals",
     }

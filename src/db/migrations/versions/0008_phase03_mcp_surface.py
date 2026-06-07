@@ -159,8 +159,7 @@ def upgrade() -> None:
         "USING hnsw (body_embedding halfvec_cosine_ops)"
     )
     op.execute(
-        "CREATE INDEX ix_news_embedding_hnsw ON news "
-        "USING hnsw (body_embedding halfvec_cosine_ops)"
+        "CREATE INDEX ix_news_embedding_hnsw ON news USING hnsw (body_embedding halfvec_cosine_ops)"
     )
     op.execute(
         "CREATE INDEX ix_notes_content_emb_hnsw ON notes "

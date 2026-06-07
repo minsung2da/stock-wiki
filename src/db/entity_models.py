@@ -41,6 +41,8 @@ __all__ = [
     "Event",
     "CollectorRun",
     "DecisionCard",
+    "Note",
+    "Fundamentals",
 ]
 
 
@@ -97,6 +99,8 @@ class Filing(Base):
     body_md = sa.Column(sa.Text, nullable=False)
     body_tsv = sa.Column(postgresql.TSVECTOR, nullable=True)
     body_embedding = sa.Column(_HalfVec(1024), nullable=True)
+    # Phase 3 (migration 0008): mecab-ko content-POS token ids for VectorChord-BM25.
+    bm25_tokens = sa.Column(postgresql.ARRAY(sa.Integer), nullable=True)
     fetched_at = sa.Column(
         sa.DateTime(timezone=True),
         server_default=sa.func.now(),
@@ -154,6 +158,8 @@ class News(Base):
     body_md = sa.Column(sa.Text, nullable=False)
     body_tsv = sa.Column(postgresql.TSVECTOR, nullable=True)
     body_embedding = sa.Column(_HalfVec(1024), nullable=True)
+    # Phase 3 (migration 0008): mecab-ko content-POS token ids for VectorChord-BM25.
+    bm25_tokens = sa.Column(postgresql.ARRAY(sa.Integer), nullable=True)
     license_flag = sa.Column(
         sa.Text,
         nullable=False,
@@ -438,5 +444,89 @@ class DecisionCard(Base):
             "ix_decision_cards_body_tsv",
             "body_tsv",
             postgresql_using="gin",
+        ),
+    )
+
+
+class Note(Base):
+    """User thesis memo row (Phase 3, migration 0008) — D-05 notes ingest.
+
+    Mirrors ``Filing``'s narrative shape: ``content_md`` is the WHOLE memo TEXT
+    (Hard Veto #8 — no chunking column; one note row is one hybrid_search
+    candidate). ``content_emb`` carries the bge-m3 narrative embedding and
+    ``bm25_tokens`` the mecab-ko content-POS token ids — the same dual
+    dense+BM25 retrieval surface as filings/news.
+
+    Authoritative DDL is migration 0008; this ORM class exists only for
+    ``Base.metadata`` listing + ``sa.inspect`` column-set parity
+    (``tests/db/test_migration_0008.py::test_orm_round_trip``). The physical
+    ``content_emb halfvec(1024)`` column is created via raw ALTER in the
+    migration; ``_HalfVec`` lets SQLAlchemy map it in Core SELECTs.
+    """
+
+    __tablename__ = "notes"
+
+    path = sa.Column(sa.Text, primary_key=True)
+    corp_code = sa.Column(
+        sa.CHAR(8),
+        sa.ForeignKey("entities.corp_code", ondelete="SET NULL"),
+        nullable=True,
+    )
+    content_md = sa.Column(sa.Text, nullable=False)
+    content_hash = sa.Column(sa.CHAR(64), nullable=False)
+    updated_at = sa.Column(sa.DateTime(timezone=True), nullable=True)
+    body_tsv = sa.Column(postgresql.TSVECTOR, nullable=True)
+    content_emb = sa.Column(_HalfVec(1024), nullable=True)
+    bm25_tokens = sa.Column(postgresql.ARRAY(sa.Integer), nullable=True)
+
+    __table_args__ = (
+        sa.Index(
+            "ix_notes_corp",
+            "corp_code",
+            postgresql_where=sa.text("corp_code IS NOT NULL"),
+        ),
+    )
+
+
+class Fundamentals(Base):
+    """Per-ticker fundamental valuation metrics (Phase 3, migration 0008) — D-06.
+
+    Hard Veto #6 — PURE NUMERIC typed columns. There is NO embedding column;
+    fundamentals are numbers, and numbers are never embedded (mirror ``OHLCV``).
+    PER/PBR/EPS/BPS come from pykrx ``get_market_fundamental`` (Plan 05); ROE is
+    derived from dart-fss 재무제표. PK is ``(ticker, fdate)``.
+
+    ``peer_view`` computes same-sector ``percentile_cont(0.5)`` medians by
+    joining ``entities.sector`` to this table. Authoritative DDL is migration
+    0008; parity is enforced by ``test_migration_0008.py::test_orm_round_trip``.
+    """
+
+    __tablename__ = "fundamentals"
+
+    ticker = sa.Column(sa.CHAR(6), nullable=False)
+    fdate = sa.Column(sa.Date, nullable=False)
+    per = sa.Column(sa.Numeric(18, 4), nullable=True)
+    pbr = sa.Column(sa.Numeric(18, 4), nullable=True)
+    eps = sa.Column(sa.Numeric(20, 4), nullable=True)
+    bps = sa.Column(sa.Numeric(20, 4), nullable=True)
+    roe = sa.Column(sa.Numeric(10, 6), nullable=True)
+    corp_code = sa.Column(
+        sa.CHAR(8),
+        sa.ForeignKey("entities.corp_code", ondelete="SET NULL"),
+        nullable=True,
+    )
+    source = sa.Column(sa.Text, nullable=False)
+    fetched_at = sa.Column(
+        sa.DateTime(timezone=True),
+        server_default=sa.func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("ticker", "fdate", name="pk_fundamentals"),
+        sa.Index(
+            "ix_fundamentals_corp",
+            "corp_code",
+            postgresql_where=sa.text("corp_code IS NOT NULL"),
         ),
     )

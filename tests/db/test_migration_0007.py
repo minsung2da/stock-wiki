@@ -25,7 +25,6 @@ from __future__ import annotations
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
-
 # ---------------------------------------------------------------------------
 # SC#1 — table shape: 12 locked columns, PK, FKs, payload jsonb, status CHECK
 # ---------------------------------------------------------------------------
@@ -219,8 +218,7 @@ def test_body_tsv_generated(seeded_engine) -> None:
     with engine.connect() as conn:
         matched = conn.execute(
             sa.text(
-                "SELECT card_id FROM decision_cards "
-                "WHERE body_tsv @@ to_tsquery('simple', :word)"
+                "SELECT card_id FROM decision_cards WHERE body_tsv @@ to_tsquery('simple', :word)"
             ),
             {"word": "memory"},
         ).scalar()
@@ -240,6 +238,7 @@ def test_orm_round_trip(pg_engine) -> None:
     including ``decision_cards``.
     """
     from db.entity_models import (
+        OHLCV,
         Base,
         CollectorRun,
         DecisionCard,
@@ -247,7 +246,6 @@ def test_orm_round_trip(pg_engine) -> None:
         Filing,
         MacroSeries,
         News,
-        OHLCV,
     )
 
     insp = inspect(pg_engine)
@@ -257,14 +255,11 @@ def test_orm_round_trip(pg_engine) -> None:
         orm_cols = {c.name for c in model.__table__.columns}
         missing = orm_cols - db_cols
         extra = db_cols - orm_cols
-        assert not missing, (
-            f"{table_name}: ORM declares columns absent from DB: {sorted(missing)}"
-        )
-        assert not extra, (
-            f"{table_name}: DB has columns not declared in ORM: {sorted(extra)}"
-        )
+        assert not missing, f"{table_name}: ORM declares columns absent from DB: {sorted(missing)}"
+        assert not extra, f"{table_name}: DB has columns not declared in ORM: {sorted(extra)}"
 
-    # Base.metadata table set matches the seven v2.0 ORM tables.
+    # Base.metadata table set matches the nine v2.0 ORM tables (Phase 3 added
+    # notes + fundamentals on the same shared Base — migration 0008).
     assert set(Base.metadata.tables) == {
         "filings",
         "news",
@@ -273,4 +268,6 @@ def test_orm_round_trip(pg_engine) -> None:
         "events",
         "collector_runs",
         "decision_cards",
+        "notes",
+        "fundamentals",
     }
