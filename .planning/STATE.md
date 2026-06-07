@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-06-07T10:33:38.469Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-06-07T10:54:44.181Z"
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 22
 ---
 
@@ -32,10 +32,10 @@ See:
 ## Current Position
 
 Phase: 03 (mcp-tool-surface-read-side) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Next: Phase 3 (MCP Tool Surface — Read-Side) — awaiting `/gsd:plan-phase 3`
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 89%
 
 ## Phase 1 Outcomes (2026-05-29)
 
@@ -97,6 +97,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 03 P03-01 | 22 min | 3 tasks | 9 files |
 | Phase 03 P03-02 | 22 | 3 tasks | 11 files |
 | Phase 03 P03-03 | 8 min | 3 tasks | 9 files |
+| Phase 03 P03-04 | 14 min | 3 tasks | 10 files |
 
 ## Accumulated Context (v2.0)
 
@@ -133,6 +134,8 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase 03-03]: D-01 leaf layer: McpToolError(ToolError) hierarchy raised on faults + 12 empty-able Pydantic return models (extra='forbid'); mask_error_details=True VERIFIED on fastmcp 2.14.7 (keeps ToolError messages, masks other bugs)
 - [Phase 03-03]: injection.py WRAP+FLAG (D-03/SC#5): PATTERNS ported verbatim (6 ids) + detect() + wrap_untrusted() <untrusted> XML delimiter, never block/strip; archive is_adversarial/trust_level gate dropped; _SAFE_ATTR widened to allow dot/colon provenance ids
 - [Phase 03-03]: paths.safe_resolve read-only whitelist = ('notes/private/',) only (vault dropped, Veto #9); Path.resolve()+is_relative_to symlink/.. safe; NotePathForbidden/NoteNotFound (V12)
+- [Phase ?]: [Phase 03-04]: 6 read-side tools registered via mcp.tool(...)(fn) CALL form, not @mcp.tool decoration — the decorator yields a non-callable FunctionTool; call form keeps tools plain callables for in-process callers while still registering on the shared mcp
+- [Phase ?]: [Phase 03-04]: get_filing whole body_md (Veto #8); get_decision_card view=payload serialize-time exclude (Veto #13); all narrative bodies WRAP+FLAG (D-03); search_filings NULL-cast guards keep one parameterized text() (SC#3); get_briefing honest empty model (no report_type)
 
 ### Lessons Carried Over from v1.0
 
@@ -184,6 +187,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-06-07T10:33:22.023Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-06-07T10:54:44.164Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
