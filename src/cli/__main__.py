@@ -28,6 +28,7 @@ from dotenv import find_dotenv, load_dotenv
 from cli.commands import (
     cmd_collect_all,
     cmd_collect_dart,
+    cmd_collect_fundamentals,
     cmd_collect_kind,
     cmd_collect_krx,
     cmd_collect_macro,
@@ -87,6 +88,15 @@ def build_parser() -> argparse.ArgumentParser:
     kind = collect_subs.add_parser("kind", help="Collect KIND events (COLL-05)")
     kind.add_argument("--since", default=None)
     kind.set_defaults(func=cmd_collect_kind)
+
+    fundamentals = collect_subs.add_parser(
+        "fundamentals",
+        help="Collect PER/PBR/EPS/BPS (pykrx) + ROE (dart-fss) fundamentals (D-06)",
+    )
+    fundamentals.add_argument(
+        "--since", default=None, help="YYYY-MM-DD (default: today KST trading day)"
+    )
+    fundamentals.set_defaults(func=cmd_collect_fundamentals)
 
     all_ = collect_subs.add_parser(
         "all", help="Run collectors with per-source isolation (D-18..D-21)"

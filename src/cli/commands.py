@@ -25,6 +25,7 @@ __all__ = [
     "cmd_collect_news",
     "cmd_collect_macro",
     "cmd_collect_kind",
+    "cmd_collect_fundamentals",
     "cmd_collect_all",
 ]
 
@@ -122,6 +123,23 @@ def cmd_collect_macro(args) -> int:  # noqa: ANN001
 def cmd_collect_kind(args) -> int:  # noqa: ANN001
     """Handle `stock collect kind ...` (COLL-05)."""
     stats = _dispatch()["kind"](
+        engine=_engine(),
+        since=args.since,
+    )
+    print(json.dumps(stats, ensure_ascii=False, default=str))
+    return 0 if not stats.get("failed") else 1
+
+
+def cmd_collect_fundamentals(args) -> int:  # noqa: ANN001
+    """Handle `stock collect fundamentals ...` (D-06).
+
+    Mirrors ``cmd_collect_krx``: build the engine, run ``collect_fundamentals``,
+    emit the stats as stdout JSON (CLAUDE.md convention — structured logs to
+    stderr, user output stdout JSON).
+    """
+    from collectors.fundamentals import collect_fundamentals
+
+    stats = collect_fundamentals(
         engine=_engine(),
         since=args.since,
     )
