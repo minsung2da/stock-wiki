@@ -4,12 +4,12 @@ milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
 stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-06-07T09:43:39.097Z"
+last_updated: "2026-06-07T10:08:56.263Z"
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 18
-  completed_plans: 13
+  completed_plans: 14
   percent: 22
 ---
 
@@ -32,10 +32,10 @@ See:
 ## Current Position
 
 Phase: 03 (mcp-tool-surface-read-side) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Next: Phase 3 (MCP Tool Surface — Read-Side) — awaiting `/gsd:plan-phase 3`
 
-Progress: [███████░░░] 72%
+Progress: [████████░░] 78%
 
 ## Phase 1 Outcomes (2026-05-29)
 
@@ -95,6 +95,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 02-decision-card-schema-storage P02 | 11 min | 3 tasks | 5 files |
 | Phase 02-decision-card-schema-storage P03 | 8 min | 2 tasks | 4 files |
 | Phase 03 P03-01 | 22 min | 3 tasks | 9 files |
+| Phase 03 P03-02 | 22 | 3 tasks | 11 files |
 
 ## Accumulated Context (v2.0)
 
@@ -124,6 +125,9 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase ?]: [Phase 03-01]: fastmcp pinned 2.x (>=2.11,<3.0, 2.14.7 installed) per SC#1; mcp + ingest dep groups re-added; CI uv sync gap closed
 - [Phase ?]: [Phase 03-01]: migration 0008 — notes (Veto #8 whole content_md + halfvec content_emb + bm25_tokens) + fundamentals (Veto #6 pure numeric, no embedding); BM25 (bm25_catalog.bm25_ops) + HNSW (halfvec_cosine_ops) indexes on filings/news/notes; APPLIED to live DB (alembic current==0008)
 - [Phase ?]: [Phase 03-01]: Plan 03-01 is SINGLE OWNER of collector_runs.source CHECK widening + run_log._ALLOWED_SOURCES (7 sources incl fundamentals/notes_ingest); Plans 02/05 only call record_collector_run
+- [Phase ?]: [Phase 03-02]: bge-m3 embedder + mecab-ko tokenizer ported to src/mcp_v2/ as siblings (importable by the notes-ingest backfill outside the MCP server); torch import lazy inside Embedder.__init__ (version constant imports torch-free)
+- [Phase ?]: [Phase 03-02]: notes-ingest (ingest_notes) loads notes/private/**/*.md into the notes table (whole content_md, sha256 dedup, idempotent skip on unchanged; portfolio.md excluded); backfill_narrative fills NULL filings/news body_embedding/bm25_tokens/body_tsv (D-05 -> SC#4 full narrative coverage)
+- [Phase ?]: [Phase 03-02]: SC#3 run_sql guard — AST layer ENFORCED (every text() arg is a string constant or module-level name) over src/mcp_v2; registry layer (==10 locked names, no run_sql/execute_sql/raw_sql/query) skip-tolerant until 03-06; get_tools() is a coroutine in fastmcp 2.14.7 (awaited via asyncio.run)
 
 ### Lessons Carried Over from v1.0
 
@@ -175,6 +179,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-06-07T09:43:39.075Z
+Last session: 2026-06-07T10:08:18.805Z
 Stopped at: Completed 03-01-PLAN.md
 Resume file: None
