@@ -14,26 +14,18 @@ import hashlib
 import logging
 
 import requests
-from requests.exceptions import ChunkedEncodingError
-from requests.exceptions import ConnectionError as ReqConnectionError
 from tenacity import (
     before_sleep_log,
     retry,
-    retry_if_exception_type,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential,
 )
-from urllib3.exceptions import ProtocolError
 
+from shared.retry import is_retryable, make_retry_after_wait
 from shared.throttle import Throttle
 
 _log = logging.getLogger(__name__)
-
-_RETRYABLE_EXC: tuple[type[BaseException], ...] = (
-    ReqConnectionError,
-    ChunkedEncodingError,
-    ProtocolError,
-)
 
 # CAP-1 (collector hardening): proactive politeness throttle for gray-area
 # article scraping (no formal rate limit; IP-throttle is the real constraint).
@@ -76,8 +68,8 @@ def _scheme_ok(url: str) -> bool:
 
 @retry(
     stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1.0, min=1.0, max=10.0),
-    retry=retry_if_exception_type(_RETRYABLE_EXC),
+    wait=make_retry_after_wait(wait_exponential(multiplier=1.0, min=1.0, max=10.0)),
+    retry=retry_if_exception(is_retryable),
     before_sleep=before_sleep_log(_log, logging.WARNING),
     reraise=True,
 )
@@ -95,8 +87,8 @@ def fetch_rss_feed(feed_url: str) -> bytes | None:
 
 @retry(
     stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1.0, min=1.0, max=10.0),
-    retry=retry_if_exception_type(_RETRYABLE_EXC),
+    wait=make_retry_after_wait(wait_exponential(multiplier=1.0, min=1.0, max=10.0)),
+    retry=retry_if_exception(is_retryable),
     before_sleep=before_sleep_log(_log, logging.WARNING),
     reraise=True,
 )
