@@ -25,6 +25,8 @@ from tenacity import (
 )
 from urllib3.exceptions import ProtocolError
 
+from shared.throttle import Throttle
+
 _log = logging.getLogger(__name__)
 
 _RETRYABLE_EXC: tuple[type[BaseException], ...] = (
@@ -32,6 +34,12 @@ _RETRYABLE_EXC: tuple[type[BaseException], ...] = (
     ChunkedEncodingError,
     ProtocolError,
 )
+
+# CAP-1 (collector hardening): proactive politeness throttle for gray-area
+# article scraping (no formal rate limit; IP-throttle is the real constraint).
+# Shared by RSS + article fetches; tests lower ``_throttle.min_interval_sec``.
+NEWS_MIN_REQUEST_INTERVAL_SEC = 1.0
+_throttle = Throttle(NEWS_MIN_REQUEST_INTERVAL_SEC)
 
 # Browser-like UA required for edaily (probe confirmed minimal UAs were rejected).
 USER_AGENT = (
@@ -79,6 +87,7 @@ def fetch_rss_feed(feed_url: str) -> bytes | None:
     only retries transient network errors)."""
     if not _scheme_ok(feed_url):
         return None
+    _throttle.wait()
     resp = requests.get(feed_url, headers={"User-Agent": USER_AGENT}, timeout=_DEFAULT_TIMEOUT)
     resp.raise_for_status()
     return resp.content
@@ -96,6 +105,7 @@ def fetch_article_html(url: str) -> str | None:
     heuristics). Returns None on scheme violation or trafilatura failure."""
     if not _scheme_ok(url):
         return None  # SSRF scheme guard (T-04-10)
+    _throttle.wait()
     import trafilatura
 
     return trafilatura.fetch_url(url)
