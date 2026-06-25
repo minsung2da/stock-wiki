@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
-status: ready_for_verification
-stopped_at: Completed 03-06-PLAN.md (phase 03 final plan)
-last_updated: "2026-06-07T11:39:03.601Z"
+status: verified
+stopped_at: Phase 03 verified (VERIFICATION.md — PHASE GOAL ACHIEVED, 149 passed/2 skipped)
+last_updated: "2026-06-25T00:00:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 3
@@ -31,7 +31,7 @@ See:
 
 ## Current Position
 
-Phase: 03 (mcp-tool-surface-read-side) — COMPLETE (6 of 6 plans done; ready for verification)
+Phase: 03 (mcp-tool-surface-read-side) — VERIFIED (6 of 6 plans; VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25)
 Plan: 6 of 6
 Next: Phase 4 (Analysis Runner — Bull/Bear/Judge → decision_card) — awaiting `/gsd:plan-phase 4`
 
