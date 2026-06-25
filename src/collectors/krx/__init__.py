@@ -4,8 +4,8 @@ This collector INSERTs directly into the ``ohlcv`` Postgres table via
 ``db_writer.upsert_ohlcv``. The Markdown writer path is gone. Plan 01-09
 deletes ``writer.py`` from disk after every collector has cut over.
 
-R-03 (missing-entity Option A): if ``resolve_entity(ticker)`` returns None,
-the ticker lands in ``stats["failed"]`` with ``error="missing_entity"``
+R-03 (missing-entity Option A): if a ticker is absent from the batch entity
+resolution, the ticker lands in ``stats["failed"]`` with ``error="missing_entity"``
 and the row is NOT written. Missing-entity tickers are also surfaced in
 the structured run-complete log so Phase 9 observability can flag them.
 
@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from collectors.krx import db_writer, fetcher
-from db.entity import resolve_entity
+from db.entity import resolve_entities
 from shared.portfolio import Portfolio
 from shared.run_log import record_collector_run
 
@@ -63,9 +63,8 @@ _FLOW_COLS_KO = ("외국인", "기관합계", "개인")  # client.get_trading_va
 _SHORT_COLS_KO = ("공매도잔고(주)", "공매도금액")
 
 
-def _coerce_ohlcv_row(df) -> dict[str, Any]:
-    """Map a pykrx OHLCV one-row DataFrame to the db_writer dict shape."""
-    row = df.iloc[0]
+def _coerce_ohlcv_row(row) -> dict[str, Any]:
+    """Map a pykrx OHLCV row (pandas Series) to the db_writer dict shape."""
     return {
         "open": row["시가"],
         "high": row["고가"],
@@ -73,6 +72,21 @@ def _coerce_ohlcv_row(df) -> dict[str, Any]:
         "close": row["종가"],
         "volume": int(row["거래량"]),
     }
+
+
+def _market_row(market_df, ticker: str):
+    """Return the OHLCV Series for ``ticker`` from a whole-market frame, or None.
+
+    None means the ticker is absent from the day's market frame — a non-trading
+    day, a trading halt, or a ticker outside KOSPI/KOSDAQ. The collector treats
+    None the same way it used to treat an empty per-ticker frame: skipped
+    (holiday).
+    """
+    if market_df is None or getattr(market_df, "empty", True):
+        return None
+    if ticker not in market_df.index:
+        return None
+    return market_df.loc[ticker]
 
 
 def _coerce_flow_row(df) -> dict[str, Any] | None:
@@ -144,6 +158,12 @@ def collect_krx(
     portfolio = Portfolio.load(repo_root)
     scope = portfolio.scope_tickers()
 
+    # CAP-3: one whole-market OHLCV scrape + one batch entity resolution replace
+    # the per-ticker OHLCV scrape and the per-ticker resolve_entity round-trip.
+    # Investor-flow + short balance stay per-ticker (no equivalent bulk shape).
+    market_df = fetcher.fetch_market_ohlcv(date_str)
+    entity_map = resolve_entities(engine, list(scope))
+
     stats: dict[str, Any] = {
         "total": len(scope),
         "inserted": 0,
@@ -156,14 +176,14 @@ def collect_krx(
 
     for ticker in scope:
         try:
-            ohlcv_df = fetcher.fetch_ohlcv(ticker, date_str)
-            if ohlcv_df.empty:
+            ohlcv_series = _market_row(market_df, ticker)
+            if ohlcv_series is None:
                 holiday_tickers.append(ticker)
                 stats["skipped"] += 1
                 continue
 
             # R-03: resolve entity BEFORE writing. Missing entity → no write.
-            ent = resolve_entity(engine, ticker)
+            ent = entity_map.get(ticker)
             if ent is None:
                 missing_entities.append(ticker)
                 stats["failed"].append({"doc": ticker, "error": "missing_entity"})
@@ -172,19 +192,19 @@ def collect_krx(
             flow_df = fetcher.fetch_trading_value(ticker, date_str)
             short_df = fetcher.fetch_shorting_balance(ticker, date_str)
 
-            ohlcv_row = _coerce_ohlcv_row(ohlcv_df)
+            ohlcv_row = _coerce_ohlcv_row(ohlcv_series)
             flow_row = _coerce_flow_row(flow_df)
-            # pykrx's ohlcv frame may carry a 거래대금 column; surface it on flow_row
-            if "거래대금" in ohlcv_df.iloc[0].index:
+            # The market OHLCV frame may carry a 거래대금 column; surface it on flow_row.
+            if "거래대금" in ohlcv_series.index:
                 if flow_row is None:
                     flow_row = {
-                        "trading_value": int(ohlcv_df.iloc[0]["거래대금"]),
+                        "trading_value": int(ohlcv_series["거래대금"]),
                         "foreign_net": None,
                         "inst_net": None,
                         "retail_net": None,
                     }
                 else:
-                    flow_row["trading_value"] = int(ohlcv_df.iloc[0]["거래대금"])
+                    flow_row["trading_value"] = int(ohlcv_series["거래대금"])
             short_row = _coerce_short_row(short_df)
 
             outcome = db_writer.upsert_ohlcv(

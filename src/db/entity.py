@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.engine import Engine
 
 # ASCII-only digit patterns — str.isdigit() accepts non-ASCII digits (e.g.
@@ -94,6 +94,85 @@ def resolve_entity(
         canonical_name=row.canonical_name,
         current_ticker=row.current_ticker,
     )
+
+
+def resolve_entities(
+    engine: Engine,
+    values: list[str],
+    as_of: date | None = None,
+) -> dict[str, Entity]:
+    """Batch :func:`resolve_entity` — resolve many tickers/corp_codes in one or
+    two round-trips instead of one connection per value (CAP-3).
+
+    Returns a dict keyed by the INPUT value → resolved :class:`Entity`. Inputs
+    that do not resolve (unknown, or failing the D-12 ASCII-digit shape) are
+    simply absent from the result. Temporal semantics mirror
+    :func:`resolve_entity` (``as_of=None`` → current alias; ``as_of=<date>`` →
+    half-open ``[valid_from, valid_to)`` interval). All values flow through
+    bind params; ``IN`` uses an expanding bindparam (no string interpolation).
+    """
+    corp_codes = sorted({v for v in values if _CORP_CODE_RE.match(v)})
+    tickers = sorted({v for v in values if _TICKER_RE.match(v)})
+    out: dict[str, Entity] = {}
+    if not corp_codes and not tickers:
+        return out
+
+    with engine.connect() as conn:
+        if corp_codes:
+            code_sql = text(
+                """
+                SELECT corp_code, canonical_name, current_ticker
+                FROM entities
+                WHERE corp_code IN :codes
+                """
+            ).bindparams(bindparam("codes", expanding=True))
+            for row in conn.execute(code_sql, {"codes": corp_codes}):
+                out[row.corp_code] = Entity(
+                    corp_code=row.corp_code,
+                    canonical_name=row.canonical_name,
+                    current_ticker=row.current_ticker,
+                )
+
+        if tickers:
+            if as_of is None:
+                tk_sql = text(
+                    """
+                    SELECT a.value AS in_value,
+                           e.corp_code, e.canonical_name, e.current_ticker
+                    FROM entity_aliases a
+                    JOIN entities e USING (corp_code)
+                    WHERE a.kind = 'ticker'
+                      AND a.valid_to IS NULL
+                      AND a.value IN :tickers
+                    """
+                ).bindparams(bindparam("tickers", expanding=True))
+                tk_params: dict[str, object] = {"tickers": tickers}
+            else:
+                tk_sql = text(
+                    """
+                    SELECT a.value AS in_value,
+                           e.corp_code, e.canonical_name, e.current_ticker
+                    FROM entity_aliases a
+                    JOIN entities e USING (corp_code)
+                    WHERE a.kind = 'ticker'
+                      AND a.value IN :tickers
+                      AND a.valid_from <= :asof
+                      AND (a.valid_to IS NULL OR a.valid_to > :asof)
+                    """
+                ).bindparams(bindparam("tickers", expanding=True))
+                tk_params = {"tickers": tickers, "asof": as_of}
+            for row in conn.execute(tk_sql, tk_params):
+                # First match wins per input (current alias is unique per ticker;
+                # recycled tickers differ by valid interval).
+                out.setdefault(
+                    row.in_value,
+                    Entity(
+                        corp_code=row.corp_code,
+                        canonical_name=row.canonical_name,
+                        current_ticker=row.current_ticker,
+                    ),
+                )
+    return out
 
 
 _NAME_MAX_LEN = 128

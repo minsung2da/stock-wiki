@@ -46,3 +46,19 @@ def get_shorting_balance(ticker: str, date_str: str) -> pd.DataFrame:
 
     _throttle.wait()
     return stock.get_shorting_balance_by_date(date_str, date_str, ticker)
+
+
+def get_market_ohlcv_all(date_str: str) -> pd.DataFrame:
+    """Whole-market one-day OHLCV, indexed by 6-digit ticker (CAP-3 bulk fetch).
+
+    Replaces N per-ticker ``get_market_ohlcv_by_date`` scrapes with ONE
+    market-wide call (KOSPI+KOSDAQ via ``market='ALL'``). Fewer requests =
+    lower IP-throttle risk, which is the binding constraint for pykrx (no
+    formal API rate limit). Empty DataFrame on a non-trading day. The frame
+    carries the same Korean OHLCV columns (시가/고가/저가/종가/거래량/거래대금)
+    as the per-ticker call, so the collector's coercion is unchanged.
+    """
+    from pykrx import stock
+
+    _throttle.wait()
+    return stock.get_market_ohlcv(date_str, market="ALL")
