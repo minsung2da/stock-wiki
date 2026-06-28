@@ -77,7 +77,7 @@ class DecisionCard(BaseModel):
 
     card_id: str
     corp_code: str = Field(pattern=r"^[0-9]{8}$")
-    ticker: str = Field(pattern=r"^[0-9]{6}$")
+    ticker: str = Field(pattern=r"^[0-9A-Z]{6}$")  # KRX 6-char uppercase-alphanumeric short code
     generated_at: datetime
     as_of: datetime  # data cutoff (KST close)
     schema_version: int = 1

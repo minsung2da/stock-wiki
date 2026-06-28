@@ -10,7 +10,8 @@ return always echoes what was queried.
 
 Discipline replicated from ``src/cards/models.py`` (the Phase-2 contract):
 ``model_config = ConfigDict(extra="forbid")`` on every model, ``Field(...)`` for
-constraints, and the ASCII ``r"^[0-9]{6}$"`` (ticker) / ``r"^[0-9]{8}$"``
+constraints, and the ASCII ``r"^[0-9A-Z]{6}$"`` (ticker — 6 uppercase-alphanumeric
+chars; KRX now issues new-style codes like ``0001A0``) / ``r"^[0-9]{8}$"``
 (corp_code) regexes — ASCII-only because ``str.isdigit`` accepts superscripts.
 
 Narrative models (D-03 WRAP+FLAG): ``FilingDetail``, ``NoteContent``, and
@@ -44,7 +45,7 @@ __all__ = [
     "PortfolioView",
 ]
 
-_TICKER_PATTERN = r"^[0-9]{6}$"
+_TICKER_PATTERN = r"^[0-9A-Z]{6}$"
 _CORP_CODE_PATTERN = r"^[0-9]{8}$"
 
 

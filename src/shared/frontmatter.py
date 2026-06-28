@@ -29,7 +29,7 @@ class TickerRef(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    ticker: str = Field(pattern=r"^[0-9]{6}$")
+    ticker: str = Field(pattern=r"^[0-9A-Z]{6}$")
     corp_code: str | None = Field(default=None, pattern=r"^[0-9]{8}$")
     name: str | None = None  # canonical_name at fetch time (optional)
 
@@ -53,7 +53,7 @@ class ProvenanceBlock(BaseModel):
     fetched_at: datetime | None = None
     content_hash: str | None = None
     corp_code: str | None = None  # DART 8-digit canonical ID
-    ticker: str | None = None  # KRX 6-digit convenience field
+    ticker: str | None = None  # KRX 6-char uppercase-alphanumeric convenience field
     company_name: str | None = None  # Canonical corp name (Bug D-1: re-seed entities on rebuild)
     lang: str = "ko"
     trust_level: Literal["trusted", "semi_trusted", "adversarial"] = "trusted"

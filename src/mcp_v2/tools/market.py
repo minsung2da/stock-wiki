@@ -18,8 +18,9 @@ the metric column via a FIXED per-metric ``text()`` constant chosen from an
 allow-list map (NOT user-string interpolation), so the metric arg can never reach
 SQL as a raw column name.
 
-Input validation (V5): ``ticker`` (6 ASCII digits) / ``corp_code`` (8 ASCII
-digits) are regex pre-filtered before any DB round-trip; ticker existence is
+Input validation (V5): ``ticker`` (6 ASCII uppercase-alphanumeric chars) /
+``corp_code`` (8 ASCII digits) are regex pre-filtered before any DB round-trip;
+ticker existence is
 confirmed via :func:`db.entity.resolve_entity` (→ ``EntityNotFound``).
 """
 
@@ -39,9 +40,10 @@ from ..models import FlowRange, FlowRow, OhlcvBar, OhlcvRange, PeerView
 
 __all__ = ["ohlcv_range", "flow_range", "peer_view"]
 
-# ASCII-only digit pre-filters (str.isdigit accepts superscripts — close that
-# loophole). ticker is the 6-digit KRX ticker; corp_code is the 8-digit DART code.
-_TICKER_RE = re.compile(r"^[0-9]{6}$")
+# ASCII-only pre-filters (str.isalnum/str.isdigit accept superscripts — close that
+# loophole; the class stays ASCII A-Z/0-9 only). ticker is the 6-char uppercase-
+# alphanumeric KRX ticker; corp_code is the 8-digit DART code.
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 _CORP_CODE_RE = re.compile(r"^[0-9]{8}$")
 
 # Allow-listed peer metrics. The metric arg is validated against this set; the
@@ -154,16 +156,16 @@ def ohlcv_range(ticker: str, from_date: str, to_date: str) -> OhlcvRange:
     rows → ``OhlcvRange(ticker, bars=[])`` (D-01 empty model).
 
     Args:
-        ticker: the 6-digit KRX ticker (must resolve to a known entity).
+        ticker: the 6-char uppercase-alphanumeric KRX ticker (must resolve to a known entity).
         from_date: inclusive lower bound (ISO-8601 ``YYYY-MM-DD``).
         to_date: inclusive upper bound (ISO-8601 ``YYYY-MM-DD``).
 
     Raises:
-        InvalidArgument: ``ticker`` is not 6 ASCII digits.
+        InvalidArgument: ``ticker`` is not 6 ASCII uppercase-alphanumeric chars.
         EntityNotFound: ``ticker`` does not resolve to a known entity.
     """
     if not _TICKER_RE.match(ticker):
-        raise InvalidArgument("ticker must be 6 ASCII digits")
+        raise InvalidArgument("ticker must be 6 ASCII uppercase-alphanumeric chars")
 
     engine = get_engine()
     if resolve_entity(engine, ticker) is None:
@@ -195,16 +197,16 @@ def flow_range(ticker: str, from_date: str, to_date: str) -> FlowRange:
     :func:`ohlcv_range`. Zero rows → ``FlowRange(ticker, rows=[])`` (D-01).
 
     Args:
-        ticker: the 6-digit KRX ticker (must resolve to a known entity).
+        ticker: the 6-char uppercase-alphanumeric KRX ticker (must resolve to a known entity).
         from_date: inclusive lower bound (ISO-8601 ``YYYY-MM-DD``).
         to_date: inclusive upper bound (ISO-8601 ``YYYY-MM-DD``).
 
     Raises:
-        InvalidArgument: ``ticker`` is not 6 ASCII digits.
+        InvalidArgument: ``ticker`` is not 6 ASCII uppercase-alphanumeric chars.
         EntityNotFound: ``ticker`` does not resolve to a known entity.
     """
     if not _TICKER_RE.match(ticker):
-        raise InvalidArgument("ticker must be 6 ASCII digits")
+        raise InvalidArgument("ticker must be 6 ASCII uppercase-alphanumeric chars")
 
     engine = get_engine()
     if resolve_entity(engine, ticker) is None:

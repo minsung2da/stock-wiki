@@ -18,7 +18,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-_TICKER_RE = re.compile(r"^[0-9]{6}$")
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 
 
 class PortfolioLoadError(RuntimeError):
@@ -38,7 +38,7 @@ class Holding(BaseModel):
     @classmethod
     def _validate_ticker(cls, v: str) -> str:
         if not _TICKER_RE.match(v):
-            raise ValueError(f"ticker must be 6 ASCII digits, got {v!r}")
+            raise ValueError(f"ticker must be 6 ASCII uppercase-alphanumeric chars, got {v!r}")
         return v
 
 
@@ -55,7 +55,7 @@ class Portfolio(BaseModel):
     def _validate_watchlist(cls, v: list[str]) -> list[str]:
         for t in v:
             if not _TICKER_RE.match(t):
-                raise ValueError(f"watchlist ticker must be 6 ASCII digits, got {t!r}")
+                raise ValueError(f"watchlist ticker must be 6 ASCII uppercase-alphanumeric chars, got {t!r}")
         return v
 
     def scope_tickers(self) -> list[str]:

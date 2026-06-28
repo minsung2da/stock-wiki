@@ -17,7 +17,7 @@ D-01 splits two outcomes that the v1.0 archive collapsed into a single
 Hierarchy (RESEARCH §Pattern 2, PATTERNS §errors.py):
 
     McpToolError (base, ToolError subclass)
-    ├── InvalidArgument   — arg fails a shape/value check (ticker not ^[0-9]{6}$, bad view/type)
+    ├── InvalidArgument   — arg fails a shape/value check (ticker not ^[0-9A-Z]{6}$, bad view/type)
     ├── EntityNotFound    — ticker/corp_code resolves to no entity
     ├── FilingNotFound    — get_filing(rcept_no) has no such row
     ├── NotePathForbidden — get_note path escapes the notes/private/ whitelist
@@ -52,7 +52,7 @@ class McpToolError(ToolError):
 class InvalidArgument(McpToolError):
     """A tool argument failed a shape/value check before the DB was touched.
 
-    Example: ``ticker`` not matching ``^[0-9]{6}$``, an unknown ``view`` /
+    Example: ``ticker`` not matching ``^[0-9A-Z]{6}$``, an unknown ``view`` /
     ``type`` / ``metric``. The message names the offending argument (D-01).
     """
 
