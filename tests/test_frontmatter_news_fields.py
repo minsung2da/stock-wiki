@@ -83,6 +83,17 @@ def test_invalid_observation_date_raises() -> None:
         )
 
 
+def test_alphanumeric_ticker_ref_accepted() -> None:
+    """TickerRef accepts new-style 6-char uppercase-alphanumeric KRX codes (quick-260628-n8d)."""
+    assert TickerRef(ticker="0001A0").ticker == "0001A0"
+
+
+def test_lowercase_ticker_ref_rejected() -> None:
+    """Lowercase ticker still rejected by the widened ^[0-9A-Z]{6}$ guard."""
+    with pytest.raises(ValidationError):
+        TickerRef(ticker="0001a0")
+
+
 def test_ticker_ref_and_observation_models_direct() -> None:
     t = TickerRef(ticker="005930")
     assert t.ticker == "005930"

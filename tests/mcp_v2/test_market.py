@@ -12,15 +12,50 @@ peer_view tests DELETE the fundamentals + extra entities they own up-front.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 import pytest
 from sqlalchemy import text
 
 from mcp_v2.errors import EntityNotFound, InvalidArgument
-from mcp_v2.tools.market import flow_range, ohlcv_range, peer_view
+from mcp_v2.models import OhlcvRange, _TICKER_PATTERN
+from mcp_v2.tools.market import _TICKER_RE, flow_range, ohlcv_range, peer_view
 
 pytestmark = pytest.mark.db
+
+
+# --------------------------------------------------------------------------- #
+# widened ticker guard ^[0-9A-Z]{6}$ — DB-FREE regex/model checks (quick-260628-n8d)
+# --------------------------------------------------------------------------- #
+_ACCEPT_TICKERS = ["0001A0", "005930", "AAAAAA", "0A0A0A"]
+_REJECT_TICKERS = [
+    "00593",       # 5-char
+    "0059300",     # 7-char
+    "0001a0",      # lowercase
+    "0001A!",      # path/shell metachar
+    "0;DROP",      # SQL metachar
+    "²" * 6,  # non-ASCII superscript (str.isdigit would accept — guard must not)
+]
+
+
+@pytest.mark.parametrize("ticker", _ACCEPT_TICKERS)
+def test_ticker_guards_accept_alphanumeric(ticker: str) -> None:
+    """Both _TICKER_RE and _TICKER_PATTERN accept 6-char uppercase-alphanumeric codes."""
+    assert _TICKER_RE.match(ticker) is not None
+    assert re.compile(_TICKER_PATTERN).match(ticker) is not None
+
+
+@pytest.mark.parametrize("ticker", _REJECT_TICKERS)
+def test_ticker_guards_reject_bad_shapes(ticker: str) -> None:
+    """Wrong-length / lowercase / metachar / non-ASCII tickers still rejected."""
+    assert _TICKER_RE.match(ticker) is None
+    assert re.compile(_TICKER_PATTERN).match(ticker) is None
+
+
+def test_ohlcv_range_model_accepts_alphanumeric_ticker() -> None:
+    """OhlcvRange (and FlowRange via shared _TICKER_PATTERN) constructs with 0001A0."""
+    assert OhlcvRange(ticker="0001A0").ticker == "0001A0"
 
 
 # --------------------------------------------------------------------------- #

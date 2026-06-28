@@ -42,6 +42,24 @@ def test_invalid_5digit_ticker_raises_validation_error(tmp_path: Path) -> None:
         Portfolio.load(tmp_path)
 
 
+def test_alphanumeric_holding_and_watchlist_accepted(tmp_path: Path) -> None:
+    """Holding + watchlist accept new-style 6-char alphanumeric KRX codes (quick-260628-n8d)."""
+    assert Holding(ticker="0001A0", qty=1, avg_cost=1).ticker == "0001A0"
+    _write_portfolio(
+        tmp_path,
+        'holdings:\n  - ticker: "0001A0"\n    qty: 1\n    avg_cost: 1\nwatchlist:\n  - "0A0A0A"\n',
+    )
+    p = Portfolio.load(tmp_path)
+    assert p.holdings[0].ticker == "0001A0"
+    assert p.watchlist == ["0A0A0A"]
+
+
+def test_lowercase_ticker_rejected(tmp_path: Path) -> None:
+    """Lowercase ticker still rejected by the widened ^[0-9A-Z]{6}$ guard."""
+    with pytest.raises(ValidationError):
+        Holding(ticker="0001a0", qty=1, avg_cost=1)
+
+
 def test_scope_tickers_returns_sorted_union(tmp_path: Path) -> None:
     _write_portfolio(tmp_path, _SEED_YAML)
     p = Portfolio.load(tmp_path)

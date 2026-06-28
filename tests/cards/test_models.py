@@ -52,6 +52,33 @@ def test_numeric_facts_types_preserved(decision_card_yaml: dict) -> None:
     assert isinstance(reparsed.numeric_facts["pe_ttm"], float)
 
 
+# Widened ticker guard ^[0-9A-Z]{6}$ (quick-260628-n8d): new-style KRX short codes
+# like "0001A0" (덕양에너젠) must validate; malformed shapes stay rejected.
+_ACCEPT_TICKERS = ["0001A0", "005930", "AAAAAA", "0A0A0A"]
+_REJECT_TICKERS = [
+    "00593",       # 5-char
+    "0059300",     # 7-char
+    "0001a0",      # lowercase
+    "0001A!",      # path/shell metachar
+    "0;DROP",      # SQL metachar
+    "²" * 6,  # non-ASCII superscript (str.isdigit would accept — guard must not)
+]
+
+
+@pytest.mark.parametrize("ticker", _ACCEPT_TICKERS)
+def test_alphanumeric_ticker_accepted(decision_card_yaml: dict, ticker: str) -> None:
+    """DecisionCard.ticker accepts 6-char uppercase-alphanumeric KRX codes."""
+    card = DecisionCard.model_validate({**decision_card_yaml, "ticker": ticker})
+    assert card.ticker == ticker
+
+
+@pytest.mark.parametrize("ticker", _REJECT_TICKERS)
+def test_bad_ticker_shape_rejected(decision_card_yaml: dict, ticker: str) -> None:
+    """Wrong-length / lowercase / metachar / non-ASCII tickers still rejected."""
+    with pytest.raises(ValidationError):
+        DecisionCard.model_validate({**decision_card_yaml, "ticker": ticker})
+
+
 def test_invalidation_reason_optional(decision_card_yaml: dict) -> None:
     """The optional invalidation_reason: defaults None, and a payload that DOES
     carry it validates under extra='forbid' (guards Plan 03 invalidate/walk reconstruct).
