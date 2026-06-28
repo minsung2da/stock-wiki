@@ -19,7 +19,8 @@ Hard Vetoes enforced:
 
 SQL safety:
 - rcept_no is regex-pre-filtered ``^[0-9]{14}$``.
-- ticker is regex-pre-filtered ``^[0-9]{6}$``.
+- ticker is regex-pre-filtered ``^[0-9A-Z]{6}$`` (uppercase alphanumeric;
+  admits KRX new-style short codes e.g. "0001A0").
 - event_type is validated against the 5-value enum imported from
   ``collectors.kind.sources.KindEventType`` (single source of truth).
 - source is validated against ``{'dart', 'kind'}``.
@@ -45,7 +46,7 @@ if TYPE_CHECKING:
 __all__ = ["upsert_kind_filing", "upsert_kind_event"]
 
 _RCEPT_NO_RE = re.compile(r"^[0-9]{14}$")
-_TICKER_RE = re.compile(r"^[0-9]{6}$")
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 _ALLOWED_EVENT_TYPES = frozenset(e.value for e in KindEventType)
 _ALLOWED_SOURCES = frozenset({"dart", "kind"})
 
@@ -213,7 +214,7 @@ def upsert_kind_event(
         )
     if not _TICKER_RE.match(ticker):
         raise ValueError(
-            f"upsert_kind_event: ticker must be 6 ASCII digits, got {ticker!r}"
+            f"upsert_kind_event: ticker must be 6 ASCII alphanumeric uppercase, got {ticker!r}"
         )
 
     params = {

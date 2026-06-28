@@ -4,8 +4,10 @@ src/db/entity.py is the ONLY place that reads entity_aliases for lookup.
 Downstream collectors (Phase 3+) must use `resolve_entity` — do not re-implement.
 
 SQL safety: all queries use SQLAlchemy bind parameters (:v, :asof). No
-f-string interpolation into SQL. Digit/length pre-filter (D-12) ensures only
-^[0-9]{8}$ or ^[0-9]{6}$ strings reach the database. See threat T-02-11.
+f-string interpolation into SQL. Shape/length pre-filter (D-12) ensures only
+^[0-9]{8}$ (corp_code) or ^[0-9A-Z]{6}$ (ticker) strings reach the database.
+The ticker class is uppercase alphanumeric to admit KRX new-style short codes
+(e.g. "0001A0"); it adds no SQL metacharacters. See threat T-02-11.
 """
 
 from __future__ import annotations
@@ -17,10 +19,12 @@ from datetime import date
 from sqlalchemy import bindparam, text
 from sqlalchemy.engine import Engine
 
-# ASCII-only digit patterns — str.isdigit() accepts non-ASCII digits (e.g.
-# superscript ² returns True); these regexes close that loophole (D-12).
+# ASCII-only shape patterns — str.isdigit()/str.isalnum() accept non-ASCII
+# characters (e.g. superscript ² returns True); these regexes close that
+# loophole (D-12). Ticker is 6 uppercase ASCII alphanumeric to admit KRX
+# new-style short codes (e.g. "0001A0") while staying metacharacter-free.
 _CORP_CODE_RE = re.compile(r"^[0-9]{8}$")
-_TICKER_RE = re.compile(r"^[0-9]{6}$")
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 
 
 @dataclass(frozen=True)
@@ -35,14 +39,15 @@ def resolve_entity(
     value: str,
     as_of: date | None = None,
 ) -> Entity | None:
-    """Resolve a corp_code (8 digits) or ticker (6 digits) to an Entity.
+    """Resolve a corp_code (8 digits) or ticker (6 alphanumeric) to an Entity.
 
     D-09: valid-time only. `as_of` means "real-world entity state at that date".
     D-10/D-11: as_of=None → current only (valid_to IS NULL);
                as_of=<date> → historical through an entity_aliases row whose
                [valid_from, valid_to) half-open interval covers the date.
     D-12: 8 ASCII digits → direct corp_code lookup on entities;
-          6 ASCII digits → ticker alias lookup through entity_aliases;
+          6 ASCII alphanumeric (uppercase) → ticker alias lookup through
+            entity_aliases (admits KRX new-style codes e.g. "0001A0");
           any other value → None (mismatch).
     """
     if _CORP_CODE_RE.match(value):
@@ -264,7 +269,7 @@ def upsert_entity(
         )
     if ticker is not None and not _TICKER_RE.match(ticker):
         raise ValueError(
-            f"upsert_entity: invalid ticker shape (need 6 ASCII digits or None), got {ticker!r}"
+            f"upsert_entity: invalid ticker shape (need 6 ASCII alphanumeric uppercase or None), got {ticker!r}"
         )
 
     from datetime import date

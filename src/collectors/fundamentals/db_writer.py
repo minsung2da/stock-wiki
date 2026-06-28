@@ -11,7 +11,8 @@ Hard Veto #6 — ``fundamentals`` is pure NUMERIC (per/pbr/eps/bps/roe). NO body
 embedding columns ever pass through here (the table itself has none).
 
 SQL safety (Veto #7):
-- ticker is regex-pre-filtered ``^[0-9]{6}$`` (raises ValueError before DB).
+- ticker is regex-pre-filtered ``^[0-9A-Z]{6}$`` (uppercase alphanumeric;
+  admits KRX new-style short codes e.g. "0001A0"; raises ValueError before DB).
 - All values flow through SQLAlchemy bind params; the SQL is a module-level
   ``text()`` constant; no f-string interpolation.
 """
@@ -27,7 +28,7 @@ from sqlalchemy import text
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
-_TICKER_RE = re.compile(r"^[0-9]{6}$")
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 
 __all__ = ["upsert_fundamentals"]
 
@@ -130,7 +131,8 @@ def upsert_fundamentals(
 
     Args:
         engine: SQLAlchemy engine (psycopg3).
-        ticker: 6-digit KRX ticker (raises ValueError if shape wrong).
+        ticker: 6-char alphanumeric (uppercase) KRX short code; accepts
+            new-style codes (e.g. "0001A0"). Raises ValueError if shape wrong.
         fdate: as-of date for the row.
         corp_code: 8-digit DART corp code, or None. COALESCE-preserved on update.
         per/pbr/eps/bps: pykrx valuation metrics (typed NUMERIC; None allowed).
@@ -139,7 +141,7 @@ def upsert_fundamentals(
         source: provenance label (default "fundamentals").
     """
     if not _TICKER_RE.match(ticker):
-        raise ValueError(f"bad ticker (need 6 ASCII digits): {ticker!r}")
+        raise ValueError(f"bad ticker (need 6 ASCII alphanumeric uppercase): {ticker!r}")
 
     params: dict[str, Any] = {
         "ticker": ticker,

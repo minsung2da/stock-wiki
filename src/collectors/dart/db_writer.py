@@ -27,7 +27,7 @@ DART vs KIND precedence on ``event_type``:
 SQL safety:
 - ``rcept_no`` regex-pre-filtered ``^[0-9]{14}$``.
 - ``corp_code`` regex-pre-filtered ``^[0-9]{8}$``.
-- ``ticker`` (when not None) regex-pre-filtered ``^[0-9]{6}$``.
+- ``ticker`` (when not None) regex-pre-filtered ``^[0-9A-Z]{6}$``.
 - ``pblntf_ty`` must be in {'A','B'} for this writer.
 - All values flow through SQLAlchemy bind params; no f-string SQL.
 
@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 
 _RCEPT_NO_RE = re.compile(r"^[0-9]{14}$")
 _CORP_CODE_RE = re.compile(r"^[0-9]{8}$")
-_TICKER_RE = re.compile(r"^[0-9]{6}$")
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 _ALLOWED_PBLNTF_TY = frozenset({"A", "B"})
 
 __all__ = ["upsert_dart_filing"]
@@ -106,8 +106,9 @@ def upsert_dart_filing(
         corp_code: 8-digit DART corp code — must already exist in
             ``entities`` (FK CASCADE). Caller is responsible for the
             entity row (the DART collector upserts the entity post-run).
-        ticker: 6-digit KRX ticker or None when DART has no stock_code
-            (rare for pblntf_ty A/B but possible).
+        ticker: 6-char alphanumeric (uppercase) KRX short code or None when
+            DART has no stock_code (rare for pblntf_ty A/B but possible).
+            Accepts new-style codes (e.g. "0001A0") as well as legacy digits.
         filed_at: TIMESTAMPTZ — DART collector composes from rcept_dt at
             KST close (15:30 Asia/Seoul).
         report_nm: filing title (e.g. '분기보고서').
@@ -138,7 +139,7 @@ def upsert_dart_filing(
         )
     if ticker is not None and not _TICKER_RE.match(ticker):
         raise ValueError(
-            f"upsert_dart_filing: bad ticker (need 6 ASCII digits or None): {ticker!r}"
+            f"upsert_dart_filing: bad ticker (need 6 ASCII alphanumeric uppercase or None): {ticker!r}"
         )
     if pblntf_ty not in _ALLOWED_PBLNTF_TY:
         raise ValueError(

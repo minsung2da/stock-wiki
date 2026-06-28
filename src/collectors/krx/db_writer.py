@@ -11,8 +11,9 @@ Hard Veto #6 — ``ohlcv`` is pure numeric. No body / embedding columns
 ever pass through here (the table itself has none).
 
 SQL safety:
-- ticker is regex-pre-filtered ``^[0-9]{6}$`` (path-traversal class T-04-04
-  carry-over from writer.py).
+- ticker is regex-pre-filtered ``^[0-9A-Z]{6}$`` (uppercase alphanumeric;
+  admits KRX new-style short codes e.g. "0001A0"; path-traversal class
+  T-04-04 carry-over from writer.py — the added A-Z has no metacharacters).
 - All values flow through SQLAlchemy bind params; no f-string interpolation.
 """
 
@@ -27,7 +28,7 @@ from sqlalchemy import text
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
-_TICKER_RE = re.compile(r"^[0-9]{6}$")
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 
 __all__ = ["upsert_ohlcv"]
 
@@ -157,7 +158,8 @@ def upsert_ohlcv(
 
     Args:
         engine: SQLAlchemy engine (psycopg3).
-        ticker: 6-digit KRX ticker (raises ValueError if shape wrong).
+        ticker: 6-char alphanumeric (uppercase) KRX short code; accepts
+            new-style codes (e.g. "0001A0"). Raises ValueError if shape wrong.
         trade_date: business-day date for the row.
         corp_code: 8-digit DART corp code, or None. NULL on insert means
             "FK left dangling"; on update COALESCE preserves any existing
@@ -171,7 +173,7 @@ def upsert_ohlcv(
                    — optional. Subject to COALESCE on update.
     """
     if not _TICKER_RE.match(ticker):
-        raise ValueError(f"bad ticker (need 6 ASCII digits): {ticker!r}")
+        raise ValueError(f"bad ticker (need 6 ASCII alphanumeric uppercase): {ticker!r}")
 
     flow = flow_row or {}
     short = short_row or {}

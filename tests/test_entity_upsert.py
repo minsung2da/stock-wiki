@@ -90,6 +90,18 @@ class TestUpsertEntity:
         # No alias row — ticker was None.
         assert _count(pg_clean, "entity_aliases", corp_code="99999991") == 0
 
+    def test_alphanumeric_ticker_roundtrip(self, pg_clean: Engine) -> None:
+        """New-style 6-char alphanumeric ticker '0001A0' upsert→resolve round-trips
+        (Bug 1, quick-260628-mh9 — 덕양에너젠)."""
+        from db.entity import resolve_entity, upsert_entity
+
+        upsert_entity(pg_clean, "00126380", "덕양에너젠", "0001A0")
+
+        e = resolve_entity(pg_clean, "0001A0")
+        assert e is not None
+        assert e.corp_code == "00126380"
+        assert e.current_ticker == "0001A0"
+
     def test_E_invalid_corp_code_rejected(self, pg_clean: Engine) -> None:
         from db.entity import upsert_entity
 

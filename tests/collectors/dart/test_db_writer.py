@@ -173,6 +173,16 @@ def test_upsert_filing_invalid_ticker_raises(seeded_engine) -> None:
         _call(seeded_engine, ticker="abcdef")
 
 
+def test_upsert_filing_alphanumeric_ticker_accepted(seeded_engine) -> None:
+    """New-style 6-char alphanumeric ticker (e.g. '0001A0') inserts and stores
+    verbatim — CHAR(6) holds 6 chars without padding (Bug 1, quick-260628-mh9)."""
+    outcome = _call(seeded_engine, ticker="0001A0", rcept_no="20260520000099")
+    assert outcome == "inserted"
+    row = _row(seeded_engine, "20260520000099")
+    assert row is not None
+    assert row.ticker == "0001A0"
+
+
 def test_upsert_filing_ticker_null_permitted(seeded_engine) -> None:
     """ticker=None is allowed; DB row has NULL ticker."""
     outcome = _call(seeded_engine, ticker=None)

@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
 _CORP_CODE_RE = re.compile(r"^[0-9]{8}$")
-_TICKER_RE = re.compile(r"^[0-9]{6}$")
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 
 __all__ = ["upsert_news_article"]
 
@@ -144,8 +144,9 @@ def upsert_news_article(
         title: article title (TEXT NOT NULL).
         body_md: 2-paragraph body (D-13 cap is enforced upstream by the
             collector's ``extract_first_two_paragraphs``).
-        tickers: list of 6-digit ticker strings the collector matched against
-            the title+body. Must be non-empty (precondition).
+        tickers: list of 6-char alphanumeric (uppercase) ticker strings the
+            collector matched against the title+body (accepts new-style codes
+            e.g. "0001A0"). Must be non-empty (precondition).
         corp_code: 8-digit DART corp code for the primary (first) matched
             ticker, or None if the entity is not seeded. FK ON DELETE SET NULL
             means deleting the entity preserves the news row.
@@ -161,14 +162,15 @@ def upsert_news_article(
 
     Raises:
         ValueError: ``tickers`` empty, ``corp_code`` shape invalid, or any
-            element of ``tickers`` is not a 6-digit string.
+            element of ``tickers`` is not a 6-char alphanumeric (uppercase)
+            string (accepts new-style codes e.g. "0001A0").
     """
     if not tickers:
         raise ValueError("upsert_news_article: tickers must be non-empty")
     for t in tickers:
         if not _TICKER_RE.match(t):
             raise ValueError(
-                f"upsert_news_article: invalid ticker shape (need 6 ASCII digits), got {t!r}"
+                f"upsert_news_article: invalid ticker shape (need 6 ASCII alphanumeric uppercase), got {t!r}"
             )
     if corp_code is not None and not _CORP_CODE_RE.match(corp_code):
         raise ValueError(
