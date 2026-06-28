@@ -197,6 +197,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
 | 260628-mh9 | Fix two DART collector bugs (alphanumeric KRX tickers `^[0-9A-Z]{6}$`; fetch_body retries OpenDART throttle status 020/800) | 2026-06-28 | d4d249e, 2bbe71b | Done (190 tests pass) | [260628-mh9-...](./quick/260628-mh9-fix-two-dart-collector-bugs-alphanumeric/) |
+| 260628-n8d | Widen ticker regex `^[0-9A-Z]{6}$` across read/analysis/shared layers (cards/mcp_v2/portfolio/frontmatter) — end-to-end alphanumeric ticker consistency | 2026-06-28 | c59d276, 48c183f | Done (211 pass/2 skip) | [260628-n8d-...](./quick/260628-n8d-widen-ticker-regex-to-alphanumeric-acros/) |
 
 ## Session Continuity
 
