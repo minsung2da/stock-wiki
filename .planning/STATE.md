@@ -27,13 +27,15 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 03 — mcp-tool-surface-read-side
+**Current focus:** Phase 04 — analysis-runner-3-role-debate (PLANNED, ready to execute)
 
 ## Current Position
 
-Phase: 03 (mcp-tool-surface-read-side) — VERIFIED (6 of 6 plans; VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25)
-Plan: 6 of 6
-Next: Phase 4 (Analysis Runner — Bull/Bear/Judge → decision_card) — awaiting `/gsd:plan-phase 4`
+Phase: 04 (analysis-runner-3-role-debate) — PLANNED (6 plans / 3 waves; plan-checker PASSED 2026-06-28, 0 blockers)
+Plan: 0 of 6 executed
+Next: `/gsd:execute-phase 4` (Wave 1: 04-01 → Wave 2: 04-02/03/04/05 parallel → Wave 3: 04-06 live-CLI checkpoint)
+
+Phase 03 — VERIFIED (VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25).
 
 Progress: [██████████] 100%
 
@@ -201,6 +203,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-06-25T09:18:34.687Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-analysis-runner-3-role-debate/04-CONTEXT.md
+Last session: 2026-06-28
+Stopped at: Phase 4 planned (research + patterns + 6 plans, plan-checker PASSED) — ready for /gsd:execute-phase 4
+Resume file: .planning/phases/04-analysis-runner-3-role-debate/04-01-PLAN.md
