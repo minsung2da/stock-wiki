@@ -115,11 +115,13 @@ def test_collect_krx_writes_collector_runs_row(pg_clean_with_entities, tmp_path,
 
     _write_portfolio(tmp_path)
     monkeypatch.chdir(tmp_path)
-    # Empty pykrx response → holiday path; still emits one collector_runs row.
+    # CAP-3: collect_krx now does one whole-market scrape (fetch_market_ohlcv),
+    # not a per-ticker fetch_ohlcv. An empty market frame → holiday path for
+    # every ticker; the run still emits one collector_runs row.
     monkeypatch.setattr(
         krx_fetcher,
-        "fetch_ohlcv",
-        lambda t, d: pd.DataFrame(columns=["시가", "고가", "저가", "종가", "거래량"]),
+        "fetch_market_ohlcv",
+        lambda d: pd.DataFrame(),
     )
     collect_krx(engine=pg_clean_with_entities, since="2026-04-16")
 
