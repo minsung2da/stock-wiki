@@ -58,6 +58,20 @@ def get_client() -> None:
     _initialized = True
 
 
+def get_api_key() -> str:
+    """Return the DART API key from the ``DART_API_KEY`` env var.
+
+    Used by the body fetcher, which talks to the OpenDART document API via
+    ``requests`` directly (not dart-fss). Raises CollectorConfigError if the
+    key is absent. The secret value is NEVER included in the error message
+    (T-3-03 mitigation).
+    """
+    api_key = os.environ.get("DART_API_KEY")
+    if not api_key:
+        raise CollectorConfigError("DART_API_KEY not set")
+    return api_key
+
+
 def find_corp(corp_code: str) -> Any:
     """Resolve an 8-digit DART corp_code to a dart-fss Corp object.
 
