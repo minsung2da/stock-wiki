@@ -132,20 +132,24 @@ def test_fetch_body_status_013_returns_empty(monkeypatch) -> None:
     assert fetcher.fetch_body(_FakeFiling()) == ""
 
 
-def test_fetch_body_other_status_raises_without_key_leak(monkeypatch) -> None:
+def test_fetch_body_permanent_status_raises_without_key_leak(monkeypatch) -> None:
+    # status 014 (file does not exist) is permanent → raises immediately, no
+    # retry. (020 is now a retryable throttle — see test_dart_fetcher_retry.py.)
     envelope = (
         b'<?xml version="1.0" encoding="UTF-8"?>'
-        b"<result><status>020</status>"
-        b"<message>requests exceeded the limit</message></result>"
+        b"<result><status>014</status>"
+        b"<message>file does not exist</message></result>"
     )
     _patch_get(monkeypatch, envelope)
 
     with pytest.raises(fetcher.DartDocumentError) as exc:
         fetcher.fetch_body(_FakeFiling())
     msg = str(exc.value)
-    assert "020" in msg
-    assert "requests exceeded the limit" in msg
+    assert "014" in msg
+    assert "file does not exist" in msg
     assert "dummy-key" not in msg  # the API key must never leak into errors
+    # 014 is a base DartDocumentError, NOT a retryable throttle.
+    assert not isinstance(exc.value, fetcher.DartThrottleError)
 
 
 def test_fetch_body_unparseable_non_zip_raises(monkeypatch) -> None:

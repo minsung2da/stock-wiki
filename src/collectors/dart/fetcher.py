@@ -16,10 +16,14 @@ DART *document viewer* (``dart.fss.or.kr``) and was blocked server-side
 (every fetch raised ``RemoteDisconnected``). The OpenDART API host is the
 same one ``list_ab_filings`` already uses successfully.
 
-``fetch_body`` retries transient network failures (flakes, rate-limit
-spikes) via tenacity. OpenDART application errors (non-ZIP envelopes) are
-NOT retried: status 013 (no document) returns ``""`` per the empty-body
-contract; any other status raises ``DartDocumentError``.
+``fetch_body`` retries transient failures via tenacity. OpenDART
+application-error envelopes (non-ZIP) are classified by status:
+- ``013`` (no document) → returns ``""`` per the empty-body contract.
+- ``020`` (rate limit) / ``800`` (system error) → retryable
+  ``DartThrottleError`` (transient — recovers on a spaced retry; a dense
+  run previously lost 5 throttled filings here).
+- ``014`` (file does not exist) and any unrecognized non-ZIP response →
+  permanent ``DartDocumentError`` (NOT retried).
 """
 
 from __future__ import annotations
@@ -58,29 +62,50 @@ _HTTP_TIMEOUT: tuple[float, float] = (10.0, 120.0)
 # a legitimate empty body (some 주요사항보고서), NOT a failure → return "".
 _NO_DATA_STATUS = "013"
 
+# OpenDART application statuses that are transient and safe to retry with
+# backoff: 020 = rate limit (requests exceeded the limit), 800 = system
+# error / maintenance. These surface as a retryable DartThrottleError.
+_TRANSIENT_STATUSES = frozenset({"020", "800"})
+
+
+class DartDocumentError(RuntimeError):
+    """OpenDART document.xml returned a permanent error envelope (non-013).
+
+    Carries the OpenDART status code + message and the public rcept_no. Never
+    includes the API key (the envelope itself does not echo the key).
+    """
+
+
+class DartThrottleError(DartDocumentError):
+    """OpenDART transient/throttle envelope (status 020 rate-limit / 800 system).
+
+    A *retryable* subclass of DartDocumentError: ``fetch_body`` retries it with
+    tenacity backoff because it is a member of ``_RETRYABLE_EXC``. A plain
+    ``DartDocumentError`` (e.g. status 014 file-does-not-exist) is NOT an
+    instance of this class and therefore stays non-retryable — that isinstance
+    relationship is exactly what ``retry_if_exception_type`` gates on. Carries
+    only the public status/message/rcept_no — never the API key.
+    """
+
+
 # Transient network classes surfaced with large 사업보고서 bodies:
 # requests -> urllib3 -> http.client. ProtocolError wraps RemoteDisconnected;
 # ChunkedEncodingError covers truncated Transfer-Encoding:chunked responses;
 # ReqConnectionError is the umbrella for DNS/socket flakes; HTTPError covers
-# transient 5xx from the OpenDART edge (raised by resp.raise_for_status()).
+# transient 5xx from the OpenDART edge (raised by resp.raise_for_status());
+# DartThrottleError covers OpenDART application-level throttle (status 020/800).
+# (Defined AFTER the exception classes so the names exist at import time.)
 _RETRYABLE_EXC: tuple[type[BaseException], ...] = (
     ReqConnectionError,
     ChunkedEncodingError,
     ProtocolError,
     ReqHTTPError,
+    DartThrottleError,
 )
 
 # Encodings tried in order. OpenDART XML is UTF-8 today; older filings may be
 # cp949/euc-kr (cp949 is a superset of euc-kr — euc-kr kept as a last resort).
 _DECODE_ENCODINGS: tuple[str, ...] = ("utf-8", "cp949", "euc-kr")
-
-
-class DartDocumentError(RuntimeError):
-    """OpenDART document.xml returned an error envelope (non-013).
-
-    Carries the OpenDART status code + message and the public rcept_no. Never
-    includes the API key (the envelope itself does not echo the key).
-    """
 
 
 def list_ab_filings(corp_code: str, since: str, max_docs: int) -> list[Any]:
@@ -177,7 +202,8 @@ def _extract_zip_text(content: bytes) -> str:
 
 
 def _handle_error_envelope(content: bytes, rcept_no: str) -> str:
-    """Map a non-ZIP OpenDART response to "" (no data) or raise DartDocumentError."""
+    """Map a non-ZIP OpenDART response to "" (no data), a retryable
+    DartThrottleError (transient 020/800), or a permanent DartDocumentError."""
     text = _decode(content)
     status_match = re.search(r"<status>\s*([0-9]+)\s*</status>", text)
     status = status_match.group(1) if status_match else None
@@ -191,10 +217,13 @@ def _handle_error_envelope(content: bytes, rcept_no: str) -> str:
 
     msg_match = re.search(r"<message>\s*(.*?)\s*</message>", text, re.DOTALL)
     message = msg_match.group(1) if msg_match else "unrecognized non-ZIP response"
-    raise DartDocumentError(
+    detail = (
         f"OpenDART document.xml error for rcept_no={rcept_no}: "
         f"status={status} message={message}"
     )
+    if status in _TRANSIENT_STATUSES:
+        raise DartThrottleError(detail)
+    raise DartDocumentError(detail)
 
 
 def _decode(raw: bytes) -> str:
