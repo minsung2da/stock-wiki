@@ -1,12 +1,21 @@
 ---
 phase: 04
 plan: 04-01
-status: gaps_found
+status: resolved
 tested: 2026-07-06
+resolved: 2026-07-06
+resolution_commit: 7d11ffc
 tests_total: 3
-tests_passed: 1
-tests_failed: 2
+tests_passed: 3
+tests_failed: 0
 ---
+
+> **RESOLVED 2026-07-06 (commit `7d11ffc`).** GAP-1 + GAP-2 fixed in
+> `src/analysis/checksum.py`; all 3 UAT cases now KEEP correctly. Re-run evidence:
+> `_to_canonical(42.5,'조원')=4.25e13`; TEST A kept `{market_cap, foreign_pct}` no
+> warnings; TEST B keeps real market_cap, drops fake; TEST C keeps `310`, drops
+> fabricated. +22 regression tests (`tests/analysis/test_checksum.py`: 43 passed),
+> including the previously-missing cross-form (unit-claim vs raw-digit-body) matrix.
 
 # Phase 04-01 — UAT (D-03 numeric checksum)
 
