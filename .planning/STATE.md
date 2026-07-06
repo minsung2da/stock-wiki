@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: verified
-stopped_at: "Completed 04-02-PLAN.md (roles prompts+schemas + rubric Veto#4/#5); Plan 3 of 6 next"
-last_updated: "2026-07-06T13:26:00.000Z"
+stopped_at: "Completed 04-03-PLAN.md (EvidenceBundle D-02 pre-fetch + to_stdin cap); Plan 4 of 6 next"
+last_updated: "2026-07-06T14:05:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 24
-  completed_plans: 20
-  percent: 35
+  completed_plans: 21
+  percent: 37
 ---
 
 # Project State
@@ -32,8 +32,8 @@ See:
 ## Current Position
 
 Phase: 04 (analysis-runner-3-role-debate) — EXECUTING
-Plan: 3 of 6
-Next: `/gsd:execute-phase 4` (Wave 2 remaining: 04-03/04/05 → Wave 3: 04-06 live-CLI checkpoint)
+Plan: 4 of 6
+Next: `/gsd:execute-phase 4` (Wave 2 remaining: 04-04/05 → Wave 3: 04-06 live-CLI checkpoint)
 
 Phase 03 — VERIFIED (VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25).
 
@@ -111,6 +111,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 03 P03-06 | 11 min | 3 tasks | 8 files |
 | Phase 04 P01 | 12 min | 3 tasks | 8 files |
 | Phase 04 P02 | 6 min | 3 tasks | 4 files |
+| Phase 04 P03 | 18 min | 2 tasks | 2 files |
 
 ## Accumulated Context (v2.0)
 
@@ -157,6 +158,7 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase ?]: [Phase 04-01]: src/analysis/checksum.py D-03 value-equivalence (relative tol 0.5%) reusing shared.units.normalize_to_krw + number_extraction; KRW-family→KRW원 canonical, others raw scalar; unverifiable facts dropped into warnings (Veto #1/#4). Optional SANITY_RULES gate skipped (English fact keys won't match — YAGNI)
 - [Phase ?]: [Phase 04-01]: CI import guard GUARDED_DIRS += src/analysis (D-01 Max-only Veto); 'live' pytest marker registered (opt-in real claude CLI, deselect by default)
 - [Phase 04-02]: src/analysis/roles.py leaf constants — ROLE_SYSTEM_PROMPTS (bull/bear/judge encode Veto #1 no-price-prediction + <untrusted>=data injection control + Veto #3/#5) + ROLE_SCHEMAS inline JSON-Schema dicts (enum stance/weight, additionalProperties:false); Judge schema OMITS conviction (rubric layer computes it, Veto #4); prompt_for/schema_for KeyError on unknown; acyclic (no subagents/runner import)
+- [Phase 04-03]: src/analysis/bundle.py — EvidenceBundle (Pydantic extra='forbid', reuses mcp_v2.models types) + build_bundle(engine, corp_code, as_of, *, portfolio_note_path) pre-fetches ALL evidence ONCE via in-process MCP tools (D-02); search_filings(−180d)→top-5 get_filing whole bodies (Veto #8), ohlcv(−90d)/flow(−30d)/peer_view×3 (Veto #5/#6), hybrid_search(name+catalyst,−30d)→filing/note full-body re-fetch (deduped), get_note only if portfolio_note_path given (only-if-held policy lifted to 04-06 runner). to_stdin: deterministic, <untrusted> delimiters preserved verbatim (D-03), 100K char cap drops lowest-weight WHOLE bodies never mid-body (T-04-08); no run_sql/text() (Veto #7). Window/cap constants [ASSUMED] (Discretion #3), tune Phase 8
 - [Phase 04-02]: src/analysis/rubric.py — score_to_conviction = clamp(Σwᵢ·scoreᵢ/(10·Σwᵢ),0,1) with contradiction_penalty NEGATIVE (denom=10·Σall=10; all-10→0.80, max-positive/no-penalty→0.90); Veto #5 HARD CAP in Python (0.79 pin) when raw≥0.8 without ≥2 HIGH/MEDIUM refs across ≥2 CORROBORATING_FAMILIES (DART/KRX/macro/news/user_thesis — sentiment excluded → sentiment-only never 0.8); derive_stance = STANCE_TABLE[(net-bucket, held)] + sign guard (BUY/ADD→HOLD when fundamentals_sign<0 AND catalyst_sign<0); weights/table [ASSUMED], tune Phase 8
 
 ### Lessons Carried Over from v1.0
@@ -210,6 +212,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-07-06T13:26:00.000Z
-Stopped at: Completed 04-02-PLAN.md (roles prompts+schemas + rubric Veto#4/#5); Plan 3 of 6 next
-Resume file: .planning/phases/04-analysis-runner-3-role-debate/04-03-PLAN.md
+Last session: 2026-07-06T14:05:00.000Z
+Stopped at: Completed 04-03-PLAN.md (EvidenceBundle D-02 pre-fetch + bounded to_stdin); Plan 4 of 6 next
+Resume file: .planning/phases/04-analysis-runner-3-role-debate/04-04-PLAN.md
