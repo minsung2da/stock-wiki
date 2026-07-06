@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: verified
-stopped_at: Completed 04-03-PLAN.md (EvidenceBundle D-02 pre-fetch + bounded to_stdin); Plan 4 of 6 next
-last_updated: "2026-07-06T14:09:17.984Z"
+stopped_at: "Completed 04-05-PLAN.md (DebateBackend seam + SC#7 cost capture); Wave 3 04-06 live-CLI checkpoint next"
+last_updated: "2026-07-06T14:33:34.979Z"
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
   percent: 33
 ---
 
@@ -32,12 +32,12 @@ See:
 ## Current Position
 
 Phase: 04 (analysis-runner-3-role-debate) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Next: `/gsd:execute-phase 4` (Wave 2 remaining: 04-05 DebateBackend → Wave 3: 04-06 live-CLI checkpoint)
 
 Phase 03 — VERIFIED (VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25).
 
-Progress: [█████████░] 92%
+Progress: [██████████] 96%
 
 **Phase 3 closed (2026-06-07):** all 10 locked read-side MCP tools (get_filing,
 search_filings, ohlcv_range, flow_range, peer_view, hybrid_search, get_note,
@@ -113,6 +113,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 04 P02 | 6 min | 3 tasks | 4 files |
 | Phase 04 P03 | 18 min | 2 tasks | 2 files |
 | Phase 04 P04 | 7 min | 3 tasks | 2 files |
+| Phase 04 P05 | 11 min | 3 tasks | 6 files |
 
 ## Accumulated Context (v2.0)
 
@@ -163,6 +164,8 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase 04-02]: src/analysis/rubric.py — score_to_conviction = clamp(Σwᵢ·scoreᵢ/(10·Σwᵢ),0,1) with contradiction_penalty NEGATIVE (denom=10·Σall=10; all-10→0.80, max-positive/no-penalty→0.90); Veto #5 HARD CAP in Python (0.79 pin) when raw≥0.8 without ≥2 HIGH/MEDIUM refs across ≥2 CORROBORATING_FAMILIES (DART/KRX/macro/news/user_thesis — sentiment excluded → sentiment-only never 0.8); derive_stance = STANCE_TABLE[(net-bucket, held)] + sign guard (BUY/ADD→HOLD when fundamentals_sign<0 AND catalyst_sign<0); weights/table [ASSUMED], tune Phase 8
 - [Phase ?]: [Phase 04-04]: analysis.gate.decide — deterministic no-LLM D-04 stance gate (FULL vs REFRESH + all fired reasons); triggers = first-run/new-filing/>=7% close-to-close or 3x vol/2sigma flow/near-expiry D-7/safety-net N=14d/assumption-break; thresholds [ASSUMED] module constants (Discretion #5, tune Phase 8); imports nothing from analysis.subagents/runner so REFRESH can never reach the LLM (T-04-11)
 - [Phase ?]: [Phase 04-04]: lightweight_refresh PRESERVES generated_at (safety-net clock counts from the last FULL debate, not each cheap refresh) and NEVER extends expires_at (T-04-10); rebuilt through DecisionCard.model_validate (Veto #2); Escalate sentinel on material shift (new mid-refresh filing OR HIGH-weight claim lost evidence), non-HIGH unresolved refs -> warnings
+- [Phase 04-05]: D-01 DebateBackend seam: ClaudeCliBackend spawns headless 'claude -p' via patchable _spawn_claude (mirrors fetcher._http_get), evidence on stdin (T-04-13), --strict-mcp-config + never --bare, reads structured_output not result; SubAgentError(permanent auth/non-zero/bad-envelope) vs SubAgentRetryableError(overload/rate_limit/timeout) with exactly one retry; system_prompt+schema are PARAMS so subagents.py imports no roles.py (leaf); run_bull_bear = parallel-blind helper — SC#2 mechanics + Max-only Veto: the ONLY path to a model is the CLI subprocess; the mockable seam keeps the default suite quota-free
+- [Phase 04-05]: SC#7 cost capture (cost.py): StageCost + capture_cost extracts total_cost_usd/duration_ms/usage token subset/modelUsage model from the claude -p JSON envelope (defensive on missing keys); emit_cost writes ONE structured stderr line and NEVER reuses record_collector_run (its 7-source CHECK excludes analysis) nor raises on a partial envelope; FakeDebateBackend (canned per-role structured_output + .calls recorder, zero subprocess) is the seam the whole default suite uses — SC#7 Phase-9 quota input via structured stderr (RESEARCH #6); deep_work_rules: default suite never spawns the live CLI
 
 ### Lessons Carried Over from v1.0
 
@@ -215,6 +218,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-07-06T14:07:53.180Z
-Stopped at: Completed 04-03-PLAN.md (EvidenceBundle D-02 pre-fetch + bounded to_stdin); Plan 4 of 6 next
+Last session: 2026-07-06T14:33:33.972Z
+Stopped at: Completed 04-05-PLAN.md (DebateBackend seam + SC#7 cost capture); Wave 3 04-06 live-CLI checkpoint next
 Resume file: None
