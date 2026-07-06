@@ -68,9 +68,11 @@ def seeded_engine(pg_clean):
             ),
             {"vf": date(2020, 1, 1)},
         )
+        _f1 = datetime(2026, 5, 20, 15, 30, tzinfo=_KST)
+        _f2 = datetime(2026, 4, 15, 15, 30, tzinfo=_KST)
         for rcept_no, filed, nm, body in (
-            ("20260520000001", datetime(2026, 5, 20, 15, 30, tzinfo=_KST), "분기보고서", _FILING_BODY_1),
-            ("20260415000002", datetime(2026, 4, 15, 15, 30, tzinfo=_KST), "사업보고서", _FILING_BODY_2),
+            ("20260520000001", _f1, "분기보고서", _FILING_BODY_1),
+            ("20260415000002", _f2, "사업보고서", _FILING_BODY_2),
         ):
             conn.execute(
                 text(
