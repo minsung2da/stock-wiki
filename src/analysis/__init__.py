@@ -9,12 +9,12 @@ D-01 (Max-only Veto): every path to Sonnet goes through the headless ``claude`` 
 subprocess under Max-subscription OAuth — this package must NEVER import a cloud-LLM
 SDK (``anthropic`` / ``openai``); ``tests/test_import_guard.py`` enforces that in CI.
 
-Wave 0 scaffold. A later plan re-exports ``analyze_ticker`` here:
-
-    from .runner import analyze_ticker
-    __all__ = ["analyze_ticker"]
+Public surface: ``analyze_ticker`` — the composite orchestrator (Plan 04-06) that turns
+one ticker into a single saved, checksummed, time-boxed ``decision_card`` (SC#1-7).
 """
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from .runner import analyze_ticker
+
+__all__ = ["analyze_ticker"]
