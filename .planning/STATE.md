@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: verified
-stopped_at: "Completed 04-05-PLAN.md (DebateBackend seam + SC#7 cost capture); Wave 3 04-06 live-CLI checkpoint next"
-last_updated: "2026-07-06T14:33:34.979Z"
+stopped_at: "04-06 Tasks 1-2 done (analyze_ticker runner + SC#1-7 quota-free tests, 126 pass); Task 3 = blocking human-verify live-CLI checkpoint PENDING (orchestrator-owned)"
+last_updated: "2026-07-06T14:55:51Z"
 progress:
   total_phases: 9
   completed_phases: 3
@@ -32,8 +32,11 @@ See:
 ## Current Position
 
 Phase: 04 (analysis-runner-3-role-debate) — EXECUTING
-Plan: 5 of 6
-Next: `/gsd:execute-phase 4` (Wave 2 remaining: 04-05 DebateBackend → Wave 3: 04-06 live-CLI checkpoint)
+Plan: 6 of 6 (04-06 IN PROGRESS — Tasks 1-2 done, Task 3 blocking live checkpoint pending)
+Next: run the blocking `checkpoint:human-verify` live-CLI smoke (orchestrator + human own it):
+`.venv/Scripts/python.exe -m pytest tests/analysis/test_live.py -m live -x -q -s` with a
+Max-logged-in `claude` and ANTHROPIC_API_KEY unset. After it passes, the orchestrator
+finalizes 04-06 in ROADMAP + closes SC#1-7.
 
 Phase 03 — VERIFIED (VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25).
 
@@ -114,6 +117,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 04 P03 | 18 min | 2 tasks | 2 files |
 | Phase 04 P04 | 7 min | 3 tasks | 2 files |
 | Phase 04 P05 | 11 min | 3 tasks | 6 files |
+| Phase 04 P06 (partial: Tasks 1-2, Task 3 live checkpoint pending) | ~22 min | 2 tasks | 5 files |
 
 ## Accumulated Context (v2.0)
 
@@ -166,6 +170,7 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase ?]: [Phase 04-04]: lightweight_refresh PRESERVES generated_at (safety-net clock counts from the last FULL debate, not each cheap refresh) and NEVER extends expires_at (T-04-10); rebuilt through DecisionCard.model_validate (Veto #2); Escalate sentinel on material shift (new mid-refresh filing OR HIGH-weight claim lost evidence), non-HIGH unresolved refs -> warnings
 - [Phase 04-05]: D-01 DebateBackend seam: ClaudeCliBackend spawns headless 'claude -p' via patchable _spawn_claude (mirrors fetcher._http_get), evidence on stdin (T-04-13), --strict-mcp-config + never --bare, reads structured_output not result; SubAgentError(permanent auth/non-zero/bad-envelope) vs SubAgentRetryableError(overload/rate_limit/timeout) with exactly one retry; system_prompt+schema are PARAMS so subagents.py imports no roles.py (leaf); run_bull_bear = parallel-blind helper — SC#2 mechanics + Max-only Veto: the ONLY path to a model is the CLI subprocess; the mockable seam keeps the default suite quota-free
 - [Phase 04-05]: SC#7 cost capture (cost.py): StageCost + capture_cost extracts total_cost_usd/duration_ms/usage token subset/modelUsage model from the claude -p JSON envelope (defensive on missing keys); emit_cost writes ONE structured stderr line and NEVER reuses record_collector_run (its 7-source CHECK excludes analysis) nor raises on a partial envelope; FakeDebateBackend (canned per-role structured_output + .calls recorder, zero subprocess) is the seam the whole default suite uses — SC#7 Phase-9 quota input via structured stderr (RESEARCH #6); deep_work_rules: default suite never spawns the live CLI
+- [Phase 04-06]: analysis.runner.analyze_ticker composite orchestrator (Tasks 1-2 done; Task 3 = blocking live-CLI checkpoint PENDING, orchestrator-owned). gate.decide → REFRESH (lightweight_refresh, backend NEVER called, SC#6) | FULL (build_bundle → run_bull_bear parallel-blind → Judge over bundle+bull+bear, SC#2 → checksum_facts drops unverifiable numbers into card.warnings, SC#3 → score_to_conviction, Veto #4/#5 → derive_stance from mean-claim-confidence net + rubric fundamentals/catalyst signs + currently_held, RESEARCH Disc #1). Conviction comes from the rubric (Judge schema OMITS it); stance is DERIVED (not taken from Judge) so both are decomposable. Card construction enforces Veto #2 = SC#4 (assumption-less/untimed Judge → ValidationError, retry judge ONCE then fail loudly, Disc #2). Empty contradictions logs a warning (SC#5). Per-stage cost emitted for bundle+bull+bear+judge (SC#7). Atomic supersession via store.save_card(supersedes=prior.card_id) (SC#1). currently_held/portfolio_note_path=None [ASSUMED] until Phase 6 wires portfolio membership. No anthropic/openai import (D-01, import guard green). 126 quota-free tests pass; live proof deferred to Task 3 checkpoint
 
 ### Lessons Carried Over from v1.0
 
@@ -218,6 +223,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-07-06T14:33:33.972Z
-Stopped at: Completed 04-05-PLAN.md (DebateBackend seam + SC#7 cost capture); Wave 3 04-06 live-CLI checkpoint next
-Resume file: None
+Last session: 2026-07-06T14:55:51Z
+Stopped at: 04-06 Tasks 1-2 done (analyze_ticker runner + SC#1-7 quota-free tests, 126 pass); Task 3 = blocking human-verify live-CLI checkpoint PENDING (orchestrator + human own the real `claude` run)
+Resume file: .planning/phases/04-analysis-runner-3-role-debate/04-06-SUMMARY.md
