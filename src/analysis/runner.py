@@ -106,7 +106,7 @@ def analyze_ticker(
     *,
     engine: Engine | None = None,
     backend: DebateBackend | None = None,
-    timeout_s: float = 180.0,
+    timeout_s: float = 600.0,
 ) -> DecisionCard:
     """Analyze one ticker into a single saved ``DecisionCard`` (SC#1-7).
 
@@ -123,6 +123,10 @@ def analyze_ticker(
         backend: the injected ``DebateBackend`` (the ONLY path to a model, D-01);
             defaults to ``ClaudeCliBackend()``. The whole test suite injects a fake.
         timeout_s: per-sub-agent wall-clock timeout passed through to the backend.
+            A hang-guard ceiling, not a target: the live 04-06 checkpoint showed
+            Bull/Bear at ~160s each and the Judge synthesis (bundle + both outputs)
+            exceeding 180s over a ~100K-char bundle, so the default is 600s. Phase 8
+            can tune this per the observed cost/time distribution.
 
     Returns:
         The saved active ``DecisionCard`` (superseding any prior active card).
