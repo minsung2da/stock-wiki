@@ -120,3 +120,38 @@ class TestAgainstRealFilingBody:
         assert kept == {"revenue_krw": 42.5, "op_margin_pct": 17.2}
         assert len(warnings) == 1
         assert "phantom_pct" in warnings[0]
+
+
+# ── GAP-1 regression (UAT 2026-07-06): unit-form CLAIM vs raw-digit BODY ──────
+# The pre-fix suite only compared same-form pairs (조원 claim vs 조원 body), so
+# `_to_canonical` silently ignoring the Korean-unit multiplier went undetected.
+# These assert every claim form verifies against every body form (true 3-way).
+@pytest.mark.parametrize("body", [_JO_BODY, _DIGIT_BODY, _EOK_BODY])
+@pytest.mark.parametrize("claim_unit", ["조원", "조", "억", "백만원", "원", "KRW조"])
+def test_cross_form_korean_units_verify(body, claim_unit):
+    # value expressed in the claim_unit's scale, all == 4.25e13 KRW원
+    scale = {"조원": 42.5, "조": 42.5, "억": 425000.0, "백만원": 42_500_000.0,
+             "원": 42_500_000_000_000.0, "KRW조": 42.5}[claim_unit]
+    assert fact_supported(scale, claim_unit, body) is True
+
+
+def test_gap1_unit_claim_vs_digit_body_kept():
+    kept, warns = checksum_facts(
+        [{"key": "revenue", "value": 42.5, "unit": "조원"}], _DIGIT_BODY
+    )
+    assert kept == {"revenue": 42.5}
+    assert warns == []
+
+
+# ── GAP-2 regression: dimensionless integer counts (verbatim, digit-bounded) ──
+def test_gap2_bare_count_verbatim_kept():
+    assert fact_supported(310, "", "당사는 310개 종속기업을 둔다") is True
+
+
+def test_gap2_bare_count_not_embedded_in_longer_run():
+    # 310 must NOT match inside 3100 (digit-boundary guard)
+    assert fact_supported(310, "", "매출 3100억") is False
+
+
+def test_gap2_bare_count_comma_grouped():
+    assert fact_supported(1_234_567, "", "종업원 1,234,567명") is True

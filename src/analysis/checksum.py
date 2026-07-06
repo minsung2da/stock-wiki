@@ -18,6 +18,7 @@ but compare on the normalized number within a relative tolerance.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from shared.number_extraction import NumericCandidate, extract_numeric_candidates
@@ -36,17 +37,65 @@ _DEFAULT_TOL = 0.005
 _UNIT_GLYPHS = "조억백만원%배주포인트bps달러엔유로"
 
 
+# GAP-1 fix: the extractor tags source spans in the internal ``KRW*`` form, but a
+# sub-agent (Judge) emits NATURAL Korean units (``조원``/``억``/``백만원``/``원``).
+# Map those onto the KRW multiplier family so a ``42.5조원`` CLAIM canonicalizes to
+# the same magnitude as a ``42,500,000,000,000`` raw-digit SOURCE span. Non-KRW units
+# (``%``/``배``/``주``/FX/…) are left untouched and compare as raw scalars.
+_KRW_ALIASES: dict[str, str] = {
+    "조원": "KRW조", "조": "KRW조",
+    "억원": "KRW억", "억": "KRW억",
+    "백만원": "KRW백만", "백만": "KRW백만",
+    "원": "KRW원",
+}
+
+
+def _canonical_unit(unit: str) -> str:
+    """Map a claim's natural unit string onto the internal KRW-family key.
+
+    Already-normalized ``KRW*`` units (candidate side) pass through unchanged; natural
+    Korean KRW glyphs are aliased; anything else (``%``/``배``/``주``/FX/empty) is
+    returned as-is so it stays a raw scalar.
+    """
+    u = (unit or "").strip()
+    if u.startswith("KRW"):
+        return u
+    return _KRW_ALIASES.get(u, u)
+
+
 def _to_canonical(value: float, unit: str) -> float | None:
     """Normalize a (value, unit) pair to a single comparable number.
 
-    KRW-family units (``KRW원``/``KRW백만``/``KRW억``/``KRW조``) collapse to KRW원 via
-    ``normalize_to_krw``; every other unit (``pct``/``multiplier``/``shares``/foreign
-    currency/``other``/…) keeps its raw scalar so pct-vs-pct and ×-vs-× compare directly.
-    Returns ``None`` when a KRW unit is unrecognized (defensive — caller skips it).
+    KRW-family units (``KRW원``/``KRW백만``/``KRW억``/``KRW조`` — and their natural
+    ``원``/``백만``/``억``/``조원`` aliases via :func:`_canonical_unit`) collapse to
+    KRW원 via ``normalize_to_krw``; every other unit (``pct``/``multiplier``/``shares``/
+    foreign currency/``other``/…) keeps its raw scalar so pct-vs-pct and ×-vs-× compare
+    directly. Returns ``None`` when a KRW unit is unrecognized (defensive — caller skips).
     """
-    if unit.startswith("KRW"):
-        return normalize_to_krw(value, unit)
+    u = _canonical_unit(unit)
+    if u.startswith("KRW"):
+        return normalize_to_krw(value, u)
     return float(value)
+
+
+def _verbatim_int_in_body(value: float, body_md: str) -> bool:
+    """GAP-2: dimensionless integer verbatim-present in the source (digit-bounded).
+
+    ``extract_numeric_candidates`` surfaces only unit-tagged financial spans, so a bare
+    count (e.g. ``310개 종속기업``) is never a candidate. For a dimensionless integer
+    claim, accept it iff the integer (plain or comma-grouped) appears as a standalone
+    number — not embedded in a longer digit run (``310`` must not match ``3100``).
+    """
+    if value != int(value):
+        return False
+    n = abs(int(value))
+    for token in {str(n), f"{n:,}"}:
+        for m in re.finditer(re.escape(token), body_md):
+            before = body_md[m.start() - 1] if m.start() > 0 else ""
+            after = body_md[m.end()] if m.end() < len(body_md) else ""
+            if before not in "0123456789,." and after not in "0123456789,.":
+                return True
+    return False
 
 
 def _candidate_canonical(cand: NumericCandidate) -> float | None:
@@ -88,6 +137,10 @@ def fact_supported(
             continue
         if abs(cv - target) / max(abs(cv), abs(target), 1e-9) <= tol:
             return True
+    # GAP-2: dimensionless integer counts (unit empty) are not extracted as
+    # financial candidates — fall back to a digit-bounded verbatim presence check.
+    if not (unit or "").strip():
+        return _verbatim_int_in_body(value, body_md)
     return False
 
 
