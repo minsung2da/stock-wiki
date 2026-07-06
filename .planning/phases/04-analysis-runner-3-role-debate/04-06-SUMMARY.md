@@ -52,18 +52,41 @@ patterns-established:
   - "Per-role debate appendix: Judge stdin = bundle_stdin + '## BULL OUTPUT' + '## BEAR OUTPUT' JSON blocks; Bull/Bear never receive it (blind, SC#2)."
   - "make_fake_backend factory fixture + canned_judge fixture for per-role canned-output variants in tests."
 
-requirements-completed: []  # SC#1-7 are WIRED + quota-free-verified, but final closure awaits Task 3 (blocking live-CLI checkpoint). Orchestrator marks SC#1-7 complete after the live run passes.
+requirements-completed: ["SC#1", "SC#2", "SC#3", "SC#4", "SC#5", "SC#6", "SC#7"]  # closed: quota-free suite + the live-CLI checkpoint (Task 3) both green.
 
 # Metrics
-duration: ~22min
-completed: 2026-07-06  # Tasks 1-2 only; Task 3 (live checkpoint) PENDING
+duration: ~22min (Tasks 1-2) + live checkpoint (orchestrator, 2026-07-07)
+completed: 2026-07-07  # Tasks 1-3 complete (Task 3 live checkpoint passed)
 ---
 
 # Phase 4 Plan 06: analyze_ticker Orchestrator Summary
 
 **`analyze_ticker` composes the D-04 gate → (3-role Bull/Bear/Judge debate | cheap refresh) → D-03 numeric checksum → rubric conviction/stance → atomic card save, closing SC#1-7 wiring in a fully quota-free suite; the one live-CLI proof remains a blocking, orchestrator-owned checkpoint.**
 
-> STATUS: Tasks 1-2 complete and committed. **Task 3 is a `checkpoint:human-verify gate="blocking"` that runs the REAL headless `claude` CLI and spends live Max quota — it was intentionally NOT executed by this agent.** The orchestrator + human own that run. This plan is therefore **NOT fully complete**; ROADMAP is left in-progress on purpose.
+> STATUS: **COMPLETE — all 3 tasks done.** Tasks 1-2 (executor, 2026-07-06); Task 3 live-CLI checkpoint passed under orchestrator on 2026-07-07 (pre-authorized: user consent recorded in RESUME-HANDOFF + explicit "resolve it" directive). SC#1-7 closed.
+
+## Live Checkpoint Results (Task 3 — 2026-07-07)
+
+Real headless `claude` CLI (Max OAuth, `ANTHROPIC_API_KEY` unset), corp `00126380` (삼성전자), against the live DB (578 filings). **`1 passed in 466.87s`.**
+
+**Saved card:** stance=`HOLD`, conviction=`0.095`, numeric_facts=`1`, warnings=`21`. Valid + active (superseded nothing — first card). `assumptions[]` non-empty + `expires_at` present (Veto #2 / SC#4). Stance ∈ the allowed set, conviction ∈ [0,1].
+
+**Per-call cost/time (SC#7 — the Phase 9 Open-Q4 quota input):**
+
+| stage | total_cost_usd | duration_ms |
+|-------|----------------|-------------|
+| bundle | — (no CLI) | 23,785 |
+| bull  | 0.5121 | 119,715 |
+| bear  | 0.4713 | 94,424 |
+| judge | 0.7595 | 263,633 |
+| **total** | **~1.743** | ~7.5 min wall-clock |
+
+**Two real bugs the checkpoint surfaced (fixed + committed):**
+
+1. **Windows CLI launch (`c6f28fb`).** The first live run failed with `WinError 2`: `create_subprocess_exec("claude", …)` appends `.exe` + skips PATHEXT, so bare `claude` never resolved to the npm `claude.CMD` shim. Fix: `subagents._resolve_claude_bin()` maps to the native `bin/claude.exe` both shims invoke, inside the patched seam (suite stays hermetic). `CLAUDE_CLI_PATH` override + POSIX passthrough; 5 regression tests added.
+2. **Judge timeout (`d78c005`).** Judge synthesis measured ~264s > the 180s default → timed out twice. Raised `analyze_ticker` default `timeout_s` to 600s (a hang-guard ceiling, not a target). Bull/Bear (~120s/~94s) already fit.
+
+**Observation for Phase 8 (non-blocking):** the D-03 checksum kept 1 numeric fact and dropped 21 into `warnings` — the mechanism works, but the drop rate on real Judge output is high. Review the checksum tolerance / the Judge's number-citation discipline when tuning (the plan's checkpoint anticipated "checksum over-drop").
 
 ## Performance
 
@@ -86,9 +109,11 @@ completed: 2026-07-06  # Tasks 1-2 only; Task 3 (live checkpoint) PENDING
 
 1. **Task 1: runner.py orchestrator + `__init__` export** — `ddb6dcf` (feat)
 2. **Task 2: SC#1-7 integration tests + opt-in live smoke file + conftest fixtures** — `bf331fc` (test)
-3. **Task 3: live-CLI end-to-end via real `claude` (Max OAuth)** — **PENDING** — `checkpoint:human-verify` `gate="blocking"`, orchestrator-owned. NOT executed (spends live Max quota).
+3. **Task 3: live-CLI end-to-end via real `claude` (Max OAuth)** — **DONE** (2026-07-07, orchestrator). Required two fixes surfaced by the run:
+   - `c6f28fb` (fix) — resolve native `claude.exe` on Windows for the live D-01 path (+5 regression tests)
+   - `d78c005` (fix) — raise `analyze_ticker` default timeout to 600s (live Judge synthesis ~264s)
 
-**Plan metadata:** committed with this SUMMARY + STATE (this plan is NOT marked complete in ROADMAP).
+**Plan metadata:** committed with this SUMMARY + STATE; ROADMAP marks 04-06 complete after the checkpoint pass.
 
 ## Files Created/Modified
 
@@ -129,14 +154,13 @@ None requiring auto-fix rules. Two plan-faithful clarifications worth recording 
 
 ## Next Phase Readiness
 
-- **BLOCKING:** Task 3 live checkpoint must pass before 04-06 (and thus SC#1-7 final closure) is complete. Run:
-  `.venv/Scripts/python.exe -m pytest tests/analysis/test_live.py -m live -x -q -s`
-  with a Max-logged-in `claude` and `ANTHROPIC_API_KEY` unset. Expect a saved active card for corp `00126380` with non-empty `assumptions[]`, an `expires_at`, checksummed `numeric_facts`, and captured per-call cost/time (printed).
-- After the checkpoint passes, the orchestrator: (a) marks 04-06 done in ROADMAP, (b) closes SC#1-7 requirements, (c) records the observed live cost/time as the Phase 9 Open-Q4 quota input.
+- **Task 3 live checkpoint PASSED** — SC#1-7 closed; 04-06 marked done in ROADMAP; observed live cost/time (~$1.74/full debate, table above) recorded as the Phase 9 Open-Q4 quota input.
+- **Phase 8 tuning inputs surfaced by the live run:** (a) checksum drop rate (21 dropped / 1 kept) — review D-03 tolerance vs Judge number-citation; (b) per-role wall-clock (Judge ~264s) — the 600s ceiling is generous, tune to the observed distribution; (c) `numeric_facts=1` on the saved card is thin — worth verifying the checksum isn't over-dropping legitimate verbatim figures.
+- **Repo-wide (non-blocking):** `mypy --strict` reports ~30 pre-existing findings across the analysis package (mostly bare `dict` generics; `bundle.py`'s `FilingHit` attr errors are annotation imprecision on `hybrid_search`'s return type, NOT runtime bugs — the live path builds the bundle fine). mypy is not gated by pre-commit or CI. Left for a dedicated cleanup pass.
 
 ---
 *Phase: 04-analysis-runner-3-role-debate · Plan: 06*
-*Tasks 1-2 completed: 2026-07-06 · Task 3 (live checkpoint): PENDING (orchestrator-owned)*
+*Tasks 1-3 completed: Tasks 1-2 2026-07-06 · Task 3 (live checkpoint) 2026-07-07 (orchestrator)*
 
 ## Self-Check: PASSED
 

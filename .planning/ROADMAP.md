@@ -22,7 +22,7 @@ truth, Markdown vault는 폐기, 사용자 thesis 메모만 disk에 잔존.
 - [x] **Phase 1: Collector DB-Direct Cutover** — 5개 collector가 Markdown 출력을 멈추고 Postgres에 직접 INSERT ✓ 2026-05-29
 - [x] **Phase 2: Decision Card Schema & Storage** — `decision_cards` 테이블 + Pydantic 모델 + 마이그레이션 ✓ 2026-05-30
 - [x] **Phase 3: MCP Tool Surface (Read-Side)** — 타입드 MCP 도구로 stock-mcp 대체 (completed 2026-06-07)
-- [ ] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성
+- [x] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성 (completed 2026-07-06)
 - [ ] **Phase 5: Briefing Renderer** — 일/주 top-N 변화 요약
 - [ ] **Phase 6: Paper-Trade Action Layer** — Gates A–D + KIS 모의 API + ≥30일 shadow
 - [ ] **Phase 7: Live Trade Promotion** — paper 성과 게이트 통과 시에만 실거래
@@ -170,13 +170,13 @@ hard veto: "AI가 가격 예측 금지, evidence 압축만"
      refresh(`as_of`만 업데이트, `key_claims`/`contradictions` 재확인). 토큰 절약.
   7. 모든 단계의 비용·시간 로깅 (Phase 9에서 quota 분석 재료).
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 - [x] 04-01-PLAN.md — Wave 1: card.warnings + CI guards + live marker + D-03 numeric checksum [SC#3]
 - [x] 04-02-PLAN.md — Wave 2: role prompts/JSON schemas + Judge rubric→conviction (Veto #4/#5) [SC#2, SC#5]
 - [x] 04-03-PLAN.md — Wave 2: EvidenceBundle pre-fetch via in-process MCP tools (D-02) [SC#2]
 - [x] 04-04-PLAN.md — Wave 2: D-04 stance gate + lightweight refresh (no LLM) [SC#6]
 - [x] 04-05-PLAN.md — Wave 2: headless claude CLI DebateBackend seam + SC#7 cost capture [SC#2, SC#7]
-- [ ] 04-06-PLAN.md — Wave 3: analyze_ticker orchestrator + SC#1-7 tests + live smoke (checkpoint) [SC#1-7]
+- [x] 04-06-PLAN.md — Wave 3: analyze_ticker orchestrator + SC#1-7 tests + live smoke (checkpoint) [SC#1-7]
 
 ---
 
