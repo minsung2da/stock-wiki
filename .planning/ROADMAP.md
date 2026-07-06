@@ -170,8 +170,8 @@ hard veto: "AI가 가격 예측 금지, evidence 압축만"
      refresh(`as_of`만 업데이트, `key_claims`/`contradictions` 재확인). 토큰 절약.
   7. 모든 단계의 비용·시간 로깅 (Phase 9에서 quota 분석 재료).
 
-**Plans:** 6 plans across 3 waves (no REQUIREMENTS.md IDs — SC#1-7 traced directly)
-- [ ] 04-01-PLAN.md — Wave 1: card.warnings + CI guards + live marker + D-03 numeric checksum [SC#3]
+**Plans:** 1/6 plans executed
+- [x] 04-01-PLAN.md — Wave 1: card.warnings + CI guards + live marker + D-03 numeric checksum [SC#3]
 - [ ] 04-02-PLAN.md — Wave 2: role prompts/JSON schemas + Judge rubric→conviction (Veto #4/#5) [SC#2, SC#5]
 - [ ] 04-03-PLAN.md — Wave 2: EvidenceBundle pre-fetch via in-process MCP tools (D-02) [SC#2]
 - [ ] 04-04-PLAN.md — Wave 2: D-04 stance gate + lightweight refresh (no LLM) [SC#6]

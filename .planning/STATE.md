@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: verified
-stopped_at: Phase 4 context gathered
-last_updated: "2026-06-25T09:18:34.706Z"
+stopped_at: "Completed 04-01-PLAN.md (SC#3 checksum + analysis scaffold); Plan 2 of 6 next"
+last_updated: "2026-07-06T12:48:51.330Z"
 progress:
   total_phases: 9
   completed_phases: 3
-  total_plans: 18
-  completed_plans: 18
+  total_plans: 24
+  completed_plans: 19
   percent: 33
 ---
 
@@ -27,17 +27,17 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 04 — analysis-runner-3-role-debate (PLANNED, ready to execute)
+**Current focus:** Phase 04 — analysis-runner-3-role-debate
 
 ## Current Position
 
-Phase: 04 (analysis-runner-3-role-debate) — PLANNED (6 plans / 3 waves; plan-checker PASSED 2026-06-28, 0 blockers)
-Plan: 0 of 6 executed
+Phase: 04 (analysis-runner-3-role-debate) — EXECUTING
+Plan: 2 of 6
 Next: `/gsd:execute-phase 4` (Wave 1: 04-01 → Wave 2: 04-02/03/04/05 parallel → Wave 3: 04-06 live-CLI checkpoint)
 
 Phase 03 — VERIFIED (VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25).
 
-Progress: [██████████] 100%
+Progress: [████████░░] 79%
 
 **Phase 3 closed (2026-06-07):** all 10 locked read-side MCP tools (get_filing,
 search_filings, ohlcv_range, flow_range, peer_view, hybrid_search, get_note,
@@ -109,6 +109,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 03 P03-04 | 14 min | 3 tasks | 10 files |
 | Phase 03 P03-05 | 12 | 3 tasks | 12 files |
 | Phase 03 P03-06 | 11 min | 3 tasks | 8 files |
+| Phase 04 P01 | 12 min | 3 tasks | 8 files |
 
 ## Accumulated Context (v2.0)
 
@@ -151,6 +152,9 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase 03-06]: hybrid_search RRF k=60 fuses pgvector HNSW (halfvec <=>) + VectorChord-BM25 (search_bm25query — verified the live tensorchord/vchord-suite:pg17-latest exposes search_bm25query/to_bm25query, NOT the <&> operator; A1 resolved) over WHOLE-body filings/news/notes (Veto #8); k=60 is an inline SQL literal AND _RRF_K constant (never a bind, SC#4); SET hnsw.iterative_scan='relaxed_order' per session; NULL-cast filter guards
 - [Phase 03-06]: hybrid_search returns references+snippet only (D-02 — SearchHit has no body_md field), default top-10 (D-04); snippet = ±200 match-window (300-char head fallback), wrapped+flagged (D-03/SC#5); forbidden numeric sources (ohlcv/macro_series/decision_cards) rejected at BOTH the tool boundary AND the retrieval layer (SC#4, Veto #6)
 - [Phase 03-06]: FastMCP server aggregation = _mcp.py (shared instance) + server.py (side-effect-imports 7 tool modules → 10 locked tools, SC#1; _check_db_connection SELECT 1 → DataBackendError) + __main__.py (python -m mcp_v2 stdio boot, stderr-only diagnostics — Pitfall 7); the SC#3 registry guard flipped from skip to ENFORCED (==10 names, no run_sql). Phase 03 CLOSED.
+- [Phase ?]: [Phase 04-01]: DecisionCard.warnings optional payload field (Field(default_factory=list)) — D-03 dropped-fact home; rides payload JSONB (not in _PAYLOAD_EXCLUDE), zero DB migration, §3 round-trip unaffected
+- [Phase ?]: [Phase 04-01]: src/analysis/checksum.py D-03 value-equivalence (relative tol 0.5%) reusing shared.units.normalize_to_krw + number_extraction; KRW-family→KRW원 canonical, others raw scalar; unverifiable facts dropped into warnings (Veto #1/#4). Optional SANITY_RULES gate skipped (English fact keys won't match — YAGNI)
+- [Phase ?]: [Phase 04-01]: CI import guard GUARDED_DIRS += src/analysis (D-01 Max-only Veto); 'live' pytest marker registered (opt-in real claude CLI, deselect by default)
 
 ### Lessons Carried Over from v1.0
 
@@ -203,6 +207,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-06-28
-Stopped at: Phase 4 planned (research + patterns + 6 plans, plan-checker PASSED) — ready for /gsd:execute-phase 4
-Resume file: .planning/phases/04-analysis-runner-3-role-debate/04-01-PLAN.md
+Last session: 2026-07-06T12:48:51.322Z
+Stopped at: Completed 04-01-PLAN.md (SC#3 checksum + analysis scaffold); Plan 2 of 6 next
+Resume file: .planning/phases/04-analysis-runner-3-role-debate/04-02-PLAN.md
