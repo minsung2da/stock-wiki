@@ -21,11 +21,14 @@ NOT here — it arrives with the subagents plan):
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import text
+
+from analysis.subagents import RoleResult
 
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -180,3 +183,142 @@ def card_oracle() -> dict:
         "expires_at": "2026-06-15T00:00+09:00",  # MANDATORY — no untimed thesis
         "body_md": "# 삼성전자 (005930) — HOLD\n\nHBM3E qualification catalyst pending.\n",
     }
+
+
+# ===========================================================================
+# FakeDebateBackend — the quota-free sub-agent seam the whole suite uses.
+#
+# Implements the ``analysis.subagents.DebateBackend`` protocol WITHOUT spawning a
+# subprocess (deep_work_rules: the default suite must never touch the live claude
+# CLI or spend Max quota). Returns per-role CANNED ``structured_output`` dicts + a
+# synthetic cost subset, and records every call (role + received stdin) on ``.calls``
+# so tests can assert parallel/blind invocation (SC#2) and "not called" (SC#6).
+# ===========================================================================
+
+_RUBRIC_AXES = ("fundamentals", "catalyst", "freshness", "sizing", "contradiction_penalty")
+
+# Canned per-role outputs shaped to the roles.py JSON schemas so the Wave-3 runner
+# (and its tests) can consume them unchanged. Values reuse the seeded 삼성전자 refs.
+CANNED_BULL: dict = {
+    "stance_support": "HOLD",
+    "claims": [
+        {
+            "text": "HBM3E 12-stack NVIDIA qualification is a near-term catalyst",
+            "evidence_refs": ["dart:20260520000001"],
+            "weight": "HIGH",
+            "confidence": 0.7,
+        }
+    ],
+    "numeric_facts": [
+        {"key": "revenue_krw", "value": 42.5, "unit": "조원", "source_ref": "dart:20260520000001"}
+    ],
+}
+
+CANNED_BEAR: dict = {
+    "stance_support": "TRIM",
+    "claims": [
+        {
+            "text": "Memory ASP guidance risk into 1Q26",
+            "evidence_refs": ["news:zdnet:9912"],
+            "weight": "MEDIUM",
+            "confidence": 0.6,
+        }
+    ],
+    "numeric_facts": [
+        {"key": "op_margin_pct", "value": 17.2, "unit": "%", "source_ref": "dart:20260520000001"}
+    ],
+    "disconfirming": ["ASP downtrend risk if AMD MI300 gains share"],
+}
+
+CANNED_JUDGE: dict = {
+    "decision": {
+        "stance": "HOLD",
+        "horizon_days": 30,
+        "price_ref": 71200,
+        "invalidation_triggers": ["HBM3E NVIDIA qualification fails"],
+    },
+    "key_claims": [
+        {
+            "id": "c1",
+            "text": "HBM3E 12-stack qualification catalyst",
+            "evidence_refs": ["dart:20260520000001"],
+            "weight": "HIGH",
+            "confidence": 0.7,
+        }
+    ],
+    "contradictions": [
+        {
+            "bull": "c1",
+            "bear_evidence": "news:zdnet:9912",
+            "bear_claim": "AMD MI300 시장 점유율 확대",
+            "resolution": "downgraded conviction by 0.15",
+        }
+    ],
+    "assumptions": ["DRAM contract ASP holds"],
+    "numeric_facts": [
+        {"key": "revenue_krw", "value": 42.5, "unit": "조원", "source_ref": "dart:20260520000001"}
+    ],
+    "evidence_weights": {"dart": "HIGH", "sentiment": "LOW"},
+    "rubric": {
+        axis: {"score": 7, "evidence_refs": ["dart:20260520000001"], "rationale": "ok"}
+        for axis in _RUBRIC_AXES
+    },
+    "body_md": "# 삼성전자 (005930) — HOLD\n\nHBM3E qualification catalyst pending.\n",
+}
+
+_DEFAULT_CANNED: dict[str, dict] = {
+    "bull": CANNED_BULL,
+    "bear": CANNED_BEAR,
+    "judge": CANNED_JUDGE,
+}
+
+
+@dataclass
+class FakeCall:
+    """One recorded ``FakeDebateBackend.run`` invocation."""
+
+    role: str
+    evidence_stdin: str
+
+
+class FakeDebateBackend:
+    """A quota-free ``DebateBackend`` — canned outputs, no subprocess.
+
+    ``.calls`` records every invocation (role + received stdin) so a test can assert
+    Bull/Bear ran in parallel over the SAME bundle and were blind to each other, that
+    Judge received both outputs, and that a lightweight-refresh path did NOT call any
+    role (SC#6).
+    """
+
+    def __init__(self, canned: dict[str, dict] | None = None) -> None:
+        self.calls: list[FakeCall] = []
+        self._canned = canned if canned is not None else _DEFAULT_CANNED
+
+    async def run(
+        self,
+        role: str,
+        instruction: str,
+        system_prompt: str,
+        schema: dict,
+        evidence_stdin: str,
+        *,
+        timeout_s: float = 180.0,
+    ) -> RoleResult:
+        self.calls.append(FakeCall(role=role, evidence_stdin=evidence_stdin))
+        data = dict(self._canned.get(role, {}))
+        cost = {
+            "role": role,
+            "total_cost_usd": 0.0,
+            "duration_ms": 1,
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "cache_read_input_tokens": 0,
+            "model": "fake-sonnet",
+        }
+        return RoleResult(role=role, data=data, cost=cost)
+
+
+@pytest.fixture
+def fake_debate_backend() -> FakeDebateBackend:
+    """A fresh :class:`FakeDebateBackend` (empty ``.calls``) per test."""
+    return FakeDebateBackend()

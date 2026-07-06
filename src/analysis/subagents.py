@@ -153,7 +153,7 @@ async def _spawn_claude(
         out, err = await asyncio.wait_for(
             proc.communicate(stdin_bytes), timeout=timeout_s
         )
-    except (asyncio.TimeoutError, TimeoutError) as exc:
+    except TimeoutError as exc:  # asyncio.wait_for raises builtin TimeoutError (3.11+)
         proc.kill()
         with contextlib.suppress(Exception):
             await proc.communicate()

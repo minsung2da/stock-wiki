@@ -21,7 +21,6 @@ no ``get_engine`` monkeypatch, mirroring ``tests/analysis/test_bundle.py``.
 from __future__ import annotations
 
 import ast
-import sys
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -255,8 +254,19 @@ def test_gate_imports_no_subagent_or_runner() -> None:
     assert "subprocess" not in imported
 
 
-def test_refresh_path_spawns_no_subagent_backend(seeded_engine) -> None:
-    """Exercising decide→REFRESH and lightweight_refresh loads no sub-agent module (SC#6)."""
+def test_refresh_path_spawns_no_subagent_backend(seeded_engine, fake_debate_backend) -> None:
+    """decide→REFRESH + lightweight_refresh complete WITHOUT any sub-agent call (SC#6).
+
+    The gate/refresh functions take no backend at all — this hands them a
+    ``FakeDebateBackend`` and proves its ``.calls`` stays empty (no role ever ran).
+
+    The *structural* guarantee (gate.py imports neither ``analysis.subagents`` nor
+    ``analysis.runner``) is locked durably by
+    ``test_gate_imports_no_subagent_or_runner`` above. The previous ``sys.modules``
+    proxy here was unreliable: pytest legitimately imports ``analysis.subagents``
+    while COLLECTING the sub-agent tests (04-05), so the session-global module set is
+    not a valid signal for the gate code path.
+    """
     prior = _card(
         as_of=_dt(2026, 5, 21),
         generated_at=_dt(2026, 5, 21),
@@ -266,6 +276,5 @@ def test_refresh_path_spawns_no_subagent_backend(seeded_engine) -> None:
     refreshed = lightweight_refresh(seeded_engine, prior, _dt(2026, 5, 28))
     assert isinstance(refreshed, DecisionCard)
 
-    # The debate backend is never imported/constructed on the cheap path.
-    assert "analysis.subagents" not in sys.modules
-    assert "analysis.runner" not in sys.modules
+    # The cheap path never touches a debate backend — the fake records zero calls.
+    assert fake_debate_backend.calls == []
