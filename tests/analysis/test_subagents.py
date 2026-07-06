@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 
 import pytest
 
@@ -265,3 +266,62 @@ def test_run_bull_bear_calls_only_two_roles(fake_debate_backend) -> None:
     )
     # The parallel step runs Bull + Bear only — the Judge is a later, separate call.
     assert sorted(c.role for c in backend.calls) == ["bear", "bull"]
+
+
+# ---------------------------------------------------------------------------
+# _resolve_claude_bin — the Windows launch-path fix (04-06 live checkpoint).
+#
+# ``create_subprocess_exec("claude", ...)`` fails on Windows with WinError 2
+# because CreateProcess appends ``.exe`` to the extension-less name and skips
+# PATHEXT, so a bare ``claude`` never resolves to the npm ``claude.CMD`` shim (and
+# a ``.cmd`` is not directly launchable anyway). The resolver maps to the native
+# ``bin/claude.exe`` both shims invoke. These lock that mapping so the live path
+# never regresses back to the WinError-2 failure.
+# ---------------------------------------------------------------------------
+def test_resolve_claude_bin_env_override_wins(monkeypatch) -> None:
+    monkeypatch.setenv("CLAUDE_CLI_PATH", r"C:\custom\bin\claude.exe")
+    # The override wins even if PATH lookup would find something else.
+    monkeypatch.setattr(subagents.shutil, "which", lambda _: r"C:\other\claude.CMD")
+    assert subagents._resolve_claude_bin() == r"C:\custom\bin\claude.exe"
+
+
+def test_resolve_claude_bin_windows_shim_maps_to_native_exe(monkeypatch) -> None:
+    monkeypatch.delenv("CLAUDE_CLI_PATH", raising=False)
+    monkeypatch.setattr(subagents.os, "name", "nt")
+    shim = r"C:\Users\x\AppData\Roaming\npm\claude.CMD"
+    monkeypatch.setattr(subagents.shutil, "which", lambda _: shim)
+    native = os.path.join(
+        os.path.dirname(shim),
+        "node_modules",
+        "@anthropic-ai",
+        "claude-code",
+        "bin",
+        "claude.exe",
+    )
+    # Only the native exe exists on disk — the resolver must find exactly it.
+    monkeypatch.setattr(subagents.os.path, "isfile", lambda p: p == native)
+    assert subagents._resolve_claude_bin() == native
+
+
+def test_resolve_claude_bin_windows_shim_without_native_raises(monkeypatch) -> None:
+    monkeypatch.delenv("CLAUDE_CLI_PATH", raising=False)
+    monkeypatch.setattr(subagents.os, "name", "nt")
+    monkeypatch.setattr(subagents.shutil, "which", lambda _: r"C:\npm\claude.CMD")
+    monkeypatch.setattr(subagents.os.path, "isfile", lambda _: False)
+    with pytest.raises(SubAgentError):
+        subagents._resolve_claude_bin()
+
+
+def test_resolve_claude_bin_posix_passthrough(monkeypatch) -> None:
+    monkeypatch.delenv("CLAUDE_CLI_PATH", raising=False)
+    monkeypatch.setattr(subagents.os, "name", "posix")
+    monkeypatch.setattr(subagents.shutil, "which", lambda _: "/usr/local/bin/claude")
+    # On POSIX the resolved shim/executable runs directly — returned as-is.
+    assert subagents._resolve_claude_bin() == "/usr/local/bin/claude"
+
+
+def test_resolve_claude_bin_not_found_raises(monkeypatch) -> None:
+    monkeypatch.delenv("CLAUDE_CLI_PATH", raising=False)
+    monkeypatch.setattr(subagents.shutil, "which", lambda _: None)
+    with pytest.raises(SubAgentError):
+        subagents._resolve_claude_bin()

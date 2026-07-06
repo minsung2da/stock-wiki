@@ -35,6 +35,8 @@ import asyncio
 import contextlib
 import json
 import logging
+import os
+import shutil
 from typing import Any, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
@@ -132,6 +134,56 @@ class DebateBackend(Protocol):
     ) -> RoleResult: ...
 
 
+def _resolve_claude_bin() -> str:
+    """Resolve ``claude`` to a path ``create_subprocess_exec`` can actually launch.
+
+    Windows ``CreateProcess`` appends ``.exe`` to an extension-less name and does NOT
+    honour ``PATHEXT``, so a bare ``"claude"`` resolves to a non-existent
+    ``claude.exe`` on PATH (WinError 2) and the extension-less npm bash shim is
+    ignored. ``shutil.which`` finds the ``claude.CMD`` shim instead — but a ``.cmd``
+    is not directly executable by ``CreateProcess`` (batch files need ``cmd.exe``,
+    and wrapping in ``cmd /c`` would mangle the ``--json-schema`` JSON argument's
+    quotes). Both npm shims (``claude.cmd`` and the ``sh`` ``claude``) actually invoke
+    a native ``bin/claude.exe`` inside the package, so resolve straight to it: the
+    argv stays intact and evidence keeps riding stdin.
+
+    An explicit ``CLAUDE_CLI_PATH`` override wins (portability / CI / non-npm
+    installs). On POSIX the resolved shim/executable runs directly, so it is returned
+    as-is. NEVER reads or sets ``ANTHROPIC_API_KEY`` (Max-only Veto).
+    """
+    override = os.environ.get("CLAUDE_CLI_PATH")
+    if override:
+        return override
+
+    found = shutil.which(_CLAUDE_BIN)
+    if found is None:
+        raise SubAgentError(
+            "(spawn)",
+            "cli_not_found",
+            "`claude` CLI not found on PATH (set CLAUDE_CLI_PATH or install claude-code)",
+        )
+
+    if os.name == "nt" and found.lower().endswith((".cmd", ".bat", ".ps1")):
+        shim_dir = os.path.dirname(found)
+        # The exact native binary both npm shims call (verified in claude.cmd + the
+        # sh shim): <shim_dir>/node_modules/@anthropic-ai/claude-code/bin/claude.exe.
+        for candidate in (
+            os.path.join(
+                shim_dir, "node_modules", "@anthropic-ai", "claude-code",
+                "bin", "claude.exe",
+            ),
+            os.path.join(shim_dir, "claude.exe"),
+        ):
+            if os.path.isfile(candidate):
+                return candidate
+        raise SubAgentError(
+            "(spawn)",
+            "cli_shim_unresolved",
+            f"found shim {found!r} but no native claude.exe beside it; set CLAUDE_CLI_PATH",
+        )
+    return found
+
+
 async def _spawn_claude(
     argv: list[str], stdin_bytes: bytes, timeout_s: float
 ) -> tuple[int | None, bytes, bytes]:
@@ -142,9 +194,16 @@ async def _spawn_claude(
     evidence bundle through **stdin**, and enforces a wall-clock timeout
     (T-04-15). Returns ``(returncode, stdout, stderr)``; a timeout raises a retryable
     error after killing the child.
+
+    ``argv[0]`` (the literal ``claude`` name the argv builder used, so tests can
+    assert on flags) is resolved to a launchable executable HERE — inside the patched
+    seam — so the default suite stays hermetic (no ``claude`` needed on PATH) while
+    the live path gets the real ``claude.exe`` (Windows shim workaround).
     """
+    exe = _resolve_claude_bin()
     proc = await asyncio.create_subprocess_exec(
-        *argv,
+        exe,
+        *argv[1:],
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
