@@ -33,6 +33,7 @@ escape hatch (Veto #7) — only the typed tools + ``resolve_entity``.
 from __future__ import annotations
 
 import statistics
+import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Final, Literal
@@ -46,7 +47,7 @@ from mcp_v2.errors import FilingNotFound, InvalidArgument
 from mcp_v2.tools.filing import get_filing, search_filings
 from mcp_v2.tools.market import flow_range, ohlcv_range
 
-__all__ = ["FULL", "REFRESH", "GateDecision", "decide"]
+__all__ = ["FULL", "REFRESH", "Escalate", "GateDecision", "decide", "lightweight_refresh"]
 
 # Gate outcomes. ``Final`` gives each the literal type ``Literal["FULL"]`` /
 # ``Literal["REFRESH"]`` so they satisfy the ``GateDecision.action`` annotation
@@ -86,6 +87,18 @@ class GateDecision:
     @property
     def is_full(self) -> bool:
         return self.action == FULL
+
+
+@dataclass(frozen=True)
+class Escalate:
+    """Sentinel returned by :func:`lightweight_refresh` when the cheap path must be
+    abandoned for a FULL 3-role debate (a material shift surfaced mid-refresh).
+
+    ``reasons`` names every escalation trigger. The runner treats ANY ``Escalate``
+    as "go run the full debate" — the refreshed card is deliberately NOT produced.
+    """
+
+    reasons: tuple[str, ...] = ()
 
 
 # --- datetime helpers ----------------------------------------------------------
@@ -300,3 +313,84 @@ def decide(
     if reasons:
         return GateDecision(FULL, tuple(reasons))
     return GateDecision(REFRESH)
+
+
+def _refreshed_card_id(prior: DecisionCard, as_of: datetime) -> str:
+    """A fresh, unique id for the refreshed card (never collides with ``prior``)."""
+    return f"card_{prior.ticker}_{as_of.date().isoformat()}_refresh_{uuid.uuid4().hex[:8]}"
+
+
+def lightweight_refresh(
+    engine: Engine,
+    prior: DecisionCard,
+    as_of: datetime,
+) -> DecisionCard | Escalate:
+    """Re-validate the prior card cheaply, WITHOUT re-running the debate (NO LLM).
+
+    The token-economics happy path: when :func:`decide` returned REFRESH, this bumps
+    ``as_of`` and re-validates the prior card's evidence, producing a refreshed copy
+    (new ``card_id``) that the runner saves (superseding the prior). Two invariants:
+
+    - **Expiry is never extended** (T-04-10 / Veto #2): the refreshed card keeps
+      ``prior.expires_at`` verbatim — near-expiry is itself a FULL trigger, so
+      extending it here would silently defeat the no-untimed-thesis Veto.
+    - **``generated_at`` is preserved**: the N-day safety net counts from the last
+      *full* debate, so a cheap refresh must NOT reset that clock (otherwise a daily
+      refresh would keep the safety net from ever firing). Only ``as_of`` moves.
+
+    Escalation (RESEARCH #5): a MATERIAL shift abandons the cheap path and returns an
+    :class:`Escalate` sentinel (never a refreshed card) so the runner runs the full
+    debate — a new filing surfaced since ``prior.as_of``, or a HIGH-weight claim's
+    evidence no longer resolves. Non-HIGH evidence that no longer resolves is recorded
+    into the refreshed card's ``warnings`` (a dropped fact is never silently lost)
+    rather than escalated.
+
+    The result is rebuilt THROUGH ``DecisionCard.model_validate`` so Veto #2 is still
+    enforced (``assumptions`` non-empty, ``expires_at`` present). No LLM, no
+    ``run_sql`` (Veto #7) anywhere in this function.
+
+    Args:
+        engine: SQLAlchemy engine (unused by the tools, kept for signature parity
+            with :func:`decide` and future evidence lookups).
+        prior: the active card being refreshed.
+        as_of: the new data cutoff (KST close).
+
+    Returns:
+        A refreshed :class:`DecisionCard`, or an :class:`Escalate` on a material shift.
+    """
+    as_of = _as_aware(as_of)
+    prior_as_of = _as_aware(prior.as_of)
+
+    escalations: list[str] = []
+    warnings: list[str] = []
+
+    # (1) A filing that surfaced since prior.as_of is a mid-refresh material shift.
+    new_f = _new_filing(prior.corp_code, prior_as_of)
+    if new_f is not None:
+        escalations.append(f"escalate: {new_f}")
+
+    # (2) Re-validate each key_claim's evidence. A HIGH-weight claim losing its
+    #     evidence is a broken assumption → escalate; anything else → warning.
+    for claim in prior.key_claims:
+        for ref in claim.evidence_refs:
+            if _dart_ref_resolves(ref):
+                continue
+            if claim.weight == "HIGH":
+                escalations.append(
+                    f"escalate: HIGH-weight claim {claim.id} lost evidence {ref}"
+                )
+            else:
+                warnings.append(f"{ref} (claim {claim.id}) no longer resolves in source")
+
+    if escalations:
+        return Escalate(tuple(escalations))
+
+    # Build the refreshed card THROUGH the model (Veto #2 re-enforced). Bump only
+    # as_of + card_id; PRESERVE generated_at (safety-net clock) and expires_at
+    # (T-04-10). status resets to None (freshly built, not yet persisted).
+    data = prior.model_dump(mode="json")
+    data["card_id"] = _refreshed_card_id(prior, as_of)
+    data["as_of"] = as_of.isoformat()
+    data["warnings"] = [*prior.warnings, *warnings]
+    data["status"] = None
+    return DecisionCard.model_validate(data)
