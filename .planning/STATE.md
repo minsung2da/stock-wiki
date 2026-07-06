@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
-status: executing
-stopped_at: "Phase 04 EXECUTION COMPLETE — all 6 plans done incl 04-06 Task 3 live-CLI checkpoint (PASSED 2026-07-07: HOLD/conv 0.095, ~$1.74/full debate). Two live-surfaced fixes committed (Windows claude.exe resolve c6f28fb + Judge 600s timeout d78c005). Next: gsd-verifier SC#1-7."
+status: verified
+stopped_at: "Phase 04 VERIFIED (2026-07-07) — gsd-verifier 7/7 SC + all Hard Vetoes; the 2 human items (live card DB row + Veto#1 body_md) resolved by orchestrator live-DB inspection. Live checkpoint PASSED (삼성전자 HOLD/0.095, ~$1.74/debate). Next milestone step: Phase 05 (Briefing Renderer)."
 last_updated: "2026-07-07T00:00:00Z"
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 24
   completed_plans: 24
-  percent: 33
+  percent: 44
 ---
 
 # Project State
@@ -27,17 +27,27 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 04 — analysis-runner-3-role-debate
+**Current focus:** Phase 04 VERIFIED → next is Phase 05 (Briefing Renderer)
 
 ## Current Position
 
-Phase: 04 (analysis-runner-3-role-debate) — EXECUTION COMPLETE (6/6 plans), VERIFYING
-Plan: 6 of 6 done. 04-06 live-CLI checkpoint PASSED (2026-07-07, orchestrator, pre-authorized).
-Live result: 삼성전자 card stance=HOLD conviction=0.095, per-debate ~$1.74 (bull $0.51 / bear $0.47 /
-judge $0.76), Judge ~264s. SC#1-7 wired + quota-free-verified + one live D-01 proof.
-Next: `gsd-verifier` goal-backward SC#1-7 verification → on PASS mark Phase 04 verified
-(completed_phases 3→4). Phase 8 tuning notes recorded in 04-06-SUMMARY (checksum drop rate,
-timeout distribution). Repo-wide: ~30 pre-existing non-gated mypy --strict findings (note only).
+Phase: 04 (analysis-runner-3-role-debate) — ✅ VERIFIED (2026-07-07)
+All 6 plans complete + verified. gsd-verifier: 7/7 SC in code, all Hard Vetoes (#1/#4/#5/#7 + D-01
+Max-only seam). Live-CLI checkpoint PASSED: 삼성전자 card stance=HOLD conviction=0.095, per-debate
+~$1.74 (bull $0.51 / bear $0.47 / judge $0.76), Judge ~264s. Two live-surfaced fixes committed
+(Windows claude.exe resolve c6f28fb + Judge 600s timeout d78c005, +5 regression tests).
+Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, 최대 10 카드).
+
+### Phase 8 tuning inputs (from the live run — recorded in 04-06-SUMMARY)
+- D-03 checksum kept 1 / dropped 21 numeric facts — review tolerance vs Judge number-citation discipline.
+- Per-role wall-clock: Judge ~264s vs the 600s ceiling — tune to the observed distribution.
+
+### Repo-wide note (non-blocking)
+- `mypy --strict` has ~30 pre-existing findings across the analysis package (mostly bare `dict`
+  generics; `bundle.py` FilingHit attr = annotation imprecision on `hybrid_search` return type, NOT
+  a runtime bug — live path builds the bundle fine). mypy is NOT gated by pre-commit or CI. Deferred
+  to a dedicated cleanup pass. Executors 04-04/05/06 reported "mypy clean" but only checked their own
+  files; the package-mode strict run surfaces the rest.
 
 Phase 03 — VERIFIED (VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25).
 
