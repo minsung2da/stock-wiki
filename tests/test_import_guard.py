@@ -1,4 +1,4 @@
-"""CI test: collectors/ must not import anthropic or openai (COLL-07).
+"""CI test: guarded dirs must not import anthropic or openai (COLL-07 / D-01).
 
 Uses AST parsing to detect import statements. This catches both:
 - ``import anthropic``
@@ -7,9 +7,11 @@ Uses AST parsing to detect import statements. This catches both:
 
 The guard scans all .py files recursively under GUARDED_DIRS.
 
-Post-LLM-wiki-shutdown: ``src/ingest`` was removed; guard now only covers
-``src/collectors``. Restore the original ingest entry here if a future
-phase reintroduces a separate ingest module.
+Post-LLM-wiki-shutdown: ``src/ingest`` was removed; guard covers ``src/collectors``.
+Phase 4 (D-01): ``src/analysis`` added — the analysis brain reaches Sonnet ONLY via
+the ``claude`` CLI subprocess under Max-subscription OAuth; a direct cloud-LLM SDK
+import is a Max-only Veto violation and CI must fail the build if one appears.
+Restore an ingest entry here if a future phase reintroduces a separate ingest module.
 """
 
 import ast
@@ -17,7 +19,7 @@ import textwrap
 from pathlib import Path
 
 BANNED_MODULES = {"anthropic", "openai"}
-GUARDED_DIRS = ["src/collectors"]
+GUARDED_DIRS = ["src/collectors", "src/analysis"]
 PROJECT_ROOT = Path(__file__).parent.parent
 
 
@@ -45,7 +47,7 @@ def scan_for_banned_imports(directory: Path) -> list[str]:
 
 class TestImportGuard:
     def test_no_cloud_llm_imports(self) -> None:
-        """No file in src/collectors/ imports anthropic or openai."""
+        """No file in any GUARDED_DIRS (src/collectors, src/analysis) imports anthropic or openai."""
         all_violations = []
         for dir_name in GUARDED_DIRS:
             dir_path = PROJECT_ROOT / dir_name

@@ -102,3 +102,11 @@ class DecisionCard(BaseModel):
     # (a freshly-built, not-yet-persisted card has no DB status) so the SC#3 round-trip of
     # the §3 YAML is unaffected. Adds NO new DB column — the column already exists (SC#1).
     status: str | None = None
+    # OPTIONAL — D-03 / SC#3 typed home for numeric facts the Phase-4 checksum DROPPED
+    # (a value the sub-agent emitted that is NOT derivable from source; Veto #1/#4 — the
+    # brain compresses evidence, it never self-certifies its numbers). Each entry is a
+    # human-readable "{key}={value}{unit}: not verifiable in source" string, so a dropped
+    # fact is never silently lost. Rides in the payload JSONB exactly like invalidation_reason
+    # above — it is NOT in _PAYLOAD_EXCLUDE (src/cards/store.py), so it persists in payload
+    # and adds NO DB column. Defaults empty, so the §3 round-trip is unaffected.
+    warnings: list[str] = Field(default_factory=list)

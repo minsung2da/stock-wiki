@@ -18,7 +18,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cli", "src/collectors", "src/db", "src/mcp_v2", "src/orchestration", "src/shared"]
+packages = ["src/analysis", "src/cli", "src/collectors", "src/db", "src/mcp_v2", "src/orchestration", "src/shared"]
 
 [tool.uv]
 package = true
@@ -75,6 +75,7 @@ markers = [
     "slow: marks tests as slow (deselect with -m 'not slow')",
     "e2e: end-to-end tests requiring a live pipeline (deselect with -m 'not e2e')",
     "db: tests requiring a live Postgres connection",
+    "live: opt-in tests that spawn the real claude CLI and spend Max quota (deselect by default)",
 ]
 
 [tool.ruff]
