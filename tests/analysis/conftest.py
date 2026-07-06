@@ -322,3 +322,31 @@ class FakeDebateBackend:
 def fake_debate_backend() -> FakeDebateBackend:
     """A fresh :class:`FakeDebateBackend` (empty ``.calls``) per test."""
     return FakeDebateBackend()
+
+
+@pytest.fixture
+def canned_judge() -> dict:
+    """A fresh shallow copy of the default Judge ``structured_output``.
+
+    Runner SC#3/SC#5 tests derive variants by replacing a top-level key (e.g.
+    ``numeric_facts`` or ``contradictions``); a shallow copy is enough for that.
+    """
+    return dict(CANNED_JUDGE)
+
+
+@pytest.fixture
+def make_fake_backend():
+    """Factory → a :class:`FakeDebateBackend` with optional per-role canned overrides.
+
+    ``make_fake_backend(judge={...})`` replaces just the Judge output; omitted roles
+    fall back to the shared canned defaults. Each call returns a fresh backend whose
+    ``.calls`` starts empty — the runner SC#1-7 tests inject these so the whole default
+    suite stays quota-free (no real ``claude`` subprocess).
+    """
+
+    def _make(**overrides: dict) -> FakeDebateBackend:
+        canned = {role: dict(data) for role, data in _DEFAULT_CANNED.items()}
+        canned.update(overrides)
+        return FakeDebateBackend(canned=canned)
+
+    return _make
