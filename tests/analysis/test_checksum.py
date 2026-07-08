@@ -155,3 +155,84 @@ def test_gap2_bare_count_not_embedded_in_longer_run():
 
 def test_gap2_bare_count_comma_grouped():
     assert fact_supported(1_234_567, "", "종업원 1,234,567명") is True
+
+
+# ── GAP-3 regression (live 04-06 checkpoint 2026-07-07): unit-bearing integers ──
+# The Judge emits real filing numbers WITH a unit (``shares``/``KRW``/``employees``),
+# but the verbatim fallback was gated on an EMPTY unit and the English ``KRW`` token
+# canonicalized to None — so ~18/22 real, verbatim-present numbers were false-dropped
+# (Samsung card kept 1/22). The fix: verbatim-digit fallback for ANY integer + alias
+# bare ``KRW``. A fabricated / derived number (digits absent) must STILL drop (Veto #3).
+_SAMSUNG_LIKE_BODY = (
+    "자기주식 취득 결정: 보통주 37,000,000주, 취득예정금액 7,174,300,000,000원. "
+    "발행주식총수 5,919,637,922주. 임직원 9,663명 대상 주식보상."
+)
+
+
+def test_gap3_shares_unit_verbatim_kept():
+    # "37,000,000주" in source; Judge emits unit="shares" — was a false drop.
+    assert fact_supported(37_000_000, "shares", _SAMSUNG_LIKE_BODY) is True
+
+
+def test_gap3_english_krw_unit_verbatim_kept():
+    # "7,174,300,000,000원" in source; Judge emits unit="KRW" (English). Exercises both
+    # the KRW alias AND the integer verbatim fallback.
+    assert fact_supported(7_174_300_000_000, "KRW", _SAMSUNG_LIKE_BODY) is True
+
+
+def test_gap3_employees_unit_verbatim_kept():
+    assert fact_supported(9_663, "employees", _SAMSUNG_LIKE_BODY) is True
+
+
+def test_gap3_total_shares_verbatim_kept():
+    assert fact_supported(5_919_637_922, "shares", _SAMSUNG_LIKE_BODY) is True
+
+
+def test_gap3_english_krw_alias_still_value_equivalent():
+    # Bare English "KRW" must also work on the value-equivalence path (unit-tagged span).
+    assert fact_supported(42_500_000_000_000, "KRW", _DIGIT_BODY) is True
+
+
+# ── Veto #3 MUST hold: fabricated / derived numbers still drop ──────────────────
+def test_gap3_fabricated_shares_number_still_drops():
+    # A share count NOT present anywhere in the source — must drop even with the
+    # broadened integer fallback (Veto #3: no un-sourced number survives).
+    assert fact_supported(48_121_777, "shares", _SAMSUNG_LIKE_BODY) is False
+
+
+def test_gap3_fabricated_krw_number_still_drops():
+    assert fact_supported(9_999_888_777_000, "KRW", _SAMSUNG_LIKE_BODY) is False
+
+
+def test_gap3_derived_product_not_in_source_drops():
+    # shares(37,000,000) × price(193,900) = 7,174,300,000,000 IS in source (kept), but a
+    # DERIVED count absent from the text (e.g. a fabricated per-share figure) must drop.
+    body = "보통주 37,000,000주를 처분한다."
+    assert fact_supported(193_900, "KRW", body) is False  # price never stated → drop
+
+
+def test_gap3_fabricated_percent_still_drops():
+    # Non-integer percent must still go through value-equivalence only (no verbatim path).
+    assert fact_supported(37.5, "pct", _SAMSUNG_LIKE_BODY) is False
+
+
+def test_gap3_checksum_facts_samsung_like_mix():
+    # Integration mirror of the live card: real numbers kept, one fabricated dropped.
+    facts = [
+        {"key": "treasury_shares", "value": 37_000_000, "unit": "shares"},
+        {"key": "treasury_amount_krw", "value": 7_174_300_000_000, "unit": "KRW"},
+        {"key": "grant_employees", "value": 9_663, "unit": "employees"},
+        {"key": "fabricated_flow_krw", "value": 8_800_000_000_000, "unit": "KRW"},  # absent
+    ]
+    kept, warnings = checksum_facts(facts, _SAMSUNG_LIKE_BODY)
+    assert kept == {
+        "treasury_shares": 37_000_000,
+        "treasury_amount_krw": 7_174_300_000_000,
+        "grant_employees": 9_663,
+    }
+    assert warnings == ["fabricated_flow_krw=8800000000000KRW: not verifiable in source"]
+
+
+def test_gap3_digit_bounded_no_substring_false_pass():
+    # 37,000,000 must NOT verify against a longer run like 137,000,0000 (boundary guard).
+    assert fact_supported(37_000_000, "shares", "정정 137,000,0009 주") is False

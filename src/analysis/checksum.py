@@ -56,8 +56,16 @@ def _canonical_unit(unit: str) -> str:
     Already-normalized ``KRW*`` units (candidate side) pass through unchanged; natural
     Korean KRW glyphs are aliased; anything else (``%``/``배``/``주``/FX/empty) is
     returned as-is so it stays a raw scalar.
+
+    GAP-3: a sub-agent (Judge) frequently emits the bare English currency token
+    ``KRW`` (or ``won``) rather than a Korean glyph. ``normalize_to_krw('KRW')`` is
+    ``None`` (only ``KRW원``/``KRW백만``/``KRW억``/``KRW조`` are recognized), which
+    silently canonicalized every ``KRW``-unit fact to ``None`` → auto-drop. Alias the
+    bare currency token onto the ``KRW원`` base so the value is comparable.
     """
     u = (unit or "").strip()
+    if u.lower() in ("krw", "won"):
+        return "KRW원"
     if u.startswith("KRW"):
         return u
     return _KRW_ALIASES.get(u, u)
@@ -127,19 +135,30 @@ def fact_supported(
     on RELATIVE tolerance ``abs(c-target)/max(|c|,|target|,ε) <= tol``. The ``<untrusted>``
     wrapper on bundled narrative only adds delimiter lines (no inner bytes changed), so
     scanning the whole string is safe.
+
+    Two acceptance paths (a fact passes if EITHER holds):
+    1. *value-equivalence* — the normalized magnitude matches some unit-tagged source
+       span within ``tol`` (handles re-formatted units: ``42.5조원`` ≡ ``42,500,000,000,000``).
+    2. *verbatim-digit* (GAP-3) — for any INTEGER-valued fact, the exact digits appear as
+       a standalone number in the source (plain or comma-grouped, digit-bounded). This is
+       Veto #3's literal rule and rescues share/KRW/employee counts the financial-span
+       extractor never tags (e.g. a bare ``37,000,000`` in a table). A fabricated or
+       DERIVED number — digits absent from the source — still drops. Non-integers
+       (percents/ratios) never use this path; they must match a value-equivalent span.
     """
     target = _to_canonical(value, unit)
-    if target is None:
-        return False
-    for cand in extract_numeric_candidates(body_md):
-        cv = _candidate_canonical(cand)
-        if cv is None:
-            continue
-        if abs(cv - target) / max(abs(cv), abs(target), 1e-9) <= tol:
-            return True
-    # GAP-2: dimensionless integer counts (unit empty) are not extracted as
-    # financial candidates — fall back to a digit-bounded verbatim presence check.
-    if not (unit or "").strip():
+    if target is not None:
+        for cand in extract_numeric_candidates(body_md):
+            cv = _candidate_canonical(cand)
+            if cv is None:
+                continue
+            if abs(cv - target) / max(abs(cv), abs(target), 1e-9) <= tol:
+                return True
+    # GAP-3: verbatim-digit fallback for integer-valued facts (Veto #3 literal rule).
+    # Runs even when the value-equivalence path could not canonicalize the unit
+    # (``target is None``), so a ``KRW``-unit integer whose digits are verbatim in a
+    # source table still verifies.
+    if value == int(value):
         return _verbatim_int_in_body(value, body_md)
     return False
 
