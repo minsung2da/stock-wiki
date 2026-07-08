@@ -47,9 +47,12 @@ Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, �
   Judge emits WITH a unit (`shares`/`KRW`/`employees`) skips it and drops unless the financial-span
   extractor tagged that exact span. Also `normalize_to_krw('KRW')==None` — the English `KRW` unit isn't
   in the KRW alias family (only `원`/`억`/`조원`/`KRW원`). Proven: `fact_supported(37000000,'shares')==False`
-  but `fact_supported(37000000,'')==True` on the same body. Fix direction: run the verbatim-digit fallback
-  regardless of unit for dimensionless integers + alias English `KRW`→`KRW원`, WITH a "fabricated number
-  still drops" regression test (Veto #3 must stay intact). Deferred to Phase 8 (Veto-critical logic).
+  but `fact_supported(37000000,'')==True` on the same body. **FIXED 2026-07-07 (commit 8afebf2):** the
+  verbatim-digit fallback now runs for ANY integer-valued fact (Veto #3's literal rule) and bare `KRW`/`won`
+  aliases to `KRW원`; non-integers still require value-equivalence and fabricated/derived numbers still drop.
+  Empirical on the real Samsung body: originally-dropped facts now 19/21 kept (was 0/21); the 2 still dropped
+  are non-integer derived dilution ratios (correct). +12 regression tests (real kept / fabricated dropped),
+  54 checksum / 146 analysis tests green.
 - Per-role wall-clock: Judge ~264s vs the 600s ceiling — tune to the observed distribution.
 - **Collectors not yet run for price/flow/news/fundamentals** — only DART (217 runs) + macro (1) populated
   the DB, so ohlcv/news/fundamentals = 0 rows. That is why the live card reported "price/flow data absent"
