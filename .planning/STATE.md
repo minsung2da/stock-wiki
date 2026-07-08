@@ -38,9 +38,25 @@ Max-only seam). Live-CLI checkpoint PASSED: 삼성전자 card stance=HOLD convic
 (Windows claude.exe resolve c6f28fb + Judge 600s timeout d78c005, +5 regression tests).
 Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, 최대 10 카드).
 
-### Phase 8 tuning inputs (from the live run — recorded in 04-06-SUMMARY)
-- D-03 checksum kept 1 / dropped 21 numeric facts — review tolerance vs Judge number-citation discipline.
+### Phase 8 inputs (from the live run — recorded in 04-06-SUMMARY)
+- **D-03 checksum FALSE-DROP bug (not a tolerance issue).** Live card kept 1/22 numeric facts (4.5%).
+  Of the 21 drops, 3 are legit (ohlcv/flow/peer count=0, data genuinely absent); the other 18 are real
+  filing numbers — 7/7 spot-checked were VERBATIM present in the source (e.g. `37,000,000`,
+  `7,174,300,000,000`, `193,900`). Root cause is a matching-coverage gap, NOT the 0.5% tolerance:
+  `checksum._verbatim_int_in_body` fallback is gated on `unit==""` (checksum.py:142), so any fact the
+  Judge emits WITH a unit (`shares`/`KRW`/`employees`) skips it and drops unless the financial-span
+  extractor tagged that exact span. Also `normalize_to_krw('KRW')==None` — the English `KRW` unit isn't
+  in the KRW alias family (only `원`/`억`/`조원`/`KRW원`). Proven: `fact_supported(37000000,'shares')==False`
+  but `fact_supported(37000000,'')==True` on the same body. Fix direction: run the verbatim-digit fallback
+  regardless of unit for dimensionless integers + alias English `KRW`→`KRW원`, WITH a "fabricated number
+  still drops" regression test (Veto #3 must stay intact). Deferred to Phase 8 (Veto-critical logic).
 - Per-role wall-clock: Judge ~264s vs the 600s ceiling — tune to the observed distribution.
+- **Collectors not yet run for price/flow/news/fundamentals** — only DART (217 runs) + macro (1) populated
+  the DB, so ohlcv/news/fundamentals = 0 rows. That is why the live card reported "price/flow data absent"
+  (correct behavior, not a bug). `stock collect krx` uses the pykrx whole-market snapshot API
+  (`get_market_ohlcv_by_ticker`) which is currently broken (returns empty for all dates); the single-ticker
+  history API (`get_market_ohlcv`) works and serves real data through 2026-07-08. Collector needs a
+  portfolio.md (gitignored, absent here) for scope.
 
 ### Repo-wide note (non-blocking)
 - `mypy --strict` has ~30 pre-existing findings across the analysis package (mostly bare `dict`

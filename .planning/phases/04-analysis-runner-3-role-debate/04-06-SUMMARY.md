@@ -86,7 +86,10 @@ Real headless `claude` CLI (Max OAuth, `ANTHROPIC_API_KEY` unset), corp `0012638
 1. **Windows CLI launch (`c6f28fb`).** The first live run failed with `WinError 2`: `create_subprocess_exec("claude", …)` appends `.exe` + skips PATHEXT, so bare `claude` never resolved to the npm `claude.CMD` shim. Fix: `subagents._resolve_claude_bin()` maps to the native `bin/claude.exe` both shims invoke, inside the patched seam (suite stays hermetic). `CLAUDE_CLI_PATH` override + POSIX passthrough; 5 regression tests added.
 2. **Judge timeout (`d78c005`).** Judge synthesis measured ~264s > the 180s default → timed out twice. Raised `analyze_ticker` default `timeout_s` to 600s (a hang-guard ceiling, not a target). Bull/Bear (~120s/~94s) already fit.
 
-**Observation for Phase 8 (non-blocking):** the D-03 checksum kept 1 numeric fact and dropped 21 into `warnings` — the mechanism works, but the drop rate on real Judge output is high. Review the checksum tolerance / the Judge's number-citation discipline when tuning (the plan's checkpoint anticipated "checksum over-drop").
+**D-03 checksum FALSE-DROP bug surfaced (non-blocking, Phase 8):** the checksum kept 1/22 numeric facts (4.5%). Post-hoc analysis proved this is a matching-coverage bug, NOT the 0.5% tolerance being tight:
+- 21 drops = 3 legit (ohlcv/flow/peer `count=0`, data genuinely absent) + 18 real filing numbers. 7/7 spot-checked drops are VERBATIM in the Samsung source (`37,000,000`, `7,174,300,000,000`, `193,900`, `5,919,637,922`, …).
+- Root cause: `_verbatim_int_in_body` fallback is gated on `unit==""` (`checksum.py:142`), so any fact the Judge emits WITH a unit (`shares`/`KRW`/`employees`) skips the fallback and drops unless the financial-span extractor tagged that exact span. Proven: `fact_supported(37000000,'shares')==False` but `fact_supported(37000000,'')==True` on the same body. Also `normalize_to_krw('KRW')==None` (English `KRW` isn't in the `원`/`억`/`조원`/`KRW원` alias family).
+- Fix direction (Phase 8, Veto-critical): run the verbatim-digit fallback regardless of unit for dimensionless integers + alias English `KRW`→`KRW원`, WITH a "fabricated number still drops" regression test so Veto #3 stays intact.
 
 ## Performance
 
@@ -155,7 +158,7 @@ None requiring auto-fix rules. Two plan-faithful clarifications worth recording 
 ## Next Phase Readiness
 
 - **Task 3 live checkpoint PASSED** — SC#1-7 closed; 04-06 marked done in ROADMAP; observed live cost/time (~$1.74/full debate, table above) recorded as the Phase 9 Open-Q4 quota input.
-- **Phase 8 tuning inputs surfaced by the live run:** (a) checksum drop rate (21 dropped / 1 kept) — review D-03 tolerance vs Judge number-citation; (b) per-role wall-clock (Judge ~264s) — the 600s ceiling is generous, tune to the observed distribution; (c) `numeric_facts=1` on the saved card is thin — worth verifying the checksum isn't over-dropping legitimate verbatim figures.
+- **Phase 8 inputs surfaced by the live run:** (a) checksum FALSE-DROP bug (see Live Checkpoint Results above) — the `numeric_facts=1` card is thin because 18 verbatim-present filing numbers were wrongly dropped by the unit-gated fallback, not because the data was bad; (b) per-role wall-clock (Judge ~264s) — the 600s ceiling is generous, tune to the observed distribution; (c) collectors for price/flow/news/fundamentals were never run (only DART + macro), so the bundle's market/flow/peer evidence was empty — run `stock collect krx` (note: its pykrx whole-market snapshot API is currently broken; the single-ticker history API works and serves real 2026 data).
 - **Repo-wide (non-blocking):** `mypy --strict` reports ~30 pre-existing findings across the analysis package (mostly bare `dict` generics; `bundle.py`'s `FilingHit` attr errors are annotation imprecision on `hybrid_search`'s return type, NOT runtime bugs — the live path builds the bundle fine). mypy is not gated by pre-commit or CI. Left for a dedicated cleanup pass.
 
 ---
