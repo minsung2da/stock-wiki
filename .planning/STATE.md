@@ -57,6 +57,13 @@ Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, �
   (`get_market_ohlcv_by_ticker`) which is currently broken (returns empty for all dates); the single-ticker
   history API (`get_market_ohlcv`) works and serves real data through 2026-07-08. Collector needs a
   portfolio.md (gitignored, absent here) for scope.
+- **Demo (2026-07-07, orchestrator): seeded 61 REAL Samsung OHLCV rows** (2026-04-07..07-06, close
+  ₩196,500→₩318,000) via the working single-ticker API into the `ohlcv` table, invalidated the prior
+  card, and re-ran `analyze_ticker`. Result proves price data changes the card: price_ref (none→₩318,000)
+  and conviction (0.095→0.23) both moved, stance stayed HOLD. Active Samsung card is now
+  `card_005930_2026-07-06_f700c985` (the price-less `..077594ca` is invalidated/preserved). Flow/foreign/
+  inst_net still NULL (the pykrx investor-flow endpoint is also broken here). This is a partial demo seed,
+  not a full collector run.
 
 ### Repo-wide note (non-blocking)
 - `mypy --strict` has ~30 pre-existing findings across the analysis package (mostly bare `dict`
