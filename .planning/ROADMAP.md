@@ -236,6 +236,29 @@ Summary 패턴: 바뀐 것만, 최대 10개"
      (daily batch).
   5. 거부된 카드는 다음 daily briefing의 "검토 후 거부" 섹션에 포함.
 
+**Design consideration — KIS as the numeric-market-data source (added 2026-07-13):**
+When wiring the KIS client here, evaluate using KIS Open API as the PRIMARY source for
+numeric market data (시세 OHLCV / 투자자별 수급 / 재무비율 PER·PBR·ROE), with pykrx +
+FinanceDataReader kept as backfill/fallback. Rationale + boundaries:
+- **Motivation:** pykrx scrapes KRX's web backend and is fragile — during Phase 4 the KRX
+  whole-market OHLCV snapshot, investor-flow, and fundamental endpoints all returned empty
+  (only the single-ticker OHLCV history API worked). An official broker API (KIS) does not
+  have that scraping-breakage failure mode. This is exactly why the Phase 4 SK Hynix card had
+  price (seeded via the one working pykrx endpoint) but NO 수급/peer evidence — those tables
+  stayed empty because pykrx's flow + fundamental endpoints are broken.
+- **Scope — KIS replaces ONLY numbers.** DART 공시 원문 (Veto #8, whole body_md), 뉴스, and
+  macro (ECOS/FRED) are narrative/macro data that CANNOT come from KIS — keep those pipelines
+  as-is. ~80% of a decision_card's reasoning is DART/news narrative, not KIS numbers.
+- **Decouple data collection from the trade account.** KIS's 20 req/s + daily quota make bulk
+  history backfill slow, so keep pykrx/FDR for multi-year backfill (Phase 8 CPCV needs years).
+  More importantly, market-data collection must NOT die when the trading account is suspended /
+  key-rotated / in a maintenance window — separate the KIS-data auth/retry from the order path
+  and keep a pykrx/FDR fallback (Veto #10 blast-radius isolation).
+- **Numeric only (Veto #6):** KIS price/flow/fundamentals land in typed columns (ohlcv /
+  fundamentals), never embedded.
+- **Note:** KIS keys were NOT in `.env` as of Phase 4 (only DART/ECOS/FRED/GitHub/DB) and no
+  KIS code exists yet — this is greenfield here.
+
 **Plans**: TBD
 
 ---

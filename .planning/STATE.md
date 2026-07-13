@@ -245,7 +245,12 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - **Phase 1 우선 결정 필요**: Phase 4 (analysis runner)에서 Sonnet sub-agent를 어떻게 spawn할지 —
   Claude Code session 내 Task tool? 별도 Claude Schedule routine? quota 영향 측정 필요. Phase 4 plan 단계에서 확정.
 
-- **KIS API 모의 환경 접근권**: Phase 6 시작 전 모의투자 계정 발급 및 API 키 확보 필요.
+- **KIS API 모의 환경 접근권**: Phase 6 시작 전 모의투자 계정 발급 및 API 키 확보 필요. KIS 키는
+  Phase 4 기준 `.env`에 없음(DART/ECOS/FRED/GitHub/DB만) + KIS 코드 0건 — greenfield. **결정 노트:**
+  Phase 6에서 KIS를 자동매매뿐 아니라 *숫자형 시장데이터(시세/수급/재무비율)의 주 소스*로 쓸지 검토
+  (pykrx 스크래핑 취약성 — Phase 4에서 KRX 수급/fundamental 엔드포인트 빈값 목격 → SK하이닉스 카드
+  수급/peer 부재의 원인). DART 공시원문/뉴스/매크로는 KIS 대체 불가 → 유지. 데이터 수집을 매매계좌와
+  디커플링(Veto #10) + pykrx/FDR 폴백. 상세는 ROADMAP Phase 6 "Design consideration" 참조.
 - **`notes/private/portfolio.md` schema 미정**: Phase 1에서 entity seed + Phase 6에서 auto_trade_enabled
   토글까지 사용. 한 번에 결정 vs 점진 진화 — Phase 1 plan에서 결정.
 
