@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: verified
-stopped_at: "Phase 04 VERIFIED (2026-07-07) — gsd-verifier 7/7 SC + all Hard Vetoes; the 2 human items (live card DB row + Veto#1 body_md) resolved by orchestrator live-DB inspection. Live checkpoint PASSED (삼성전자 HOLD/0.095, ~$1.74/debate). Next milestone step: Phase 05 (Briefing Renderer)."
-last_updated: "2026-07-07T00:00:00Z"
+stopped_at: Phase 5 context gathered
+last_updated: "2026-07-13T09:23:35.328Z"
 progress:
   total_phases: 9
   completed_phases: 4
@@ -39,6 +39,7 @@ Max-only seam). Live-CLI checkpoint PASSED: 삼성전자 card stance=HOLD convic
 Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, 최대 10 카드).
 
 ### Phase 8 inputs (from the live run — recorded in 04-06-SUMMARY)
+
 - **D-03 checksum FALSE-DROP bug (not a tolerance issue).** Live card kept 1/22 numeric facts (4.5%).
   Of the 21 drops, 3 are legit (ohlcv/flow/peer count=0, data genuinely absent); the other 18 are real
   filing numbers — 7/7 spot-checked were VERBATIM present in the source (e.g. `37,000,000`,
@@ -53,6 +54,7 @@ Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, �
   Empirical on the real Samsung body: originally-dropped facts now 19/21 kept (was 0/21); the 2 still dropped
   are non-integer derived dilution ratios (correct). +12 regression tests (real kept / fabricated dropped),
   54 checksum / 146 analysis tests green.
+
 - Per-role wall-clock: Judge ~264s vs the 600s ceiling — tune to the observed distribution.
 - **Collectors not yet run for price/flow/news/fundamentals** — only DART (217 runs) + macro (1) populated
   the DB, so ohlcv/news/fundamentals = 0 rows. That is why the live card reported "price/flow data absent"
@@ -60,6 +62,7 @@ Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, �
   (`get_market_ohlcv_by_ticker`) which is currently broken (returns empty for all dates); the single-ticker
   history API (`get_market_ohlcv`) works and serves real data through 2026-07-08. Collector needs a
   portfolio.md (gitignored, absent here) for scope.
+
 - **Demo (2026-07-07, orchestrator): seeded 61 REAL Samsung OHLCV rows** (2026-04-07..07-06, close
   ₩196,500→₩318,000) via the working single-ticker API into the `ohlcv` table, invalidated the prior
   card, and re-ran `analyze_ticker`. Result proves price data changes the card: price_ref (none→₩318,000)
@@ -69,6 +72,7 @@ Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, �
   not a full collector run.
 
 ### Repo-wide note (non-blocking)
+
 - `mypy --strict` has ~30 pre-existing findings across the analysis package (mostly bare `dict`
   generics; `bundle.py` FilingHit attr = annotation imprecision on `hybrid_search` return type, NOT
   a runtime bug — live path builds the bundle fine). mypy is NOT gated by pre-commit or CI. Deferred
@@ -251,6 +255,7 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
   (pykrx 스크래핑 취약성 — Phase 4에서 KRX 수급/fundamental 엔드포인트 빈값 목격 → SK하이닉스 카드
   수급/peer 부재의 원인). DART 공시원문/뉴스/매크로는 KIS 대체 불가 → 유지. 데이터 수집을 매매계좌와
   디커플링(Veto #10) + pykrx/FDR 폴백. 상세는 ROADMAP Phase 6 "Design consideration" 참조.
+
 - **`notes/private/portfolio.md` schema 미정**: Phase 1에서 entity seed + Phase 6에서 auto_trade_enabled
   토글까지 사용. 한 번에 결정 vs 점진 진화 — Phase 1 plan에서 결정.
 
@@ -265,6 +270,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-07-06T14:55:51Z
-Stopped at: 04-06 Tasks 1-2 done (analyze_ticker runner + SC#1-7 quota-free tests, 126 pass); Task 3 = blocking human-verify live-CLI checkpoint PENDING (orchestrator + human own the real `claude` run)
-Resume file: .planning/phases/04-analysis-runner-3-role-debate/04-06-SUMMARY.md
+Last session: 2026-07-13T09:23:35.317Z
+Stopped at: Phase 5 context gathered
+Resume file: .planning/phases/05-briefing-renderer/05-CONTEXT.md
