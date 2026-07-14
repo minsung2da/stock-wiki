@@ -390,15 +390,18 @@ command.downgrade(cfg, "0008")   # columns gone, corp_code NOT NULL restored
 | A5 | Contradiction identity key = `(bull, bear_claim)` for the set-delta | Change Detection | A poor key double-counts or misses "+N contradictions"; confirm with real cards |
 | A6 | Weekly per-ticker start/end state is read from daily `entries` (which carry stance+conviction) | Weekly Roll-Up | If dailies don't persist per-entry stance+conviction in payload, weekly can't compute NET — the daily payload schema MUST include them |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Invalidated-today detection** — `invalidate()` records no timestamp (`store.py:117-125`).
    - Known: `status='invalidated'` + `invalidation_reason` in payload.
    - Unclear: when it happened.
    - Recommendation: stamp `invalidated_at` into payload (minimal) or add a column (clean). Planner picks.
+   - **RESOLVED (05-02, option a):** stamp `invalidated_at` (KST ISO) into the payload JSONB inside `invalidate()`; DecisionCard gains an optional `invalidated_at` field; no new DB column.
 2. **One new column vs two** — D-73 says "column" (singular); this research recommends `report_type` + `report_date`.
    - Recommendation: two columns (timezone-safe). If constrained to one, use the KST-expression index and accept the footgun risk.
+   - **RESOLVED (05-01):** two dedicated columns `report_type` + `report_date` (DATE), matched by equality via the partial `ix_decision_cards_report` index.
 3. **Daily payload entry schema** — the weekly NET algorithm (D-07) requires each daily `entry` to carry `ticker`, `stance`, `conviction`, `event_class`, and the delta string. The planner must lock the `entries[]` payload schema in the daily so the weekly can read it. (A6.)
+   - **RESOLVED (05-03):** daily `entries[]` locked as FLAT dicts {ticker, name, event_class, change, evidence, stance, conviction, why_now, why_not, card_id}; the DICT-keyed `_priority_key` (05-03) is reused unchanged by the weekly (05-05).
 
 ## Environment Availability
 
