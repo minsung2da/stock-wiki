@@ -22,7 +22,8 @@ truth, Markdown vault는 폐기, 사용자 thesis 메모만 disk에 잔존.
 - [x] **Phase 1: Collector DB-Direct Cutover** — 5개 collector가 Markdown 출력을 멈추고 Postgres에 직접 INSERT ✓ 2026-05-29
 - [x] **Phase 2: Decision Card Schema & Storage** — `decision_cards` 테이블 + Pydantic 모델 + 마이그레이션 ✓ 2026-05-30
 - [x] **Phase 3: MCP Tool Surface (Read-Side)** — 타입드 MCP 도구로 stock-mcp 대체 (completed 2026-06-07)
-- [x] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성 (completed 2026-07-06, VERIFIED 2026-07-07 — SC#1-7 7/7 + live-CLI checkpoint)
+- [x] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성
+ (completed 2026-07-06, VERIFIED 2026-07-07 — SC#1-7 7/7 + live-CLI checkpoint)
 - [ ] **Phase 5: Briefing Renderer** — 일/주 top-N 변화 요약
 - [ ] **Phase 6: Paper-Trade Action Layer** — Gates A–D + KIS 모의 API + ≥30일 shadow
 - [ ] **Phase 7: Live Trade Promotion** — paper 성과 게이트 통과 시에만 실거래
@@ -204,7 +205,12 @@ Summary 패턴: 바뀐 것만, 최대 10개"
   6. **만약 변화 없으면** 짧은 "no significant changes today" 카드만. 만들지 않거나 빈 페이지
      렌더 X.
 
-**Plans**: TBD
+**Plans:** 5 plans across 4 waves
+- [ ] 05-01-PLAN.md — Wave 1: migration 0009 (report_type/report_date, nullable corp_code + partial CHECKs/index) + ORM parity + [BLOCKING] alembic upgrade head [SC#2]
+- [ ] 05-02-PLAN.md — Wave 2: BriefingRow model + store helpers (save_briefing/get_briefing_row/list_cards_for_briefing/get_daily_briefings_in_range) + invalidate() invalidated_at stamp + multi-entity test fixture [SC#1, SC#2]
+- [ ] 05-03-PLAN.md — Wave 3: daily briefing — change detection (D-02/D-03), D-01 priority + held-first degradation, 6-column table render (D-04/05/06), no-change short row [SC#1, SC#2, SC#3, SC#6]
+- [ ] 05-04-PLAN.md — Wave 3: wire get_briefing to store delegate (SC#3 AST guard intact, Veto #13 no body leak) + swap honest-empty guard for DB-backed wired tests [SC#5]
+- [ ] 05-05-PLAN.md — Wave 4: weekly roll-up — per-ticker NET (D-07), best-effort coverage (D-08), source_reports pre-materialized, no recompute on read [SC#4]
 
 ---
 
