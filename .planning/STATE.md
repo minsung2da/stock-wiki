@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: verified
-stopped_at: Phase 5 context gathered
-last_updated: "2026-07-15T11:37:02.952Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-07-16T12:39:06.431Z"
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 29
-  completed_plans: 24
+  completed_plans: 25
   percent: 44
 ---
 
@@ -27,11 +27,12 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 04 VERIFIED → next is Phase 05 (Briefing Renderer)
+**Current focus:** Phase 05 — briefing-renderer
 
 ## Current Position
 
-Phase: 04 (analysis-runner-3-role-debate) — ✅ VERIFIED (2026-07-07)
+Phase: 05 (briefing-renderer) — EXECUTING
+Plan: 2 of 5
 All 6 plans complete + verified. gsd-verifier: 7/7 SC in code, all Hard Vetoes (#1/#4/#5/#7 + D-01
 Max-only seam). Live-CLI checkpoint PASSED: 삼성전자 card stance=HOLD conviction=0.095, per-debate
 ~$1.74 (bull $0.51 / bear $0.47 / judge $0.76), Judge ~264s. Two live-surfaced fixes committed
@@ -81,7 +82,7 @@ Next: `/gsd:plan-phase 5` (Briefing Renderer — 일/주 top-N 변화 요약, �
 
 Phase 03 — VERIFIED (VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25).
 
-Progress: [██████████] 96%
+Progress: [█████████░] 86%
 
 **Phase 3 closed (2026-06-07):** all 10 locked read-side MCP tools (get_filing,
 search_filings, ohlcv_range, flow_range, peer_view, hybrid_search, get_note,
@@ -159,6 +160,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 04 P04 | 7 min | 3 tasks | 2 files |
 | Phase 04 P05 | 11 min | 3 tasks | 6 files |
 | Phase 04 P06 (partial: Tasks 1-2, Task 3 live checkpoint pending) | ~22 min | 2 tasks | 5 files |
+| Phase 05 P01 | 5 min | 3 tasks | 4 files |
 
 ## Accumulated Context (v2.0)
 
@@ -212,6 +214,7 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase 04-05]: D-01 DebateBackend seam: ClaudeCliBackend spawns headless 'claude -p' via patchable _spawn_claude (mirrors fetcher._http_get), evidence on stdin (T-04-13), --strict-mcp-config + never --bare, reads structured_output not result; SubAgentError(permanent auth/non-zero/bad-envelope) vs SubAgentRetryableError(overload/rate_limit/timeout) with exactly one retry; system_prompt+schema are PARAMS so subagents.py imports no roles.py (leaf); run_bull_bear = parallel-blind helper — SC#2 mechanics + Max-only Veto: the ONLY path to a model is the CLI subprocess; the mockable seam keeps the default suite quota-free
 - [Phase 04-05]: SC#7 cost capture (cost.py): StageCost + capture_cost extracts total_cost_usd/duration_ms/usage token subset/modelUsage model from the claude -p JSON envelope (defensive on missing keys); emit_cost writes ONE structured stderr line and NEVER reuses record_collector_run (its 7-source CHECK excludes analysis) nor raises on a partial envelope; FakeDebateBackend (canned per-role structured_output + .calls recorder, zero subprocess) is the seam the whole default suite uses — SC#7 Phase-9 quota input via structured stderr (RESEARCH #6); deep_work_rules: default suite never spawns the live CLI
 - [Phase 04-06]: analysis.runner.analyze_ticker composite orchestrator (Tasks 1-2 done; Task 3 = blocking live-CLI checkpoint PENDING, orchestrator-owned). gate.decide → REFRESH (lightweight_refresh, backend NEVER called, SC#6) | FULL (build_bundle → run_bull_bear parallel-blind → Judge over bundle+bull+bear, SC#2 → checksum_facts drops unverifiable numbers into card.warnings, SC#3 → score_to_conviction, Veto #4/#5 → derive_stance from mean-claim-confidence net + rubric fundamentals/catalyst signs + currently_held, RESEARCH Disc #1). Conviction comes from the rubric (Judge schema OMITS it); stance is DERIVED (not taken from Judge) so both are decomposable. Card construction enforces Veto #2 = SC#4 (assumption-less/untimed Judge → ValidationError, retry judge ONCE then fail loudly, Disc #2). Empty contradictions logs a warning (SC#5). Per-stage cost emitted for bundle+bull+bear+judge (SC#7). Atomic supersession via store.save_card(supersedes=prior.card_id) (SC#1). currently_held/portfolio_note_path=None [ASSUMED] until Phase 6 wires portfolio membership. No anthropic/openai import (D-01, import guard green). 126 quota-free tests pass; live proof deferred to Task 3 checkpoint
+- [Phase ?]: [Phase 05-01]: migration 0009 — decision_cards gains report_type TEXT + report_date DATE (nullable); corp_code DROP NOT NULL guarded by partial CHECK ck_decision_cards_corp_or_report (analysis-card FK invariant preserved, briefing rows may have NULL corp); ck_decision_cards_report_type enumerates daily_briefing/weekly_briefing; partial ix_decision_cards_report (report_type,report_date) WHERE report_type IS NOT NULL; downgrade DELETEs briefing rows before restoring NOT NULL; APPLIED to live DB (alembic current==0009)
 
 ### Lessons Carried Over from v1.0
 
@@ -270,6 +273,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-07-13T09:23:35.317Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-briefing-renderer/05-CONTEXT.md
+Last session: 2026-07-16T12:39:06.413Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
