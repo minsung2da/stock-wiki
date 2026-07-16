@@ -394,12 +394,21 @@ class DecisionCard(Base):
     __tablename__ = "decision_cards"
 
     card_id = sa.Column(sa.Text, primary_key=True)
+    # corp_code is nullable at the DB level as of migration 0009: a briefing row
+    # (report_type set) has no single corp. The analysis-card invariant (a
+    # non-briefing row still requires corp_code) is preserved by the partial
+    # CHECK ck_decision_cards_corp_or_report — a DB-only constraint, so this ORM
+    # class only tracks column-set parity (test_orm_round_trip).
     corp_code = sa.Column(
         sa.CHAR(8),
         sa.ForeignKey("entities.corp_code", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     ticker = sa.Column(sa.CHAR(6), nullable=True)
+    # report_type / report_date — the briefing card KIND + covered date (migration
+    # 0009). NULL on an analysis card. Present here only for ORM↔DB column parity.
+    report_type = sa.Column(sa.Text, nullable=True)
+    report_date = sa.Column(sa.Date, nullable=True)
     generated_at = sa.Column(sa.DateTime(timezone=True), nullable=False)
     as_of = sa.Column(sa.DateTime(timezone=True), nullable=False)
     payload = sa.Column(postgresql.JSONB, nullable=False)
