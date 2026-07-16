@@ -21,9 +21,30 @@ UNCHANGED over these net-entry dicts (no ``.card`` attribute access anywhere).
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+import logging
+from datetime import date, datetime, timedelta
+from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
+from cards import store
+from db.engine import get_engine
+
+from .daily import (
+    _MAX_ENTRIES,
+    _kst_close_on,
+    _priority_key,
+    load_held_tickers,
+    render_body_md,
+)
 from .models import BriefingRow
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Engine
+
+_log = logging.getLogger(__name__)
+# KST business-day boundary (mirrors daily.py / runner.py:72). report_date/as_of/
+# expires_at anchor on the KST close, never a naive date.today() (Pitfall #3).
+_KST = ZoneInfo("Asia/Seoul")
 
 # A full week is 7 daily briefings (D-08 coverage denominator). Best-effort: the weekly
 # rolls up whatever exists and records the gap — it never blocks on a full 7.
@@ -118,3 +139,95 @@ def aggregate_net(
         "missing_dates": missing_dates,
     }
     return net_entries, coverage
+
+
+def generate_weekly_briefing(
+    week_anchor: date,
+    *,
+    engine: Engine | None = None,
+    held_tickers: set[str] | None = None,
+) -> BriefingRow:
+    """Load the week's <=7 dailies -> NET-aggregate -> PRE-MATERIALIZE a weekly row (SC#4).
+
+    ``week_anchor`` IS ``week_end`` — the date ``get_briefing(date, 'weekly')`` is queried
+    with (05-RESEARCH A3). The week is the 7-day window ``[week_end-6d, week_end]``. Loads
+    the daily payloads via ``store.get_daily_briefings_in_range`` (already ordered by
+    ``report_date``), computes the per-ticker NET change via :func:`aggregate_net` (flat
+    dicts), priority-sorts them with the daily's DICT-keyed ``_priority_key`` (no ``.card``
+    access — there is no ``DecisionCard`` at weekly time, SC#4), truncates to <=10, and
+    persists a ``report_type='weekly_briefing'`` row through ``store.save_briefing``.
+
+    The entries are computed ONCE here and stored (pre-materialized). The read path
+    (``get_briefing(weekly)``, wired in 05-04) is a pure SELECT of this row — it NEVER
+    re-reads the 7 dailies, so the weekly is byte-stable even if the dailies are later
+    mutated/deleted (SC#4 no recompute). The payload also carries ``source_reports`` (the
+    <=7 daily pointers) and ``coverage`` (D-08). Even an empty week writes a real row
+    (``entries=[]``) so ``get_briefing`` returns ``found=True`` — never an empty page.
+
+    The payload is self-describing (carries ``card_id``/``report_type``/``report_date``/
+    ``generated_at``/``as_of``/``expires_at`` as ISO strings) so ``store.get_briefing_row``
+    reconstructs a ``BriefingRow`` from it alone (the 05-02 write contract).
+
+    Args:
+        week_anchor: the KST ``week_end`` the weekly covers (the ``get_briefing`` key).
+        engine: SQLAlchemy engine; defaults to ``db.engine.get_engine()``.
+        held_tickers: injected held set for tier-1 held-first; ``None`` loads
+            ``portfolio.md`` (absent -> ``set()``, held tier collapses — D-01 degradation).
+
+    Returns:
+        The persisted weekly ``BriefingRow``.
+    """
+    engine = engine if engine is not None else get_engine()
+    held = load_held_tickers(held_tickers=held_tickers)
+
+    week_end = week_anchor
+    week_start = week_end - timedelta(days=_WEEK_DAYS - 1)
+
+    rows = store.get_daily_briefings_in_range(engine, week_start, week_end)
+    net_entries, coverage = aggregate_net(rows, week_start=week_start, week_end=week_end)
+
+    # Priority-sort the FLAT net-entry dicts with the SAME dict-keyed key the daily uses,
+    # then truncate to <=10 (D-01 / SC#1). No attribute access — plain dicts only (SC#4).
+    net_entries = sorted(net_entries, key=lambda e: _priority_key(e, held))[:_MAX_ENTRIES]
+
+    generated_at = datetime.now(_KST)
+    as_of = _kst_close_on(week_end)
+    expires_at = _kst_close_on(week_end + timedelta(days=7))
+    card_id = f"brief_weekly_{week_end.isoformat()}"
+
+    source_reports = [
+        {"date": r.report_date.isoformat(), "card_id": r.card_id} for r in rows
+    ]
+
+    payload: dict = {
+        "card_id": card_id,
+        "report_type": "weekly_briefing",
+        "report_date": week_end.isoformat(),
+        "generated_at": generated_at.isoformat(),
+        "as_of": as_of.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "entries": net_entries,
+        "source_reports": source_reports,
+        "coverage": coverage,
+    }
+
+    row = BriefingRow(
+        card_id=card_id,
+        report_type="weekly_briefing",
+        report_date=week_end,
+        generated_at=generated_at,
+        as_of=as_of,
+        expires_at=expires_at,
+        payload=payload,
+        body_md=render_body_md(net_entries),
+    )
+    store.save_briefing(engine, row)
+    _log.info(
+        "weekly briefing generated",
+        extra={
+            "report_date": week_end.isoformat(),
+            "entry_count": len(net_entries),
+            "coverage": coverage,
+        },
+    )
+    return row

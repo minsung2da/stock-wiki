@@ -21,8 +21,13 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
+from sqlalchemy import text
+
 from briefing.models import BriefingRow
-from briefing.weekly import aggregate_net
+from briefing.weekly import aggregate_net, generate_weekly_briefing
+from cards import store
+from mcp_v2.tools.briefing import get_briefing
 
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -167,3 +172,107 @@ def test_coverage():
     assert coverage["expected"] == 7
     # Sat + Sun missing — a missing day is NOT a no-change ticker, only a coverage gap.
     assert coverage["missing_dates"] == ["2026-07-18", "2026-07-19"]
+
+
+# ---------------------------------------------------------------------------
+# Task 2 — generate_weekly_briefing: pre-materialize + no-recompute (SC#4)
+# ---------------------------------------------------------------------------
+_WEEK_END = date(2026, 7, 19)  # the anchor get_briefing(date, 'weekly') is queried with
+
+
+@pytest.mark.db
+def test_no_recompute(pg_clean):
+    """SC#4: get_briefing(weekly) returns the STORED entries unchanged after the source
+    dailies are deleted — the read is a pure SELECT, never a re-aggregation."""
+    # Seed a genuine net change (HOLD -> SELL) across two dailies in the week.
+    store.save_briefing(
+        pg_clean, _daily_row(date(2026, 7, 13), [_entry("000002", "HOLD", 0.60)])
+    )
+    store.save_briefing(
+        pg_clean, _daily_row(date(2026, 7, 17), [_entry("000002", "SELL", 0.80)])
+    )
+
+    weekly = generate_weekly_briefing(_WEEK_END, engine=pg_clean, held_tickers=set())
+    stored_entries = weekly.payload["entries"]
+    assert len(stored_entries) == 1
+    assert stored_entries[0]["ticker"] == "000002"
+    assert stored_entries[0]["change"] == "HOLD→SELL"
+
+    # DELETE every source daily AFTER generation — a recompute-on-read would now find
+    # nothing and return empty entries. A pre-materialized read is unaffected.
+    with pg_clean.begin() as conn:
+        conn.execute(text("DELETE FROM decision_cards WHERE report_type = 'daily_briefing'"))
+
+    result = get_briefing(_WEEK_END.isoformat(), "weekly")
+    assert result.found is True
+    # Byte-stable: the weekly row's stored entries survive the source deletion (SC#4).
+    assert result.entries == stored_entries
+
+
+@pytest.mark.db
+def test_source_reports_and_coverage_pre_materialized(pg_clean):
+    """The weekly payload lists <=7 {date, card_id} source pointers + a coverage dict."""
+    for day in (13, 14, 15, 16, 17):  # 5 of 7 present (D-08 partial)
+        store.save_briefing(
+            pg_clean,
+            _daily_row(date(2026, 7, day), [_entry("000002", "HOLD", 0.60)]),
+        )
+
+    weekly = generate_weekly_briefing(_WEEK_END, engine=pg_clean, held_tickers=set())
+
+    src = weekly.payload["source_reports"]
+    assert len(src) == 5
+    assert all(set(s.keys()) == {"date", "card_id"} for s in src)
+    assert src[0]["card_id"] == "brief_daily_2026-07-13"
+
+    coverage = weekly.payload["coverage"]
+    assert coverage["present"] == 5
+    assert coverage["expected"] == 7
+    assert len(coverage["missing_dates"]) == 2
+
+    assert weekly.report_type == "weekly_briefing"
+    assert weekly.report_date == _WEEK_END
+    assert weekly.card_id == "brief_weekly_2026-07-19"
+
+
+@pytest.mark.db
+def test_priority_sorted_and_truncated_to_ten(pg_clean):
+    """<=10 entries, priority-sorted by the reused DICT-keyed _priority_key (held-first)."""
+    tickers = [f"{i:06d}" for i in range(1, 13)]  # 12 genuine net-change tickers
+    store.save_briefing(
+        pg_clean,
+        _daily_row(date(2026, 7, 13), [_entry(t, "HOLD", 0.60) for t in tickers]),
+    )
+    store.save_briefing(
+        pg_clean,
+        _daily_row(date(2026, 7, 17), [_entry(t, "SELL", 0.80) for t in tickers]),
+    )
+
+    weekly = generate_weekly_briefing(
+        _WEEK_END, engine=pg_clean, held_tickers={"000012"}
+    )
+    entries = weekly.payload["entries"]
+
+    assert len(entries) == 10  # truncated to 10 (SC#1)
+    assert entries[0]["ticker"] == "000012"  # held-first (D-01 tier 1) sorts to the top
+
+
+@pytest.mark.db
+def test_empty_week_writes_real_row(pg_clean):
+    """An empty week still PRE-MATERIALIZES a real row so get_briefing is found=True."""
+    weekly = generate_weekly_briefing(_WEEK_END, engine=pg_clean, held_tickers=set())
+
+    assert weekly.payload["entries"] == []
+    assert weekly.payload["coverage"]["present"] == 0
+    assert weekly.payload["source_reports"] == []
+
+    result = get_briefing(_WEEK_END.isoformat(), "weekly")
+    assert result.found is True
+    assert result.entries == []
+
+
+def test_generate_weekly_briefing_exported():
+    """SC#4: the orchestrator is exported from the briefing package."""
+    from briefing import generate_weekly_briefing as exported
+
+    assert exported is generate_weekly_briefing

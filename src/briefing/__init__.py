@@ -15,5 +15,6 @@ The 05-03 daily generator is exported here; 05-05 appends the weekly line. The
 from __future__ import annotations
 
 from .daily import generate_daily_briefing
+from .weekly import generate_weekly_briefing
 
-__all__ = ["generate_daily_briefing"]
+__all__ = ["generate_daily_briefing", "generate_weekly_briefing"]
