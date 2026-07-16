@@ -24,7 +24,7 @@ truth, Markdown vault는 폐기, 사용자 thesis 메모만 disk에 잔존.
 - [x] **Phase 3: MCP Tool Surface (Read-Side)** — 타입드 MCP 도구로 stock-mcp 대체 (completed 2026-06-07)
 - [x] **Phase 4: Analysis Runner (3-role Debate)** — Bull/Bear/Judge 서브에이전트 → decision_card 생성
  (completed 2026-07-06, VERIFIED 2026-07-07 — SC#1-7 7/7 + live-CLI checkpoint)
-- [ ] **Phase 5: Briefing Renderer** — 일/주 top-N 변화 요약
+- [x] **Phase 5: Briefing Renderer** — 일/주 top-N 변화 요약 (completed 2026-07-16, VERIFIED — SC#1-6 6/6 + D-01~08 + Vetoes #1/#3/#4/#6/#7/#13)
 - [ ] **Phase 6: Paper-Trade Action Layer** — Gates A–D + KIS 모의 API + ≥30일 shadow
 - [ ] **Phase 7: Live Trade Promotion** — paper 성과 게이트 통과 시에만 실거래
 - [ ] **Phase 8: Evaluation Harness** — CPCV+embargo 백테스트 + Sonnet KR 금융 보정 평가
