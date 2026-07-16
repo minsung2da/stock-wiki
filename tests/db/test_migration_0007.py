@@ -58,7 +58,11 @@ def test_decision_cards_shape(pg_engine) -> None:
 
     # NOT NULL contract on the data-meaningful columns.
     assert cols["card_id"]["nullable"] is False
-    assert cols["corp_code"]["nullable"] is False
+    # corp_code is nullable at the DB level as of migration 0009 (a briefing row
+    # has no single corp). The analysis-card invariant is preserved by the partial
+    # CHECK ck_decision_cards_corp_or_report, not by a column NOT NULL — see
+    # tests/db/test_migration_0009.py. This is an EXPECTED relaxation, not drift.
+    assert cols["corp_code"]["nullable"] is True
     assert cols["generated_at"]["nullable"] is False
     assert cols["as_of"]["nullable"] is False
     assert cols["payload"]["nullable"] is False
