@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: verified
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-07-16T13:20:32.634Z"
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-07-16T13:40:00.000Z"
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 29
-  completed_plans: 26
-  percent: 44
+  completed_plans: 28
+  percent: 47
 ---
 
 # Project State
@@ -32,7 +32,7 @@ See:
 ## Current Position
 
 Phase: 05 (briefing-renderer) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 **05-01 (Wave 1) DONE:** migration 0009 applied to live DB (report_type/report_date, nullable
 corp_code + partial CHECKs/index; alembic current==0009).
@@ -40,9 +40,16 @@ corp_code + partial CHECKs/index; alembic current==0009).
 DecisionCard, Veto #1/#4) + `cards.store.{save_briefing,get_briefing_row,list_cards_for_briefing,
 get_daily_briefings_in_range}` + `invalidate()` invalidated_at stamp (OQ1 option a) +
 `DecisionCard.invalidated_at`; shared ≥11-ticker `briefing_engine` fixture + `make_card` factory.
-33 tests green (8 briefing + 25 cards), no-run-sql guard intact.
-Next: 05-03 (Wave 3) daily briefing — change detection (D-02/D-03), D-01 priority + held-first
-degradation, 6-column table render (D-04/05/06), no-change short row.
+**05-03 (Wave 3) DONE:** deterministic LLM-free daily generator — classify_change (D-02/D-03) +
+DICT-keyed `_priority_key` + 6-column render + `generate_daily_briefing` orchestrator; self-describing
+payload; no-change short row (SC#6).
+**05-04 (Wave 3) DONE:** `get_briefing` wired to `cards.store.get_briefing_row` — public type
+daily/weekly → stored report_type; ISO-8601 date validation (ASVS V5) before the DB bind; returns
+`entries` only (Veto #13, `Briefing` has no body_md field); no inline `text()` (SC#3 AST guard + 10-tool
+registry green). Retired the Phase-3 honest-empty guard for DB-backed wired tests (SC#5). 139 mcp_v2
+tests green.
+Next: 05-05 (Wave 4) weekly roll-up — per-ticker NET (D-07), best-effort coverage (D-08),
+source_reports pre-materialized, no recompute on read (SC#4).
 
 ### Phase 8 inputs (from the live run — recorded in 04-06-SUMMARY)
 
@@ -168,6 +175,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 05 P01 | 5 min | 3 tasks | 4 files |
 | Phase 05-briefing-renderer P02 | 15 min | 3 tasks tasks | 7 files files |
 | Phase 05-briefing-renderer P03 | 20min | 3 tasks | 6 files |
+| Phase 05-briefing-renderer P04 | 12min | 2 tasks | 3 files |
 
 ## Accumulated Context (v2.0)
 
@@ -225,6 +233,7 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase 05-briefing-renderer]: [Phase 05-02]: BriefingRow is a SEPARATE Pydantic model (extra='forbid'), never extends DecisionCard (Veto #1/#4 — no invented stance/conviction); cards.store gains save_briefing (NULL-corp write path, no supersede) + get_briefing_row + list_cards_for_briefing (BriefingCandidates NamedTuple: newly-generated/expiring/invalidated, KST ::date, excludes report_type rows) + get_daily_briefings_in_range; invalidate() nested jsonb_set stamps invalidated_at (OQ1 option a, no column) + DecisionCard.invalidated_at optional field; briefing payload is self-describing so get_briefing_row reconstructs scalars from it
 - [Phase ?]: [Phase 05-03]: daily briefing = deterministic LLM-free digest — classify_change diffs stance-flip/contradiction-delta/first-card(>=0.8) vs the D-02 supersession-chain baseline; build_entry emits the LOCKED flat entry-dict and _priority_key is DICT-keyed (held_rank, event_class_rank, -conviction) with NO .card access so 05-05 weekly reuses it unchanged over payload[entries]; 제안 = stance+conviction only (Veto #1), Why not = top contradiction (Veto #3)
 - [Phase ?]: [Phase 05-03]: daily payload is SELF-DESCRIBING (card_id/report_type/report_date/generated_at/as_of/expires_at as ISO + entries[]) — the plan's literal {entries, generated_for} would KeyError in store.get_briefing_row; added the scalar keys to honor the 05-02 reconstruction contract (Rule 2). SC#6 no-change day still writes a real row
+- [Phase ?]: [Phase 05-04]: get_briefing WIRED — delegates the SELECT to cards.store.get_briefing_row (no inline text() in src/mcp_v2, SC#3 AST guard + 10-tool registry green); public type daily/weekly maps to stored report_type daily_briefing/weekly_briefing; date validated via `from datetime import date as _date` + _date.fromisoformat before the report_date bind (ASVS V5 — literal `date.fromisoformat(date)` would hit str.fromisoformat since the `date` param shadows the class); returns entries ONLY (Briefing has no body_md field, Veto #13 by construction, test_no_body_leak); empty DB -> found=False (D-01). Phase-3 honest-empty guard (found=False daily/weekly + report_type-absence AST test) retired for DB-backed test_briefing_wired.py (EXPECTED swap); bad-type no-DB guard kept (SC#5)
 
 ### Lessons Carried Over from v1.0
 
@@ -283,6 +292,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-07-16T13:19:42.929Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-07-16T13:40:00.000Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None
