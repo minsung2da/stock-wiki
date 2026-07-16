@@ -8,8 +8,12 @@ roll-up. A briefing is persisted as a NULL-corp ``decision_cards`` row
 it is NOT a ``DecisionCard`` (05-RESEARCH §THE LANDMINE / Pitfall #1: a digest has no
 single corp/ticker and — Veto #1/#4 — no stance/conviction).
 
-Later plans (05-03 daily, 05-05 weekly) append their public export lines here; for
-now this package exposes only the ``BriefingRow`` typed contract (``briefing.models``).
+The 05-03 daily generator is exported here; 05-05 appends the weekly line. The
+``BriefingRow`` typed contract stays in ``briefing.models``.
 """
 
 from __future__ import annotations
+
+from .daily import generate_daily_briefing
+
+__all__ = ["generate_daily_briefing"]

@@ -19,15 +19,22 @@ store (SC#4 no-recompute enabler).
 from __future__ import annotations
 
 import logging
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
+from cards import store
+from db.engine import get_engine
 from shared.portfolio import Portfolio, PortfolioLoadError
 
+from .models import BriefingRow
+
 if TYPE_CHECKING:
+    from sqlalchemy.engine import Engine
+
     from cards.models import Contradiction, DecisionCard, KeyClaim
 
 _log = logging.getLogger(__name__)
@@ -234,3 +241,123 @@ def prioritize(events: list[ChangeEvent], held_tickers: set[str]) -> list[dict]:
     entries = [build_entry(e) for e in events]
     entries.sort(key=lambda e: _priority_key(e, held_tickers))
     return entries[:_MAX_ENTRIES]
+
+
+# ---------------------------------------------------------------------------
+# Task 3 — generate_daily_briefing orchestrator + no-change short row (SC#6)
+# ---------------------------------------------------------------------------
+def _kst_close_on(d: date) -> datetime:
+    """The 16:00 KST close on ``d`` — the timezone-safe as_of/expires anchor (Pitfall #3)."""
+    return datetime(d.year, d.month, d.day, 16, 0, tzinfo=_KST)
+
+
+def _keep_highest(
+    mapping: dict[str, ChangeEvent], corp_code: str, event: ChangeEvent
+) -> None:
+    """Dedupe by corp, keeping the highest-priority (lowest-rank) event class (D-01)."""
+    existing = mapping.get(corp_code)
+    if existing is None or (
+        _EVENT_CLASS_RANK[event.event_class]
+        < _EVENT_CLASS_RANK[existing.event_class]
+    ):
+        mapping[corp_code] = event
+
+
+def generate_daily_briefing(
+    on_date: date,
+    *,
+    engine: Engine | None = None,
+    held_tickers: set[str] | None = None,
+) -> BriefingRow:
+    """Collect -> classify -> prioritize -> render -> persist a ``daily_briefing`` row.
+
+    Enumerates the date-D collect set via ``store.list_cards_for_briefing``: each
+    newly-generated card is diffed against its D-02 supersession-chain baseline
+    (``get_active`` + ``walk_supersedes(...)[1]``) through ``classify_change``; each
+    expiring/invalidated card becomes an ``expired_invalidated`` event. Events are deduped
+    per corp (highest-priority class wins), prioritized+truncated to <=10 flat entries,
+    and persisted through ``store.save_briefing`` (SC#1/2). Deterministic + LLM-free (D-06).
+
+    SC#6: even an EMPTY collect-set writes a real row (``entries=[]``, a one-line body) so
+    ``get_briefing`` returns ``found=True`` — never an empty page. The payload is
+    self-describing (carries ``card_id``/``report_type``/``report_date``/``generated_at``/
+    ``as_of``/``expires_at``) so ``store.get_briefing_row`` reconstructs a ``BriefingRow``
+    from it (the 05-02 write contract).
+
+    Args:
+        on_date: the KST business date the briefing covers.
+        engine: SQLAlchemy engine; defaults to ``db.engine.get_engine()``.
+        held_tickers: injected held set for tier-1 held-first; ``None`` loads
+            ``portfolio.md`` (absent → ``set()``, held tier collapses — D-01 degradation).
+
+    Returns:
+        The persisted ``BriefingRow``.
+    """
+    engine = engine if engine is not None else get_engine()
+    held = load_held_tickers(held_tickers=held_tickers)
+
+    candidates = store.list_cards_for_briefing(engine, on_date)
+
+    events_by_corp: dict[str, ChangeEvent] = {}
+    for card in candidates.newly_generated:
+        active = store.get_active(engine, card.corp_code)
+        if active is None:
+            continue
+        chain = store.walk_supersedes(engine, active.card_id)
+        prior = chain[1] if len(chain) >= 2 else None
+        event = classify_change(active, prior)
+        if event is not None:
+            _keep_highest(events_by_corp, card.corp_code, event)
+
+    for card in candidates.expiring:
+        _keep_highest(
+            events_by_corp,
+            card.corp_code,
+            ChangeEvent(card=card, event_class="expired_invalidated", change="expired"),
+        )
+    for card in candidates.invalidated:
+        _keep_highest(
+            events_by_corp,
+            card.corp_code,
+            ChangeEvent(
+                card=card, event_class="expired_invalidated", change="invalidated"
+            ),
+        )
+
+    entries = prioritize(list(events_by_corp.values()), held)
+
+    generated_at = datetime.now(_KST)
+    as_of = _kst_close_on(on_date)
+    expires_at = _kst_close_on(on_date + timedelta(days=1))
+    card_id = f"brief_daily_{on_date.isoformat()}"
+
+    # Self-describing payload (05-02 contract) — get_briefing_row/get_daily_briefings_in_
+    # range reconstruct the BriefingRow scalars FROM this dict, so every scalar rides here
+    # as an ISO string (json.dumps-safe). ``entries`` is the LOCKED weekly-reuse shape.
+    payload: dict = {
+        "card_id": card_id,
+        "report_type": "daily_briefing",
+        "report_date": on_date.isoformat(),
+        "generated_at": generated_at.isoformat(),
+        "as_of": as_of.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "entries": entries,
+        "generated_for": on_date.isoformat(),
+    }
+
+    row = BriefingRow(
+        card_id=card_id,
+        report_type="daily_briefing",
+        report_date=on_date,
+        generated_at=generated_at,
+        as_of=as_of,
+        expires_at=expires_at,
+        payload=payload,
+        body_md=render_body_md(entries),
+    )
+    store.save_briefing(engine, row)
+    _log.info(
+        "daily briefing generated",
+        extra={"report_date": on_date.isoformat(), "entry_count": len(entries)},
+    )
+    return row
