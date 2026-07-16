@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
-status: verified
-stopped_at: Completed 05-05-PLAN.md (Phase 5 briefing-renderer COMPLETE)
-last_updated: "2026-07-16T14:07:37.759Z"
+status: ready_to_plan
+stopped_at: Phase 05 complete (5/5) — ready to discuss Phase 6
+last_updated: 2026-07-16T14:17:49.831Z
 progress:
   total_phases: 9
   completed_phases: 5
@@ -27,12 +27,12 @@ See:
 **v2.0 Core Value:** AI는 종목을 찍어주지 않는다. 매일 모은 evidence를 *근거 카드(decision_card)*
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
-**Current focus:** Phase 05 — briefing-renderer
+**Current focus:** Phase 6 — paper trade action layer
 
 ## Current Position
 
-Phase: 05 (briefing-renderer) — EXECUTING
-Plan: 5 of 5
+Phase: 6
+Plan: Not started
 
 **05-01 (Wave 1) DONE:** migration 0009 applied to live DB (report_type/report_date, nullable
 corp_code + partial CHECKs/index; alembic current==0009).
@@ -143,7 +143,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 
 **Velocity:** (v2.0, baseline reset)
 
-- Total plans completed: 3
+- Total plans completed: 8
 - Average duration: —
 - Total execution time: 0 hours
 
@@ -161,6 +161,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | 8 (Eval harness) | 0 | - | - |
 | 9 (Ops hardening) | 0 | - | - |
 | 02 | 3 | - | - |
+| 05 | 5 | - | - |
 
 **Recent Trend:** —
 
