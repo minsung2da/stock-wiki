@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: DB-direct redesign
 status: verified
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-07-16T13:40:00.000Z"
+stopped_at: Completed 05-05-PLAN.md (Phase 5 briefing-renderer COMPLETE)
+last_updated: "2026-07-16T14:07:37.759Z"
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 29
-  completed_plans: 28
-  percent: 47
+  completed_plans: 29
+  percent: 56
 ---
 
 # Project State
@@ -48,8 +48,16 @@ daily/weekly → stored report_type; ISO-8601 date validation (ASVS V5) before t
 `entries` only (Veto #13, `Briefing` has no body_md field); no inline `text()` (SC#3 AST guard + 10-tool
 registry green). Retired the Phase-3 honest-empty guard for DB-backed wired tests (SC#5). 139 mcp_v2
 tests green.
-Next: 05-05 (Wave 4) weekly roll-up — per-ticker NET (D-07), best-effort coverage (D-08),
-source_reports pre-materialized, no recompute on read (SC#4).
+**05-05 (Wave 4) DONE:** weekly roll-up — `src/briefing/weekly.py` `aggregate_net` (per-ticker NET
+start/end diff over <=7 daily payload['entries'] flat dicts; intra-week flip-flops DROPPED D-07;
+same-stance conviction move >= 0.10 retained; best-effort coverage {present,expected:7,missing_dates}
+D-08) + `generate_weekly_briefing` (PRE-MATERIALIZES entries+source_reports into a weekly_briefing row;
+reuses daily DICT-keyed `_priority_key` over flat dicts, no .card access; <=10, truncated). SC#4 proven
+by `test_no_recompute`: delete source dailies AFTER generation → `get_briefing(weekly)` returns
+byte-identical stored entries (pure SELECT, never recomputes). 40 briefing tests green.
+**Phase 5 COMPLETE — all SC#1-6 delivered (05-01..05-05).** Next: verify-work / Phase 6 (paper-trade
+action layer). Full-suite run had 4 pre-existing order/state-pollution + live-API failures unrelated to
+this plan (logged in `05-briefing-renderer/deferred-items.md`).
 
 ### Phase 8 inputs (from the live run — recorded in 04-06-SUMMARY)
 
@@ -94,7 +102,7 @@ source_reports pre-materialized, no recompute on read (SC#4).
 
 Phase 03 — VERIFIED (VERIFICATION.md PHASE GOAL ACHIEVED 2026-06-25).
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 **Phase 3 closed (2026-06-07):** all 10 locked read-side MCP tools (get_filing,
 search_filings, ohlcv_range, flow_range, peer_view, hybrid_search, get_note,
@@ -176,6 +184,7 @@ Open items (logged in `.planning/phases/01-collector-db-cutover/deferred-items.m
 | Phase 05-briefing-renderer P02 | 15 min | 3 tasks tasks | 7 files files |
 | Phase 05-briefing-renderer P03 | 20min | 3 tasks | 6 files |
 | Phase 05-briefing-renderer P04 | 12min | 2 tasks | 3 files |
+| Phase 05 P05 | 22min | 2 tasks | 3 files |
 
 ## Accumulated Context (v2.0)
 
@@ -234,6 +243,7 @@ v2.0 redesign 시 lessons learned 중 carry-over는 위 항목 + `CLAUDE.md` 통
 - [Phase ?]: [Phase 05-03]: daily briefing = deterministic LLM-free digest — classify_change diffs stance-flip/contradiction-delta/first-card(>=0.8) vs the D-02 supersession-chain baseline; build_entry emits the LOCKED flat entry-dict and _priority_key is DICT-keyed (held_rank, event_class_rank, -conviction) with NO .card access so 05-05 weekly reuses it unchanged over payload[entries]; 제안 = stance+conviction only (Veto #1), Why not = top contradiction (Veto #3)
 - [Phase ?]: [Phase 05-03]: daily payload is SELF-DESCRIBING (card_id/report_type/report_date/generated_at/as_of/expires_at as ISO + entries[]) — the plan's literal {entries, generated_for} would KeyError in store.get_briefing_row; added the scalar keys to honor the 05-02 reconstruction contract (Rule 2). SC#6 no-change day still writes a real row
 - [Phase ?]: [Phase 05-04]: get_briefing WIRED — delegates the SELECT to cards.store.get_briefing_row (no inline text() in src/mcp_v2, SC#3 AST guard + 10-tool registry green); public type daily/weekly maps to stored report_type daily_briefing/weekly_briefing; date validated via `from datetime import date as _date` + _date.fromisoformat before the report_date bind (ASVS V5 — literal `date.fromisoformat(date)` would hit str.fromisoformat since the `date` param shadows the class); returns entries ONLY (Briefing has no body_md field, Veto #13 by construction, test_no_body_leak); empty DB -> found=False (D-01). Phase-3 honest-empty guard (found=False daily/weekly + report_type-absence AST test) retired for DB-backed test_briefing_wired.py (EXPECTED swap); bad-type no-DB guard kept (SC#5)
+- [Phase ?]: [Phase 05-05]: weekly roll-up — aggregate_net computes per-ticker NET change (start vs end stance+conviction) over <=7 daily payload['entries'] flat dicts; intra-week flip-flops net to no-change and DROPPED (D-07), same-stance conviction move >= _CONVICTION_DELTA(0.10) retained; best-effort coverage {present,expected:7,missing_dates} (D-08). generate_weekly_briefing PRE-MATERIALIZES entries+source_reports into a weekly_briefing row; get_briefing(weekly) is a pure SELECT that never recomputes — test_no_recompute deletes source dailies then asserts byte-identical entries (SC#4). Reuses daily DICT-keyed _priority_key over flat dicts (no .card access). Phase 5 COMPLETE.
 
 ### Lessons Carried Over from v1.0
 
@@ -292,6 +302,6 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 ## Session Continuity
 
-Last session: 2026-07-16T13:40:00.000Z
-Stopped at: Completed 05-04-PLAN.md
+Last session: 2026-07-16T14:07:37.749Z
+Stopped at: Completed 05-05-PLAN.md (Phase 5 briefing-renderer COMPLETE)
 Resume file: None

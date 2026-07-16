@@ -205,12 +205,12 @@ Summary 패턴: 바뀐 것만, 최대 10개"
   6. **만약 변화 없으면** 짧은 "no significant changes today" 카드만. 만들지 않거나 빈 페이지
      렌더 X.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 - [x] 05-01-PLAN.md — Wave 1: migration 0009 (report_type/report_date, nullable corp_code + partial CHECKs/index) + ORM parity + [BLOCKING] alembic upgrade head [SC#2]
 - [x] 05-02-PLAN.md — Wave 2: BriefingRow model + store helpers (save_briefing/get_briefing_row/list_cards_for_briefing/get_daily_briefings_in_range) + invalidate() invalidated_at stamp + multi-entity test fixture [SC#1, SC#2]
 - [x] 05-03-PLAN.md — Wave 3: daily briefing — change detection (D-02/D-03), D-01 priority + held-first degradation, 6-column table render (D-04/05/06), no-change short row [SC#1, SC#2, SC#3, SC#6]
 - [x] 05-04-PLAN.md — Wave 3: wire get_briefing to store delegate (SC#3 AST guard intact, Veto #13 no body leak) + swap honest-empty guard for DB-backed wired tests [SC#5]
-- [ ] 05-05-PLAN.md — Wave 4: weekly roll-up — per-ticker NET (D-07), best-effort coverage (D-08), source_reports pre-materialized, no recompute on read [SC#4]
+- [x] 05-05-PLAN.md — Wave 4: weekly roll-up — per-ticker NET (D-07), best-effort coverage (D-08), source_reports pre-materialized, no recompute on read [SC#4]
 
 ---
 
