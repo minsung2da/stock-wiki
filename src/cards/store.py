@@ -46,7 +46,19 @@ from .models import DecisionCard
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
-__all__ = ["save_card", "get_active", "walk_supersedes", "invalidate"]
+    # Annotation-only import (store.py has ``from __future__ import annotations``):
+    # NO runtime import, so there is no cards→briefing cycle. The runtime construction
+    # of a ``BriefingRow`` (get_briefing_row / get_daily_briefings_in_range) uses a
+    # function-local import instead.
+    from briefing.models import BriefingRow
+
+__all__ = [
+    "save_card",
+    "get_active",
+    "walk_supersedes",
+    "invalidate",
+    "save_briefing",
+]
 
 # Secondary depth cap for walk_supersedes. The ``seen`` set already guarantees
 # termination on any true cycle; this is a belt-and-suspenders ceiling that bounds
@@ -80,6 +92,24 @@ _INSERT_CARD_SQL = text(
         CAST(:payload AS jsonb), :body_md,
         'active', :supersedes, NULL,
         :expires_at, :schema_version
+    )
+    """
+)
+
+_INSERT_BRIEFING_SQL = text(
+    """
+    INSERT INTO decision_cards (
+        card_id, corp_code, ticker,
+        report_type, report_date,
+        generated_at, as_of,
+        payload, body_md,
+        status, expires_at
+    ) VALUES (
+        :card_id, NULL, NULL,
+        :report_type, :report_date,
+        :generated_at, :as_of,
+        CAST(:payload AS jsonb), :body_md,
+        'active', :expires_at
     )
     """
 )
@@ -199,6 +229,43 @@ def save_card(
                 {"new": card.card_id, "old": effective_supersedes},
             )
     return card.card_id
+
+
+def save_briefing(engine: Engine, row: BriefingRow) -> str:
+    """Insert a briefing row (NULL corp_code/ticker) and return its ``card_id``.
+
+    A SEPARATE write path from ``save_card`` (05-RESEARCH §THE LANDMINE): a briefing
+    is not a ``DecisionCard`` and has no single corp, so this binds
+    ``corp_code``/``ticker`` to NULL and sets ``report_type``/``report_date`` — the
+    two columns migration 0009 added. There is NO supersede branch: a briefing never
+    supersedes an analysis card. ``status`` is ``'active'`` and ``schema_version`` is
+    left to the column server_default.
+
+    The payload is bound via ``json.dumps(row.payload)`` → ``CAST(:payload AS jsonb)``
+    (the same TEXT-cast bind as ``save_card`` — Pitfall #3, datetimes never corrupt),
+    NEVER the raw dict. The payload is expected to be self-describing (carry the
+    scalar metadata) so ``get_briefing_row`` can reconstruct a ``BriefingRow`` from it.
+
+    Args:
+        engine: SQLAlchemy engine (psycopg3).
+        row: the typed ``BriefingRow`` to persist.
+
+    Returns:
+        ``row.card_id``.
+    """
+    params: dict[str, Any] = {
+        "card_id": row.card_id,
+        "report_type": row.report_type,
+        "report_date": row.report_date,
+        "generated_at": row.generated_at,
+        "as_of": row.as_of,
+        "payload": json.dumps(row.payload),
+        "body_md": row.body_md,
+        "expires_at": row.expires_at,
+    }
+    with engine.begin() as conn:
+        conn.execute(_INSERT_BRIEFING_SQL, params)
+    return row.card_id
 
 
 def get_active(engine: Engine, corp_code: str) -> DecisionCard | None:
