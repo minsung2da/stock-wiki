@@ -1,8 +1,10 @@
-"""src/cards/store.py — SC#4 CRUD store for decision_cards.
+"""src/cards/store.py — CRUD + briefing store for decision_cards.
 
-Four locked helpers (RESEARCH Discretion #4 / 02-CONTEXT.md), all typed and
-parameterized — there is NO generic ``run_sql`` escape hatch (Veto #7): the only
-way to touch ``decision_cards`` from app code is through these four functions.
+The original four locked helpers (RESEARCH Discretion #4 / 02-CONTEXT.md) plus the
+Phase-5 briefing surface (``save_briefing`` / ``get_briefing_row`` /
+``list_cards_for_briefing`` / ``get_daily_briefings_in_range``), all typed and
+parameterized — there is NO generic ``run_sql`` escape hatch (Veto #7): the only way
+to touch ``decision_cards`` from app code is through these functions.
 
 - ``save_card(engine, card, *, supersedes=None) -> str``
   INSERT the new card; if a supersede id is given, flip the prior row to
@@ -37,11 +39,19 @@ to JSONB by Postgres — datetimes never corrupt the payload.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from datetime import date, datetime
+from typing import TYPE_CHECKING, Any, NamedTuple
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
 from .models import DecisionCard
+
+# KST is the canonical business-day boundary for enumeration + invalidation stamps.
+# ``generated_at``/``expires_at`` are timestamptz (+09:00), so a UTC ``::date`` drifts
+# for late-KST rows — the enumeration SELECTs cast AT TIME ZONE 'Asia/Seoul' first
+# (mirrors runner.py:72 / gate.py:73; Pitfall #3).
+_KST = ZoneInfo("Asia/Seoul")
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -58,6 +68,10 @@ __all__ = [
     "walk_supersedes",
     "invalidate",
     "save_briefing",
+    "get_briefing_row",
+    "list_cards_for_briefing",
+    "get_daily_briefings_in_range",
+    "BriefingCandidates",
 ]
 
 # Secondary depth cap for walk_supersedes. The ``seen`` set already guarantees
@@ -71,9 +85,11 @@ _MAX_SUPERSEDE_DEPTH = 100
 #     default view="payload" projection compact instead of leaking the full body).
 #   - status: owned by the decision_cards.status lifecycle column.
 #   - invalidation_reason: written into payload by invalidate()'s jsonb_set, never at save.
-# Excluding all three keeps a freshly-saved payload exactly the §3 schema; _row_to_card
+#   - invalidated_at: likewise stamped by invalidate() (05-02); excluding it keeps a
+#     freshly-saved payload free of a null invalidated_at (mirrors invalidation_reason).
+# Excluding all four keeps a freshly-saved payload exactly the §3 schema; _row_to_card
 # re-injects body_md + status from their columns on read.
-_PAYLOAD_EXCLUDE = {"body_md", "status", "invalidation_reason"}
+_PAYLOAD_EXCLUDE = {"body_md", "status", "invalidation_reason", "invalidated_at"}
 
 
 # --- SQL constants (bind params only — Veto #7, never f-string) ---------------
@@ -148,11 +164,93 @@ _INVALIDATE_SQL = text(
     """
     UPDATE decision_cards
        SET status = 'invalidated',
-           payload = jsonb_set(payload, '{invalidation_reason}', to_jsonb(CAST(:reason AS text)))
+           payload = jsonb_set(
+               jsonb_set(
+                   payload,
+                   '{invalidation_reason}', to_jsonb(CAST(:reason AS text))
+               ),
+               '{invalidated_at}', to_jsonb(CAST(:invalidated_at AS text))
+           )
      WHERE card_id = :cid
        AND status <> 'invalidated'
     """
 )
+
+# --- Briefing read + date-D enumeration SQL (05-02) ---------------------------
+
+_SELECT_BRIEFING_ROW_SQL = text(
+    """
+    SELECT payload, body_md
+      FROM decision_cards
+     WHERE report_type = :rt
+       AND report_date = :d
+       AND status = 'active'
+     ORDER BY generated_at DESC
+     LIMIT 1
+    """
+)
+
+# The date-D collect set (SC#1 / D-02). Each SELECT excludes briefing rows
+# (``report_type IS NULL``) so a briefing never enumerates itself, and binds the
+# KST business day via ``:d``. ``generated_at``/``expires_at`` cast AT TIME ZONE
+# 'Asia/Seoul' first (Pitfall #3). A REFRESH preserves ``generated_at`` (gate.py
+# invariant), so a refreshed card does NOT re-appear as newly-generated.
+_SELECT_NEWLY_GENERATED_SQL = text(
+    """
+    SELECT payload, body_md, status
+      FROM decision_cards
+     WHERE (generated_at AT TIME ZONE 'Asia/Seoul')::date = :d
+       AND status = 'active'
+       AND report_type IS NULL
+     ORDER BY generated_at DESC, card_id DESC
+    """
+)
+
+_SELECT_EXPIRING_SQL = text(
+    """
+    SELECT payload, body_md, status
+      FROM decision_cards
+     WHERE (expires_at AT TIME ZONE 'Asia/Seoul')::date = :d
+       AND status = 'active'
+       AND report_type IS NULL
+     ORDER BY generated_at DESC, card_id DESC
+    """
+)
+
+_SELECT_INVALIDATED_SQL = text(
+    """
+    SELECT payload, body_md, status
+      FROM decision_cards
+     WHERE (CAST(payload->>'invalidated_at' AS timestamptz)
+                AT TIME ZONE 'Asia/Seoul')::date = :d
+       AND report_type IS NULL
+     ORDER BY generated_at DESC, card_id DESC
+    """
+)
+
+_SELECT_DAILIES_IN_RANGE_SQL = text(
+    """
+    SELECT payload, body_md
+      FROM decision_cards
+     WHERE report_type = 'daily_briefing'
+       AND report_date BETWEEN :s AND :e
+     ORDER BY report_date
+    """
+)
+
+
+class BriefingCandidates(NamedTuple):
+    """The date-D collect set for a daily briefing (SC#1).
+
+    Three disjoint buckets of analysis cards (never briefing rows):
+    ``newly_generated`` (a FULL debate wrote a new ``generated_at`` today),
+    ``expiring`` (``expires_at`` falls today, still active), and ``invalidated``
+    (``invalidate()`` stamped ``invalidated_at`` today). All KST-bounded.
+    """
+
+    newly_generated: list[DecisionCard]
+    expiring: list[DecisionCard]
+    invalidated: list[DecisionCard]
 
 
 def _row_to_card(
@@ -315,13 +413,15 @@ def walk_supersedes(engine: Engine, card_id: str) -> list[DecisionCard]:
 
 
 def invalidate(engine: Engine, card_id: str, reason: str) -> DecisionCard | None:
-    """Invalidate ``card_id`` and stamp ``reason`` into the payload JSONB.
+    """Invalidate ``card_id`` and stamp ``reason`` + ``invalidated_at`` into payload.
 
-    Sets ``status='invalidated'`` and writes ``reason`` into the payload via
-    ``jsonb_set(payload, '{invalidation_reason}', to_jsonb(:reason))`` (OQ-1 — the
-    reason lives inside payload; NO new column, so the SC#1 column set is untouched).
-    Re-selects and returns the updated ``DecisionCard`` (with ``.status ==
-    'invalidated'`` and ``.invalidation_reason == reason``).
+    Sets ``status='invalidated'`` and writes BOTH ``reason`` and a KST ISO-8601
+    ``invalidated_at`` timestamp into the payload via nested
+    ``jsonb_set`` (OQ-1 option a — both live inside payload; NO new column, so the
+    SC#1 column set is untouched). The ``invalidated_at`` stamp is what makes
+    "invalidated on date D" queryable by ``list_cards_for_briefing`` (05-02). Re-selects
+    and returns the updated ``DecisionCard`` (with ``.status == 'invalidated'``,
+    ``.invalidation_reason == reason``, and ``.invalidated_at`` set).
 
     The UPDATE carries ``AND status <> 'invalidated'`` so the call is idempotent and
     chain-safe: re-invalidating an already-invalidated card is a no-op (``rowcount==0``
@@ -336,10 +436,107 @@ def invalidate(engine: Engine, card_id: str, reason: str) -> DecisionCard | None
     ``extra='forbid'`` would otherwise reject.
     """
     with engine.begin() as conn:
-        result = conn.execute(_INVALIDATE_SQL, {"cid": card_id, "reason": reason})
+        result = conn.execute(
+            _INVALIDATE_SQL,
+            {
+                "cid": card_id,
+                "reason": reason,
+                # KST ISO stamp so "invalidated on date D" is queryable by
+                # list_cards_for_briefing (05-RESEARCH OQ1 option a — payload, no column).
+                "invalidated_at": datetime.now(_KST).isoformat(),
+            },
+        )
         if result.rowcount == 0:
             return None
         row = conn.execute(_SELECT_BY_ID_SQL, {"cid": card_id}).first()
     if row is None:
         return None
     return _row_to_card(row.payload, row.body_md, row.status)
+
+
+def _row_to_briefing(payload: dict[str, Any], body_md: str) -> BriefingRow:
+    """Reconstruct a ``BriefingRow`` from a stored briefing row.
+
+    The scalar fields (``card_id``/``report_type``/``report_date``/``generated_at``/
+    ``as_of``/``expires_at``) come from the self-describing ``payload`` (05-02 write
+    contract); ``body_md`` comes from its dedicated column. Pydantic coerces the
+    payload's ISO-8601 date/datetime strings back into ``date``/``datetime``.
+    """
+    # Runtime import (not module-level TYPE_CHECKING) — briefing.models imports nothing
+    # from cards, so this is safe; the local import keeps the store's import graph clean.
+    from briefing.models import BriefingRow
+
+    return BriefingRow(
+        card_id=payload["card_id"],
+        report_type=payload["report_type"],
+        report_date=payload["report_date"],
+        generated_at=payload["generated_at"],
+        as_of=payload["as_of"],
+        expires_at=payload["expires_at"],
+        payload=payload,
+        body_md=body_md,
+    )
+
+
+def get_briefing_row(
+    engine: Engine, report_type: str, report_date: date
+) -> BriefingRow | None:
+    """Return the active briefing row for ``(report_type, report_date)`` or ``None``.
+
+    The delegate the ``get_briefing`` MCP tool will call (SC#5): the tool inlines NO
+    ``text()`` (the SC#3 AST guard forbids it), so all briefing SELECT SQL lives here.
+    ``SELECT payload, body_md ... ORDER BY generated_at DESC LIMIT 1`` picks the newest
+    active row for the date, reconstructed into a full typed ``BriefingRow`` from the
+    self-describing payload.
+    """
+    with engine.begin() as conn:
+        row = conn.execute(
+            _SELECT_BRIEFING_ROW_SQL, {"rt": report_type, "d": report_date}
+        ).first()
+    if row is None:
+        return None
+    return _row_to_briefing(row.payload, row.body_md)
+
+
+def list_cards_for_briefing(engine: Engine, on_date: date) -> BriefingCandidates:
+    """Enumerate the date-D collect set for a daily briefing (SC#1 / D-02).
+
+    Three parameterized, KST-bounded SELECTs — newly-generated, expiring, and
+    invalidated analysis cards for ``on_date`` — each excluding briefing rows
+    (``report_type IS NULL``). Returns the three buckets as a ``BriefingCandidates``
+    NamedTuple. This is the enumeration helper 05-RESEARCH flagged as missing; the
+    daily module diffs each card via ``get_active`` + ``walk_supersedes`` (no new
+    store code needed for the diff read).
+    """
+    with engine.begin() as conn:
+        newly = [
+            _row_to_card(r.payload, r.body_md, r.status)
+            for r in conn.execute(_SELECT_NEWLY_GENERATED_SQL, {"d": on_date})
+        ]
+        expiring = [
+            _row_to_card(r.payload, r.body_md, r.status)
+            for r in conn.execute(_SELECT_EXPIRING_SQL, {"d": on_date})
+        ]
+        invalidated = [
+            _row_to_card(r.payload, r.body_md, r.status)
+            for r in conn.execute(_SELECT_INVALIDATED_SQL, {"d": on_date})
+        ]
+    return BriefingCandidates(
+        newly_generated=newly, expiring=expiring, invalidated=invalidated
+    )
+
+
+def get_daily_briefings_in_range(
+    engine: Engine, start_date: date, end_date: date
+) -> list[BriefingRow]:
+    """Return the ``daily_briefing`` rows in ``[start_date, end_date]``, date-ordered.
+
+    The weekly roll-up's source (SC#4): the weekly reads these pre-materialized daily
+    payloads and aggregates per-ticker NET change — it never recomputes a daily. Rows
+    are reconstructed into typed ``BriefingRow`` objects, ordered by ``report_date``.
+    """
+    with engine.begin() as conn:
+        rows = conn.execute(
+            _SELECT_DAILIES_IN_RANGE_SQL, {"s": start_date, "e": end_date}
+        ).all()
+    return [_row_to_briefing(r.payload, r.body_md) for r in rows]
