@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
 stopped_at: Phase 05 complete (5/5) — ready to discuss Phase 6
-last_updated: 2026-09-23T10:20:00Z
+last_updated: 2026-09-23T10:47:36Z
 progress:
   total_phases: 9
   completed_phases: 5
@@ -29,7 +29,7 @@ See:
 
 **Current focus:** Phase 6 — paper trade action layer
 
-Last activity: 2026-09-23 - Completed quick task 260923-qis follow-up: Docker socket recovery, 77 collection tests passed including isolated PostgreSQL integration, and live database upgraded from 0009 to 0010.
+Last activity: 2026-09-23 - Completed quick task 260923-r1s: local read-only database explorer with 10 datasets, search, pagination and full record details. 12 isolated DB tests and live desktop/mobile browser checks passed. Running at http://127.0.0.1:8766.
 
 ## Current Position
 
@@ -300,6 +300,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260923-r1s | Local read-only DB explorer: inventory, keyword/ticker/date filters, pagination, full details | 2026-09-23 | 7b691ee | 12 tests pass; live DB, desktop/mobile browser, ruff and mypy verified | [260923-r1s](./quick/260923-r1s-build-local-read-only-database-explorer-/) |
 | 260923-qis | Complete default collection, KST-day news, DIV/DPS persistence, retire KIND | 2026-09-23 | 65b1e1b | 125 non-DB tests passed; follow-up 77 tests passed including DB; migration 0010 applied | [260923-qis](./quick/260923-qis-complete-recurring-collection-fundamenta/) |
 | 260628-mh9 | Fix two DART collector bugs (alphanumeric KRX tickers `^[0-9A-Z]{6}$`; fetch_body retries OpenDART throttle status 020/800) | 2026-06-28 | d4d249e, 2bbe71b | Done (190 tests pass) | [260628-mh9-...](./quick/260628-mh9-fix-two-dart-collector-bugs-alphanumeric/) |
 | 260628-n8d | Widen ticker regex `^[0-9A-Z]{6}$` across read/analysis/shared layers (cards/mcp_v2/portfolio/frontmatter) — end-to-end alphanumeric ticker consistency | 2026-06-28 | c59d276, 48c183f | Done (211 pass/2 skip) | [260628-n8d-...](./quick/260628-n8d-widen-ticker-regex-to-alphanumeric-acros/) |
