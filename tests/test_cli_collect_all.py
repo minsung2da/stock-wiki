@@ -30,7 +30,7 @@ def _fake_ok(name: str, *, succeeded: int = 3) -> Any:
         calls.append({"name": name, "kwargs": kwargs})
         return {
             "total": succeeded,
-            "succeeded": succeeded,
+            "inserted": succeeded,
             "skipped": 0,
             "failed": [],
             "elapsed_ms": 1,
@@ -51,7 +51,7 @@ def _fake_partial(name: str) -> Any:
     def _fn(**kwargs: Any) -> dict:
         return {
             "total": 2,
-            "succeeded": 1,
+            "inserted": 1,
             "skipped": 0,
             "failed": [{"doc": "x", "error": "nope"}],
             "elapsed_ms": 1,
@@ -61,7 +61,13 @@ def _fake_partial(name: str) -> Any:
 
 
 def _patch_dispatch(monkeypatch: pytest.MonkeyPatch, mapping: dict) -> None:
+    mapping.setdefault("dart", _fake_ok("dart"))
     monkeypatch.setattr(cmd_mod, "_dispatch", lambda: mapping)
+    import db.entity
+    from shared.portfolio import Portfolio
+    from types import SimpleNamespace
+    monkeypatch.setattr(Portfolio, "load", lambda root: SimpleNamespace(scope_tickers=lambda: ["005930"]))
+    monkeypatch.setattr(db.entity, "resolve_entities", lambda engine, scope: {"005930": SimpleNamespace(corp_code="00126380")})
     monkeypatch.setattr(cmd_mod, "_engine", lambda: object())
 
 
@@ -79,7 +85,7 @@ def test_CA1_collect_krx_exit_0(
     # 01-02: fake never receives vault_root since the flag is gone.
     assert "vault_root" not in fake.calls[0]["kwargs"], fake.calls[0]["kwargs"]  # type: ignore[attr-defined]
     out = capsys.readouterr().out
-    assert json.loads(out)["succeeded"] == 3
+    assert json.loads(out)["inserted"] == 3
 
 
 def test_CA1b_collect_krx_exit_1_on_failed(
@@ -103,7 +109,7 @@ def test_CA2_collect_all_subset_order(
         def _fn(**kwargs: Any) -> dict:
             order.append(name)
             captured_kwargs[name] = kwargs
-            return {"succeeded": 1, "failed": [], "elapsed_ms": 1}
+            return {"inserted": 1, "failed": [], "elapsed_ms": 1}
 
         return _fn
 
@@ -113,7 +119,7 @@ def test_CA2_collect_all_subset_order(
             "krx": _make("krx"),
             "news": _make("news"),
             "macro": _make("macro"),
-            "kind": _make("kind"),
+            "fundamentals": _make("fundamentals"),
         },
     )
     exit_code = main(["collect", "all", "--sources=krx,news"])
@@ -135,11 +141,11 @@ def test_CA3_collect_all_unknown_source_exits_2(
     def _make(name: str):
         def _fn(**kwargs: Any) -> dict:
             called.append(name)
-            return {"succeeded": 1, "failed": [], "elapsed_ms": 1}
+            return {"inserted": 1, "failed": [], "elapsed_ms": 1}
 
         return _fn
 
-    _patch_dispatch(monkeypatch, {n: _make(n) for n in ("krx", "news", "macro", "kind")})
+    _patch_dispatch(monkeypatch, {n: _make(n) for n in ("krx", "news", "macro", "fundamentals")})
     exit_code = main(["collect", "all", "--sources=krx,nope"])
     assert exit_code == 2
     # No collectors ran
@@ -149,7 +155,7 @@ def test_CA3_collect_all_unknown_source_exits_2(
 # ---------- CA4: default --sources is {krx,news,macro,kind}, NOT dart ----------
 
 
-def test_CA4_collect_all_default_excludes_dart(
+def test_CA4_collect_all_default_includes_dart(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
 ) -> None:
     order: list[str] = []
@@ -157,7 +163,7 @@ def test_CA4_collect_all_default_excludes_dart(
     def _make(name: str):
         def _fn(**kwargs: Any) -> dict:
             order.append(name)
-            return {"succeeded": 1, "failed": [], "elapsed_ms": 1}
+            return {"inserted": 1, "failed": [], "elapsed_ms": 1}
 
         return _fn
 
@@ -168,13 +174,13 @@ def test_CA4_collect_all_default_excludes_dart(
             "krx": _make("krx"),
             "news": _make("news"),
             "macro": _make("macro"),
-            "kind": _make("kind"),
+            "fundamentals": _make("fundamentals"),
         },
     )
     exit_code = main(["collect", "all"])
     assert exit_code == 0
-    assert order == ["krx", "news", "macro", "kind"]
-    assert "dart" not in order
+    assert order == ["dart", "krx", "news", "macro", "fundamentals"]
+    assert "dart" in order
 
 
 # ---------- CA5: one collector raises → caught, others run, exit 1 ----------
@@ -189,7 +195,7 @@ def test_CA5_collect_all_isolates_exception(
             "krx": _fake_ok("krx"),
             "news": _fake_fail("news"),
             "macro": _fake_ok("macro"),
-            "kind": _fake_ok("kind"),
+            "fundamentals": _fake_ok("fundamentals"),
         },
     )
     exit_code = main(["collect", "all"])
@@ -198,12 +204,12 @@ def test_CA5_collect_all_isolates_exception(
     # stderr carries exactly one JSON-parseable line
     json_line = [line for line in err.strip().splitlines() if line.strip().startswith("{")][-1]
     report = json.loads(json_line)
-    assert set(report["sources"].keys()) == {"krx", "news", "macro", "kind"}
+    assert set(report["sources"].keys()) == {"dart", "krx", "news", "macro", "fundamentals"}
     assert report["sources"]["news"]["status"] == "error"
     assert "news boom" in report["sources"]["news"]["error"]
     assert report["sources"]["krx"]["status"] == "ok"
     assert report["sources"]["macro"]["status"] == "ok"
-    assert report["sources"]["kind"]["status"] == "ok"
+    assert report["sources"]["fundamentals"]["status"] == "ok"
 
 
 # ---------- CA6: stats['failed'] non-empty → status='partial', exit 1 ----------
@@ -218,7 +224,7 @@ def test_CA6_collect_all_partial_marks_exit_1(
             "krx": _fake_ok("krx"),
             "news": _fake_partial("news"),
             "macro": _fake_ok("macro"),
-            "kind": _fake_ok("kind"),
+            "fundamentals": _fake_ok("fundamentals"),
         },
     )
     exit_code = main(["collect", "all"])
@@ -242,7 +248,7 @@ def test_CA7_collect_all_success_schema(
             "krx": _fake_ok("krx", succeeded=5),
             "news": _fake_ok("news", succeeded=7),
             "macro": _fake_ok("macro", succeeded=2),
-            "kind": _fake_ok("kind", succeeded=1),
+            "fundamentals": _fake_ok("fundamentals", succeeded=1),
         },
     )
     exit_code = main(["collect", "all"])
@@ -251,8 +257,8 @@ def test_CA7_collect_all_success_schema(
     json_line = [line for line in err.strip().splitlines() if line.strip().startswith("{")][-1]
     report = json.loads(json_line)
     assert "run_at" in report
-    assert set(report["sources"].keys()) == {"krx", "news", "macro", "kind"}
-    for src, docs in [("krx", 5), ("news", 7), ("macro", 2), ("kind", 1)]:
+    assert set(report["sources"].keys()) == {"dart", "krx", "news", "macro", "fundamentals"}
+    for src, docs in [("krx", 5), ("news", 7), ("macro", 2), ("fundamentals", 1)]:
         entry = report["sources"][src]
         assert entry["status"] == "ok"
         assert entry["docs_processed"] == docs
@@ -261,7 +267,7 @@ def test_CA7_collect_all_success_schema(
         # 01-02: writers still author files (no DB inserts), so the new
         # inserted/updated keys are present with default 0. Wave 1/2 collectors
         # surface real values once db_writer.* lands.
-        assert entry.get("inserted") == 0, entry
+        assert entry.get("inserted") == docs, entry
         assert entry.get("updated") == 0, entry
 
 
@@ -273,7 +279,7 @@ def test_CA8_stderr_json_parseable(
 ) -> None:
     _patch_dispatch(
         monkeypatch,
-        {n: _fake_ok(n) for n in ("krx", "news", "macro", "kind")},
+        {n: _fake_ok(n) for n in ("krx", "news", "macro", "fundamentals")},
     )
     main(["collect", "all"])
     err = capsys.readouterr().err
@@ -328,5 +334,5 @@ def test_CA10_collect_help_lists_new_subparsers(capsys: pytest.CaptureFixture) -
     with pytest.raises(SystemExit):
         main(["collect", "--help"])
     out = capsys.readouterr().out
-    for sub in ("dart", "krx", "news", "macro", "kind", "all"):
+    for sub in ("dart", "krx", "news", "macro", "fundamentals", "all"):
         assert sub in out, f"missing subparser: {sub}"
