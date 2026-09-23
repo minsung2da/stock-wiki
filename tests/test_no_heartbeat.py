@@ -23,7 +23,7 @@ import importlib.util
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_COLLECTOR_DIRS = ("dart", "krx", "news", "macro", "kind")
+_COLLECTOR_DIRS = ("dart", "krx", "news", "macro", "fundamentals")
 
 
 def test_heartbeat_module_not_on_disk() -> None:

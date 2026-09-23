@@ -29,7 +29,6 @@ from cli.commands import (
     cmd_collect_all,
     cmd_collect_dart,
     cmd_collect_fundamentals,
-    cmd_collect_kind,
     cmd_collect_krx,
     cmd_collect_macro,
     cmd_collect_news,
@@ -44,7 +43,7 @@ __all__ = ["main", "build_parser"]
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _LEGACY_WRITERS: tuple[Path, ...] = tuple(
     _REPO_ROOT / "src" / "collectors" / src / "writer.py"
-    for src in ("dart", "krx", "news", "macro", "kind")
+    for src in ("dart", "krx", "news", "macro", "fundamentals")
 )
 
 
@@ -56,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     subs = parser.add_subparsers(dest="command", required=True)
 
     # collect
-    collect = subs.add_parser("collect", help="Collect raw source data into raw/")
+    collect = subs.add_parser("collect", help="Collect source data into Postgres")
     collect_subs = collect.add_subparsers(dest="source", required=True)
     dart = collect_subs.add_parser("dart", help="Collect DART filings (COLL-01)")
     dart.add_argument("--corp-code", required=True, help="8-digit DART corp_code")
@@ -77,7 +76,9 @@ def build_parser() -> argparse.ArgumentParser:
             "See CLAUDE.md §First-time Setup."
         ),
     )
-    news.add_argument("--since", default=None)
+    news.add_argument(
+        "--since", default=None, help="Exact KST publication date YYYY-MM-DD (default: today)"
+    )
     news.add_argument("--max-per-feed", type=int, default=100)
     news.set_defaults(func=cmd_collect_news)
 
@@ -85,13 +86,9 @@ def build_parser() -> argparse.ArgumentParser:
     macro.add_argument("--series", default=None, help="Comma-separated labels; default=all")
     macro.set_defaults(func=cmd_collect_macro)
 
-    kind = collect_subs.add_parser("kind", help="Collect KIND events (COLL-05)")
-    kind.add_argument("--since", default=None)
-    kind.set_defaults(func=cmd_collect_kind)
-
     fundamentals = collect_subs.add_parser(
         "fundamentals",
-        help="Collect PER/PBR/EPS/BPS (pykrx) + ROE (dart-fss) fundamentals (D-06)",
+        help="Collect PER/PBR/EPS/BPS/DIV/DPS (pykrx) + ROE (dart-fss)",
     )
     fundamentals.add_argument(
         "--since", default=None, help="YYYY-MM-DD (default: today KST trading day)"
@@ -103,10 +100,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     all_.add_argument(
         "--sources",
-        default="krx,news,macro,kind",
-        help="Comma-separated subset; default excludes dart. Unknown entries fail-fast (D-21).",
+        default=None,
+        help="Subset override; default=dart,krx,news,macro,fundamentals",
     )
-    all_.add_argument("--since", default=None)
+    all_.add_argument(
+        "--since", default=None, help="KST collection date YYYY-MM-DD (default: today)"
+    )
     all_.set_defaults(func=cmd_collect_all)
 
     return parser

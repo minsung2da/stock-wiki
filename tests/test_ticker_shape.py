@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from collectors.dart.db_writer import _TICKER_RE as _DART_RE
 from collectors.fundamentals.db_writer import _TICKER_RE as _FUND_RE
-from collectors.kind.db_writer import _TICKER_RE as _KIND_RE
 from collectors.krx.db_writer import _TICKER_RE as _KRX_RE
 from collectors.news.db_writer import _TICKER_RE as _NEWS_RE
 from db.entity import _TICKER_RE as _ENTITY_RE
@@ -30,7 +29,6 @@ _ALL_GUARDS = [
     pytest.param(_ENTITY_RE, id="db.entity"),
     pytest.param(_KRX_RE, id="krx.db_writer"),
     pytest.param(_NEWS_RE, id="news.db_writer"),
-    pytest.param(_KIND_RE, id="kind.db_writer"),
     pytest.param(_FUND_RE, id="fundamentals.db_writer"),
 ]
 

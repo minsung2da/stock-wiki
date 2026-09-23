@@ -151,24 +151,6 @@ def test_collect_news_writes_collector_runs_row(pg_clean_with_entities, tmp_path
     assert _count_runs(pg_clean_with_entities, "news") == 1
 
 
-# ------------- kind -----------------------------------------------------------
-
-
-def test_collect_kind_writes_collector_runs_row(pg_clean_with_entities, tmp_path, monkeypatch):
-    """KIND run produces one collector_runs row even with an empty DART feed."""
-    from collectors.kind import collect_kind
-
-    _write_portfolio(tmp_path)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(
-        "collectors.kind.dart_events.fetch_exchange_events",
-        lambda *, bgn_de, end_de: [],
-    )
-    collect_kind(engine=pg_clean_with_entities)
-
-    assert _count_runs(pg_clean_with_entities, "kind") == 1
-
-
 # ------------- dart -----------------------------------------------------------
 
 

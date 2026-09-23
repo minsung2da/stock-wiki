@@ -45,5 +45,5 @@ def test_collect_fundamentals_in_help(capsys: pytest.CaptureFixture) -> None:
     with pytest.raises(SystemExit):
         parser.parse_args(["collect", "--help"])
     out = capsys.readouterr().out
-    for sub in ("dart", "krx", "news", "macro", "kind", "fundamentals", "all"):
+    for sub in ("dart", "krx", "news", "macro", "fundamentals", "all"):
         assert sub in out, f"missing subparser in help: {sub}"

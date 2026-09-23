@@ -1,4 +1,5 @@
 """Retain pykrx dividend yield (percent) and DPS (KRW/share)."""
+
 import sqlalchemy as sa
 from alembic import op
 

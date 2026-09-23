@@ -123,7 +123,7 @@ def test_phase01_writer_files_absent():
     invariant even when the fast-suite guard is excluded.
     """
     repo_root = Path(__file__).resolve().parents[1]
-    for src in ("dart", "krx", "news", "macro", "kind"):
+    for src in ("dart", "krx", "news", "macro", "fundamentals"):
         path = repo_root / "src" / "collectors" / src / "writer.py"
         assert not path.exists(), (
             f"Veto #9 violation: {path} resurrected after Plan 01-09."

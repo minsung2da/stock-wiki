@@ -1,11 +1,14 @@
 """Lossless mapping of the provider's six typed valuation fields."""
+
 import pandas as pd
 import pytest
 
 from collectors.fundamentals import _coerce_fundamental_row
 
 
-@pytest.mark.parametrize("value, expected", [(2.1, 2.1), (0, 0), (float("nan"), None), (None, None)])
+@pytest.mark.parametrize(
+    "value, expected", [(2.1, 2.1), (0, 0), (float("nan"), None), (None, None)]
+)
 def test_dividend_fields_are_preserved(value, expected):
     row = _coerce_fundamental_row(pd.DataFrame([{"DIV": value, "DPS": value}]))
     assert row["dividend_yield"] == expected

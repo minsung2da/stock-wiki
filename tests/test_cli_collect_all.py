@@ -1,4 +1,4 @@
-"""CLI tests for Phase 4 Plan 06 — `stock collect {krx,news,macro,kind,all}`.
+"""CLI tests for Phase 4 Plan 06 — `stock collect {dart,krx,news,macro,fundamentals,all}`.
 
 Exercises ``cli.__main__:main`` via in-process monkeypatching of
 ``cli.commands._dispatch`` to inject fake collector callables. No network, no
@@ -63,11 +63,19 @@ def _fake_partial(name: str) -> Any:
 def _patch_dispatch(monkeypatch: pytest.MonkeyPatch, mapping: dict) -> None:
     mapping.setdefault("dart", _fake_ok("dart"))
     monkeypatch.setattr(cmd_mod, "_dispatch", lambda: mapping)
+    from types import SimpleNamespace
+
     import db.entity
     from shared.portfolio import Portfolio
-    from types import SimpleNamespace
-    monkeypatch.setattr(Portfolio, "load", lambda root: SimpleNamespace(scope_tickers=lambda: ["005930"]))
-    monkeypatch.setattr(db.entity, "resolve_entities", lambda engine, scope: {"005930": SimpleNamespace(corp_code="00126380")})
+
+    monkeypatch.setattr(
+        Portfolio, "load", lambda root: SimpleNamespace(scope_tickers=lambda: ["005930"])
+    )
+    monkeypatch.setattr(
+        db.entity,
+        "resolve_entities",
+        lambda engine, scope: {"005930": SimpleNamespace(corp_code="00126380")},
+    )
     monkeypatch.setattr(cmd_mod, "_engine", lambda: object())
 
 
@@ -152,7 +160,7 @@ def test_CA3_collect_all_unknown_source_exits_2(
     assert called == []
 
 
-# ---------- CA4: default --sources is {krx,news,macro,kind}, NOT dart ----------
+# ---------- CA4: default --sources includes all active collectors ----------
 
 
 def test_CA4_collect_all_default_includes_dart(
@@ -264,9 +272,7 @@ def test_CA7_collect_all_success_schema(
         assert entry["docs_processed"] == docs
         assert "elapsed_ms" in entry
         assert isinstance(entry["elapsed_ms"], int)
-        # 01-02: writers still author files (no DB inserts), so the new
-        # inserted/updated keys are present with default 0. Wave 1/2 collectors
-        # surface real values once db_writer.* lands.
+        # Real collector insertion counters appear in the report.
         assert entry.get("inserted") == docs, entry
         assert entry.get("updated") == 0, entry
 
@@ -336,3 +342,71 @@ def test_CA10_collect_help_lists_new_subparsers(capsys: pytest.CaptureFixture) -
     out = capsys.readouterr().out
     for sub in ("dart", "krx", "news", "macro", "fundamentals", "all"):
         assert sub in out, f"missing subparser: {sub}"
+
+
+def test_batch_date_and_corporation_isolation(monkeypatch, capsys):
+    from types import SimpleNamespace
+
+    import db.entity
+    from shared.portfolio import Portfolio
+
+    calls = []
+
+    def dart(**kwargs):
+        calls.append(kwargs)
+        if kwargs["corp_code"] == "001":
+            raise RuntimeError("provider failure")
+        return {"inserted": 2, "updated": 1, "skipped": 3, "failed": []}
+
+    fund = _fake_ok("fundamentals")
+    _patch_dispatch(monkeypatch, {"dart": dart, "fundamentals": fund})
+    monkeypatch.setattr(
+        Portfolio,
+        "load",
+        lambda root: SimpleNamespace(scope_tickers=lambda: ["a", "b", "c", "missing"]),
+    )
+    monkeypatch.setattr(
+        db.entity,
+        "resolve_entities",
+        lambda engine, scope: {
+            "a": SimpleNamespace(corp_code="001"),
+            "b": SimpleNamespace(corp_code="002"),
+            "c": SimpleNamespace(corp_code="002"),
+        },
+    )
+    assert main(["collect", "all", "--sources=dart,fundamentals", "--since=2026-04-20"]) == 1
+    assert [call["corp_code"] for call in calls] == ["001", "002"]
+    assert all(call["since"] == "2026-04-20" for call in calls)
+    assert fund.calls[0]["kwargs"]["since"] == "2026-04-20"
+    report = json.loads(capsys.readouterr().err)
+    assert report["sources"]["dart"]["failed_count"] == 2
+    assert report["sources"]["dart"]["docs_processed"] == 6
+
+
+@pytest.mark.parametrize("argv", [["--sources=kind"], ["--sources=,"], ["--since=2026-02-30"]])
+def test_bad_batch_arguments_fail_before_engine(monkeypatch, argv):
+    def forbidden():
+        pytest.fail("engine must not be created for invalid arguments")
+
+    monkeypatch.setattr(cmd_mod, "_engine", forbidden)
+    assert main(["collect", "all", *argv]) == 2
+
+
+def test_kind_command_removed():
+    with pytest.raises(SystemExit) as result:
+        main(["collect", "kind"])
+    assert result.value.code == 2
+
+
+def test_default_date_shared_and_duplicate_sources_run_once(monkeypatch):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    krx, news, fund = (_fake_ok(name) for name in ("krx", "news", "fundamentals"))
+    _patch_dispatch(monkeypatch, {"krx": krx, "news": news, "fundamentals": fund})
+    before = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
+    assert main(["collect", "all", "--sources=krx,news,fundamentals,krx"]) == 0
+    dates = {fake.calls[0]["kwargs"]["since"] for fake in (krx, news, fund)}
+    after = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
+    assert len(dates) == 1 and dates <= {before, after}
+    assert len(krx.calls) == 1

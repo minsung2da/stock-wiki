@@ -3,8 +3,7 @@
 Gray-area scrapers (``pykrx`` → KRX/Naver, news article HTML) have NO formal API
 rate limit; the binding constraint is IP-throttle / robots politeness. The
 Korean quant-community norm is 1-2 req/s (``.planning/research/STACK.md`` line 93).
-``collectors.kind.client`` already paces itself at ≤1 req/s; this module
-generalizes that pattern so ``krx`` and ``news`` pace their *normal* request flow
+This module lets ``krx`` and ``news`` pace their *normal* request flow
 too — not just back off on failure (that is the tenacity retry layer's job).
 
 This is a PROACTIVE politeness gate, NOT an HTTP-429 handler (see

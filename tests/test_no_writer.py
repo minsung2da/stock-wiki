@@ -23,7 +23,7 @@ import importlib.util
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_COLLECTORS: tuple[str, ...] = ("dart", "krx", "news", "macro", "kind")
+_COLLECTORS: tuple[str, ...] = ("dart", "krx", "news", "macro", "fundamentals")
 
 
 def test_writer_files_absent() -> None:

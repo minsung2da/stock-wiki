@@ -91,8 +91,11 @@ def collect_news(
                 eligible_count = 0
                 for item in items:
                     stats["total"] += 1
-                    if (item.published is None or item.published.tzinfo is None
-                            or item.published.astimezone(kst).date() != target_date):
+                    if (
+                        item.published is None
+                        or item.published.tzinfo is None
+                        or item.published.astimezone(kst).date() != target_date
+                    ):
                         stats["skipped"] += 1
                         continue
                     if eligible_count >= max_per_feed:
@@ -108,9 +111,7 @@ def collect_news(
                         if not body:
                             stats["skipped"] += 1
                             continue
-                        matches = matcher.match_tickers_in_text(
-                            f"{item.title}\n{body}", alias_map
-                        )
+                        matches = matcher.match_tickers_in_text(f"{item.title}\n{body}", alias_map)
                         if not matches:
                             stats["skipped"] += 1
                             continue

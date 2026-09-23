@@ -112,8 +112,8 @@ def upsert_dart_filing(
         filed_at: TIMESTAMPTZ — DART collector composes from rcept_dt at
             KST close (15:30 Asia/Seoul).
         report_nm: filing title (e.g. '분기보고서').
-        pblntf_ty: 'A' (정기) or 'B' (주요사항). 'I' (KIND) routes through
-            ``collectors.kind.db_writer.upsert_kind_filing`` instead.
+        pblntf_ty: 'A' (정기) or 'B' (주요사항). Exchange risk-event
+            collection is retired; historical 'I' rows remain readable.
         body_md: WHOLE filing body text. Stored verbatim — NO chunking
             applied here (Veto #8).
         source_url: canonical DART filing URL.

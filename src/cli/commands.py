@@ -16,22 +16,22 @@ from __future__ import annotations
 import json
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 __all__ = [
     "cmd_collect_dart",
     "cmd_collect_krx",
     "cmd_collect_news",
     "cmd_collect_macro",
-    "cmd_collect_kind",
     "cmd_collect_fundamentals",
     "cmd_collect_all",
 ]
 
-# D-18: default `collect all` source set excludes dart (Phase 3 kept standalone).
-_KNOWN_SOURCES: tuple[str, ...] = ("dart", "krx", "news", "macro", "kind")
-_DEFAULT_ALL: tuple[str, ...] = ("krx", "news", "macro", "kind")
+_KNOWN_SOURCES: tuple[str, ...] = ("dart", "krx", "news", "macro", "fundamentals")
+_DEFAULT_ALL = _KNOWN_SOURCES
 
 
 def _dispatch() -> dict[str, Any]:
@@ -41,7 +41,7 @@ def _dispatch() -> dict[str, Any]:
     patching this symbol (``monkeypatch.setattr(cli.commands, "_dispatch", ...)``).
     """
     from collectors.dart import collect_dart
-    from collectors.kind import collect_kind
+    from collectors.fundamentals import collect_fundamentals
     from collectors.krx import collect_krx
     from collectors.macro import collect_macro
     from collectors.news import collect_news
@@ -51,7 +51,7 @@ def _dispatch() -> dict[str, Any]:
         "krx": collect_krx,
         "news": collect_news,
         "macro": collect_macro,
-        "kind": collect_kind,
+        "fundamentals": collect_fundamentals,
     }
 
 
@@ -120,16 +120,6 @@ def cmd_collect_macro(args) -> int:  # noqa: ANN001
     return 0 if not stats.get("failed") else 1
 
 
-def cmd_collect_kind(args) -> int:  # noqa: ANN001
-    """Handle `stock collect kind ...` (COLL-05)."""
-    stats = _dispatch()["kind"](
-        engine=_engine(),
-        since=args.since,
-    )
-    print(json.dumps(stats, ensure_ascii=False, default=str))
-    return 0 if not stats.get("failed") else 1
-
-
 def cmd_collect_fundamentals(args) -> int:  # noqa: ANN001
     """Handle `stock collect fundamentals ...` (D-06).
 
@@ -150,6 +140,32 @@ def cmd_collect_fundamentals(args) -> int:  # noqa: ANN001
 # ---------- orchestrator ----------
 
 
+def _collect_scoped_dart(collector, *, engine: Any, since: str) -> dict[str, Any]:
+    """Collect every distinct portfolio corporation, isolating individual failures."""
+    from db.entity import resolve_entities
+    from shared.portfolio import Portfolio
+
+    scope = Portfolio.load(Path(".")).scope_tickers()
+    entities = resolve_entities(engine, scope)
+    stats: dict[str, Any] = {"total": 0, "inserted": 0, "updated": 0, "skipped": 0, "failed": []}
+    corp_codes: set[str] = set()
+    for ticker in scope:
+        entity = entities.get(ticker)
+        if entity is None or not entity.corp_code:
+            stats["failed"].append({"doc": ticker, "error": "missing_entity"})
+        else:
+            corp_codes.add(entity.corp_code)
+    for corp_code in sorted(corp_codes):
+        try:
+            result = collector(engine=engine, corp_code=corp_code, since=since, max_docs=100)
+            for key in ("total", "inserted", "updated", "skipped"):
+                stats[key] += int(result.get(key, 0))
+            stats["failed"].extend(result.get("failed", []))
+        except Exception as exc:
+            stats["failed"].append({"doc": corp_code, "error": str(exc)})
+    return stats
+
+
 def cmd_collect_all(args) -> int:  # noqa: ANN001
     """Handle `stock collect all [--sources=a,b,...]` (D-18..D-21).
 
@@ -162,34 +178,50 @@ def cmd_collect_all(args) -> int:  # noqa: ANN001
     - ``2`` when ``--sources`` contains an unknown name (D-21 fail-fast)
     """
     raw = args.sources if getattr(args, "sources", None) else ",".join(_DEFAULT_ALL)
-    requested = [s.strip() for s in raw.split(",") if s.strip()]
+    requested = list(dict.fromkeys(s.strip() for s in raw.split(",") if s.strip()))
     unknown = [s for s in requested if s not in _KNOWN_SOURCES]
-    if unknown:
+    if unknown or not requested:
         print(f"Unknown sources: {sorted(unknown)}", file=sys.stderr)
         return 2
 
+    try:
+        since = (
+            date.fromisoformat(args.since)
+            if getattr(args, "since", None)
+            else datetime.now(ZoneInfo("Asia/Seoul")).date()
+        ).isoformat()
+    except ValueError:
+        print("Invalid --since: expected YYYY-MM-DD calendar date", file=sys.stderr)
+        return 2
     dispatch = _dispatch()
     engine = _engine()
-    since = getattr(args, "since", None)
 
     results: dict[str, dict[str, Any]] = {}
     for src in requested:
         t0 = time.monotonic()
         try:
             kwargs: dict[str, Any] = {"engine": engine}
-            if src in ("krx", "news", "kind"):
+            if src in ("krx", "news", "fundamentals"):
                 kwargs["since"] = since
-            src_stats = dispatch[src](**kwargs)
+            src_stats = (
+                _collect_scoped_dart(dispatch[src], engine=engine, since=since)
+                if src == "dart"
+                else dispatch[src](**kwargs)
+            )
             status = "partial" if src_stats.get("failed") else "ok"
             entry: dict[str, Any] = {
                 "status": status,
-                "docs_processed": int(src_stats.get("succeeded", 0)),
+                "docs_processed": sum(
+                    int(src_stats.get(key, 0)) for key in ("inserted", "updated", "skipped")
+                ),
                 "inserted": int(src_stats.get("inserted", 0)),
                 "updated": int(src_stats.get("updated", 0)),
+                "skipped": int(src_stats.get("skipped", 0)),
                 "elapsed_ms": int((time.monotonic() - t0) * 1000),
             }
             if src_stats.get("failed"):
                 entry["failed_count"] = len(src_stats["failed"])
+                entry["failed"] = src_stats["failed"]
             results[src] = entry
         except Exception as exc:  # noqa: BLE001 — D-19 per-source isolation
             results[src] = {
@@ -200,6 +232,7 @@ def cmd_collect_all(args) -> int:  # noqa: ANN001
 
     report = {
         "run_at": datetime.now(UTC).isoformat(),
+        "collection_date": since,
         "sources": results,
     }
     print(json.dumps(report, ensure_ascii=False), file=sys.stderr)
