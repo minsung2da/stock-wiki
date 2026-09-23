@@ -54,3 +54,33 @@ Set-Location -LiteralPath 'C:\Users\minsu\workspace\stock'
 
 KIND 위험 이벤트 수집 코드와 CLI 명령은 제거했습니다. 기존 `events` 이력과
 스키마, 기존 거래 안전장치는 보존합니다.
+
+## 2026년 9월 포트폴리오 백필
+
+9월 1~23일의 포트폴리오 198개 기업 수집은 아래 일회성 운영 스크립트로 실행했습니다.
+일반 `collect all --since`의 하루 수집 의미는 바뀌지 않았습니다.
+
+```powershell
+# 프로젝트 루트에서 실행, 각 스크립트는 .env와 기존 DB writer를 사용
+.\.venv\Scripts\python.exe scripts/september_dart_backfill.py
+.\.venv\Scripts\python.exe scripts/september_market_backfill.py
+.\.venv\Scripts\python.exe scripts/september_news_macro_backfill.py
+# 현재 재무지표는 2026-09-23 당일 실행만 허용: 이후 날짜의 값을 소급하지 않음
+.\.venv\Scripts\python.exe scripts/september_market_backfill.py --fundamentals-only
+```
+
+- 공시: OpenDART A/B 전체 페이지를 조회한 뒤 포트폴리오 기업만 저장합니다.
+  XML 파일이 없는 첨부 정정 2건은 공식 웹 문서의 전체 텍스트와 첨부 링크를 저장했습니다.
+  해당 첨부 PDF·이미지의 내용은 추출하지 않았습니다.
+- 가격: pykrx의 Naver 종목별 수정주가 이력으로 17거래일을 수집했습니다.
+  현재 KRX 경로가 반환하지 않는 거래대금·투자자별 순매수·공매도는 추정하지 않습니다.
+  재실행 시 기존 수급 값은 보존합니다.
+- 재무지표: Naver의 실제 거래일을 확인한 **9월 23일 현재 스냅샷**입니다.
+  지표별 원래 결산기간과 조회 시각은 비공개 원본 보고서에 보존합니다.
+  9월 1~22일 재무지표와 ROE는 이 스냅샷으로 채우지 않습니다.
+- 뉴스: RSS에 조회 시점 남아 있는 9월 기사만 저장하므로 월 전체 기사 아카이브가 아닙니다.
+- 매크로: 설정된 4개 지표의 9월 실제 관측값만 저장합니다. 지표마다 공표 지연이 다릅니다.
+
+상세 수집 근거·누락 목록은 Git에서 제외되는 `notes/private/september-*.json`에,
+수집 이력은 DB `collector_runs`에 남깁니다. 재실행 시 API 최신 응답을 조회하며
+기존 키는 UPSERT하므로 행을 중복 추가하지 않습니다.

@@ -34,8 +34,11 @@ def parse_rss(rss_content: str | bytes) -> list[RSSItem]:
 
 
 def extract_first_two_paragraphs(html: str) -> str | None:
-    """D-13 copyright cap: return the first 2 non-empty \\n\\n-separated
-    paragraphs from trafilatura's plain-text extraction, or None if empty."""
+    """Return at most two non-empty extracted text lines, or None if empty.
+
+    Trafilatura can separate paragraphs with a single newline. Treat each
+    non-empty line as a paragraph so the D-13 cap also holds for that output.
+    """
     text = trafilatura.extract(
         html,
         output_format="txt",
@@ -47,7 +50,7 @@ def extract_first_two_paragraphs(html: str) -> str | None:
     )
     if not text:
         return None
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    paragraphs = [p.strip() for p in text.splitlines() if p.strip()]
     if not paragraphs:
         return None
     return "\n\n".join(paragraphs[:2])

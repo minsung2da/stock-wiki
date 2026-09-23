@@ -24,6 +24,17 @@ _FIXTURE_NEWS = Path("tests/fixtures/news")
 # ---- Client ------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("separator", ["\n", "\r\n", "\n\n"])
+def test_extract_caps_single_and_double_newline_paragraphs(monkeypatch, separator) -> None:
+    from collectors.news import fetcher
+
+    extracted = separator.join(["", " First paragraph. ", "", "Second paragraph.", "Third."])
+    monkeypatch.setattr(fetcher.trafilatura, "extract", lambda *a, **kw: extracted)
+    assert fetcher.extract_first_two_paragraphs("<html/>") == (
+        "First paragraph.\n\nSecond paragraph."
+    )
+
+
 def test_fetch_rss_feed_rejects_nonhttp_scheme() -> None:
     assert news_client.fetch_rss_feed("file:///etc/passwd") is None
     assert news_client.fetch_rss_feed("ftp://example.com/feed.xml") is None
