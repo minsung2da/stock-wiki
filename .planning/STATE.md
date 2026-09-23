@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
 stopped_at: Phase 05 complete (5/5) — ready to discuss Phase 6
-last_updated: 2026-09-23T11:54:25Z
+last_updated: 2026-09-23T12:19:05Z
 progress:
   total_phases: 9
   completed_phases: 5
@@ -29,7 +29,7 @@ See:
 
 **Current focus:** Phase 6 — paper trade action layer
 
-Last activity: 2026-09-23 - Completed quick task 260923-smr: integrated Jev shadow news-company matching and card citation review; migration 0011 applied. Live news 25 completed; historical card 9 citation pairs reviewed, 6 missing snapshots flagged. Original news/card hashes unchanged. Related tests: 157 passed. Collection coverage gaps from 260923-s0u remain.
+Last activity: 2026-09-23 - Completed quick task 260923-th4: added server-side explorer header sorting including numeric PER/PBR, NULL-last ordering and stable pagination. Explorer tests 27 passed; ruff/mypy and live Edge sorting/filter checks passed against 198 fundamentals. Collection coverage gaps from 260923-s0u remain.
 
 ## Current Position
 
@@ -300,6 +300,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260923-th4 | Add database explorer table sorting including PER/PBR ascending and descending | 2026-09-23 | 0b0e3f2 | 27 tests passed; ruff/mypy and live Edge sorting/filter/paging checks passed | [260923-th4](./quick/260923-th4-add-server-side-sortable-explorer-table-/) |
 | 260923-smr | Integrate Jev shadow news-company matching and card evidence review | 2026-09-23 | 4cc743a | 157 tests passed; live news 25 completed; card 9 reviewed / 6 missing sources; originals unchanged | [260923-smr](./quick/260923-smr-integrate-jev-shadow-news-company-matchi/) |
 | 260923-s0u | Collect September portfolio data and repair news paragraph cap | 2026-09-23 | 54b3e21 + task metadata | 3,671 rows verified; 198 entities mapped; upstream historical coverage partial; 4 news tests passed | [260923-s0u](./quick/260923-s0u-collect-september-2026-data-for-the-198-/) |
 | 260923-rry | Populate private portfolio with sector top-20 companies by full market cap (utilities: 18) | 2026-09-23 | Private files excluded | 198 unique tickers; source rankings and loader verified; 68 DB mappings pending | [260923-rry](./quick/260923-rry-populate-portfolio-watchlist-with-verifi/) |
