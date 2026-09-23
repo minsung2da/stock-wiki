@@ -101,7 +101,7 @@ def test_collect_fundamentals_inserts_typed_row(tmp_path: Path, seeded_engine, m
 
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
     # Official observation stores a fraction; the UI renders it as percent.
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: _observation())
 
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
 
@@ -129,7 +129,7 @@ def test_dividend_update_and_idempotence(tmp_path: Path, seeded_engine, monkeypa
     monkeypatch.chdir(tmp_path)
     frame = _fundamental_df()
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: frame)
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: _observation())
     assert collect_fundamentals(engine=seeded_engine, since="2026-04-17")["inserted"] == 1
     assert collect_fundamentals(engine=seeded_engine, since="2026-04-17")["skipped"] == 1
     frame.loc[0, "DIV"] = 0
@@ -154,7 +154,7 @@ def test_collect_fundamentals_records_run(tmp_path: Path, seeded_engine, monkeyp
     monkeypatch.chdir(tmp_path)
 
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: _observation())
 
     collect_fundamentals(engine=seeded_engine, since="2026-04-17")
 
@@ -185,7 +185,7 @@ def test_collect_fundamentals_missing_entity_isolation(
     monkeypatch.chdir(tmp_path)
 
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: _observation())
 
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
 
@@ -207,7 +207,7 @@ def test_collect_fundamentals_empty_frame_skips(tmp_path: Path, seeded_engine, m
     monkeypatch.setattr(
         fund_fetcher, "fetch_market_fundamental", lambda t, d: _empty_fundamental_df()
     )
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: None)
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: None)
 
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
 
@@ -229,14 +229,14 @@ def test_collect_fundamentals_roe_coalesce_fill_in(
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
 
     # Run 1: ROE source returns None
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: None)
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: None)
     stats1 = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
     assert stats1["inserted"] == 1
     row1 = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
     assert row1.roe is None
 
     # Run 2: ROE arrives
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation("0.0789"))
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: _observation("0.0789"))
     stats2 = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
     assert stats2["updated"] == 1
     assert stats2["inserted"] == 0
@@ -246,7 +246,7 @@ def test_collect_fundamentals_roe_coalesce_fill_in(
     assert float(row2.per) == pytest.approx(12.5)
 
     # Run 3: pykrx-only refresh (ROE None again) must NOT NULL-clobber the ROE
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: None)
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: None)
     stats3 = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
     assert stats3["skipped"] == 1  # COALESCE-None on roe → no change
     row3 = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
@@ -285,14 +285,14 @@ def test_roe_independent_of_krx_preserves_existing_metrics(
 
     requested = []
 
-    def official(corp_code, year):
-        requested.append((corp_code, year))
+    def official(corp_code, as_of):
+        requested.append((corp_code, as_of))
         return _observation()
 
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", market)
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", official)
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", official)
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
-    assert requested == [("00126380", 2025)]
+    assert requested == [("00126380", date(2026, 4, 17))]
     assert stats["updated"] == 1 and stats["inserted"] == stats["skipped"] == 0
     assert stats["roe"] == {"requested": 1, "available": 1, "missing": 0, "failed": 0}
     row = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
@@ -310,10 +310,10 @@ def test_roe_failure_keeps_market_data(tmp_path, seeded_engine, monkeypatch, cap
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
 
-    def official(corp_code, year):
+    def official(corp_code, as_of):
         raise RuntimeError("https://provider.invalid/?key=SECRET")
 
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", official)
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", official)
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
     assert stats["inserted"] == 1
     assert stats["roe"] == {"requested": 1, "available": 0, "missing": 0, "failed": 1}
@@ -329,7 +329,7 @@ def test_roe_only_insert_when_market_empty(tmp_path, seeded_engine, monkeypatch)
     monkeypatch.setattr(
         fund_fetcher, "fetch_market_fundamental", lambda t, d: _empty_fundamental_df()
     )
-    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
+    monkeypatch.setattr(fund_roe, "fetch_latest_roe", lambda cc, as_of: _observation())
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
     assert stats["inserted"] == 1 and not stats["failed"]
     row = _fund_row(seeded_engine, "005930", date(2026, 4, 17))

@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
     from collectors.fundamentals.dart_roe import RoeObservation
+    from collectors.fundamentals.market_snapshot import MarketSnapshot
 
 _TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 
@@ -186,7 +187,7 @@ def upsert_roe(
     """Enrich ROE only: never overwrite daily market metrics or their source.
 
     fdate identifies the valuation row being enriched; roe_fetched_at identifies
-    when the current published annual figure was actually acquired.
+    when the current published figure was actually acquired.
     """
     from decimal import Decimal
 
@@ -203,12 +204,13 @@ def upsert_roe(
         "period": observation.period_end,
         "source": observation.source,
         "observed": observation.fetched_at,
+        "report_code": observation.report_code,
     }
     with engine.begin() as conn:
         existing = (
             conn.execute(
                 text(
-                    "SELECT roe, roe_period_end, roe_source FROM fundamentals "
+                    "SELECT roe, roe_period_end, roe_source, roe_report_code FROM fundamentals "
                     "WHERE ticker=:ticker AND fdate=:fdate"
                 ),
                 params,
@@ -216,20 +218,97 @@ def upsert_roe(
             .mappings()
             .first()
         )
-        if existing and (existing["roe"], existing["roe_period_end"], existing["roe_source"]) == (
+        if existing and (
+            existing["roe"],
+            existing["roe_period_end"],
+            existing["roe_source"],
+            existing["roe_report_code"],
+        ) == (
             value,
             observation.period_end,
             observation.source,
+            observation.report_code,
         ):
             return "skipped"
         conn.execute(
             text(
                 "INSERT INTO fundamentals (ticker,fdate,corp_code,roe,roe_period_end,roe_source,"
-                "roe_fetched_at,source,fetched_at) VALUES "
-                "(:ticker,:fdate,:corp_code,:roe,:period,:source,:observed,'dart_roe',now()) "
+                "roe_fetched_at,roe_report_code,source,fetched_at) VALUES "
+                "(:ticker,:fdate,:corp_code,:roe,:period,:source,:observed,"
+                ":report_code,'dart_roe',now()) "
                 "ON CONFLICT (ticker,fdate) DO UPDATE SET roe=EXCLUDED.roe, "
                 "roe_period_end=EXCLUDED.roe_period_end, roe_source=EXCLUDED.roe_source, "
                 "roe_fetched_at=EXCLUDED.roe_fetched_at, "
+                "roe_report_code=EXCLUDED.roe_report_code, "
+                "corp_code=COALESCE(fundamentals.corp_code,EXCLUDED.corp_code)"
+            ),
+            params,
+        )
+    return "updated" if existing else "inserted"
+
+
+def upsert_market_snapshot(
+    engine: Engine,
+    *,
+    ticker: str,
+    fdate: date,
+    corp_code: str | None,
+    snapshot: MarketSnapshot,
+) -> Literal["inserted", "updated", "skipped"]:
+    """Store today's observation without fabricating a historical price date."""
+    import json
+    from zoneinfo import ZoneInfo
+
+    if not _TICKER_RE.fullmatch(ticker):
+        raise ValueError("invalid_market_ticker")
+    if (
+        snapshot.fetched_at.tzinfo is None
+        or fdate != snapshot.fetched_at.astimezone(ZoneInfo("Asia/Seoul")).date()
+        or snapshot.market_asof > fdate
+    ):
+        raise ValueError("market_snapshot_cannot_be_backdated")
+    fields = ("per", "pbr", "eps", "bps", "dividend_yield", "dps")
+    params = {field: snapshot.values.get(field) for field in fields}
+    params.update(
+        ticker=ticker,
+        fdate=fdate,
+        corp_code=corp_code,
+        source=snapshot.source,
+        observed=snapshot.fetched_at,
+        market_asof=snapshot.market_asof,
+        periods=json.dumps(snapshot.metric_periods),
+    )
+    with engine.begin() as conn:
+        existing = (
+            conn.execute(
+                text(
+                    "SELECT per,pbr,eps,bps,dividend_yield,dps,source,market_asof,metric_periods "
+                    "FROM fundamentals WHERE ticker=:ticker AND fdate=:fdate"
+                ),
+                params,
+            )
+            .mappings()
+            .first()
+        )
+        if (
+            existing
+            and all(existing[field] == params[field] for field in fields)
+            and existing["source"] == snapshot.source
+            and existing["market_asof"] == snapshot.market_asof
+            and existing["metric_periods"] == snapshot.metric_periods
+        ):
+            return "skipped"
+        conn.execute(
+            text(
+                "INSERT INTO fundamentals (ticker,fdate,corp_code,per,pbr,eps,bps,"
+                "dividend_yield,dps,"
+                "source,fetched_at,market_asof,metric_periods) VALUES "
+                "(:ticker,:fdate,:corp_code,:per,:pbr,:eps,:bps,:dividend_yield,:dps,"
+                ":source,:observed,:market_asof,CAST(:periods AS jsonb)) "
+                "ON CONFLICT (ticker,fdate) DO UPDATE SET per=EXCLUDED.per,pbr=EXCLUDED.pbr,"
+                "eps=EXCLUDED.eps,bps=EXCLUDED.bps,dividend_yield=EXCLUDED.dividend_yield,dps=EXCLUDED.dps,"
+                "source=EXCLUDED.source,fetched_at=EXCLUDED.fetched_at,market_asof=EXCLUDED.market_asof,"
+                "metric_periods=EXCLUDED.metric_periods,"
                 "corp_code=COALESCE(fundamentals.corp_code,EXCLUDED.corp_code)"
             ),
             params,

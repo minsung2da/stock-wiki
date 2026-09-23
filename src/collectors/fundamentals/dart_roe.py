@@ -1,4 +1,4 @@
-"""Official DART annual ROE observations; stored as a ratio, displayed as percent.
+"""Official DART ROE observations; stored as a ratio, displayed as percent.
 
 The endpoint returns current published values, not historical point-in-time
 reconstructions. Keep the settlement date and acquisition timestamp separately.
@@ -15,6 +15,7 @@ from decimal import Decimal, InvalidOperation
 import requests  # type: ignore[import-untyped]
 
 ENDPOINT = "https://opendart.fss.or.kr/api/fnlttSinglIndx.json"
+_PERIODS = ((12, 31, "11011"), (9, 30, "11014"), (6, 30, "11012"), (3, 31, "11013"))
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class RoeObservation:
     period_end: date
     source: str
     fetched_at: datetime
+    report_code: str = "11011"
 
 
 def fetch_annual_roe(corp_code: str, year: int) -> RoeObservation | None:
@@ -31,6 +33,33 @@ def fetch_annual_roe(corp_code: str, year: int) -> RoeObservation | None:
     Authentication and transport errors expose only sanitized codes, never
     request URLs containing the API credential. No fallback to another year.
     """
+    return _fetch_roe(corp_code, year, "11011", date(year, 12, 31))
+
+
+def fetch_latest_roe(corp_code: str, as_of: date) -> RoeObservation | None:
+    """Select the newest available closed period in this or the previous year.
+
+    Current published responses can include restatements. ``as_of`` restricts
+    reporting periods, not historical publication availability.
+    """
+    if not re.fullmatch(r"\d{8}", corp_code) or not 2023 <= as_of.year <= 9998:
+        raise ValueError("invalid_roe_scope")
+    for year in (as_of.year, as_of.year - 1):
+        if year < 2023:
+            continue
+        for month, day, report_code in _PERIODS:
+            period_end = date(year, month, day)
+            if period_end > as_of:
+                continue
+            observation = _fetch_roe(corp_code, year, report_code, period_end)
+            if observation is not None:
+                return observation
+    return None
+
+
+def _fetch_roe(
+    corp_code: str, year: int, report_code: str, expected_period_end: date
+) -> RoeObservation | None:
     if not re.fullmatch(r"\d{8}", corp_code) or not 2023 <= year <= 9998:
         raise ValueError("invalid_roe_scope")
     key = os.environ.get("DART_API_KEY")
@@ -40,7 +69,7 @@ def fetch_annual_roe(corp_code: str, year: int) -> RoeObservation | None:
         "crtfc_key": key,
         "corp_code": corp_code,
         "bsns_year": str(year),
-        "reprt_code": "11011",
+        "reprt_code": report_code,
         "idx_cl_code": "M210000",
     }
     try:
@@ -70,7 +99,7 @@ def fetch_annual_roe(corp_code: str, year: int) -> RoeObservation | None:
     if (
         row.get("corp_code") != corp_code
         or row.get("bsns_year") != str(year)
-        or row.get("reprt_code") != "11011"
+        or row.get("reprt_code") != report_code
         or row.get("idx_cl_code") != "M210000"
         or row.get("idx_nm") != "ROE"
     ):
@@ -83,10 +112,10 @@ def fetch_annual_roe(corp_code: str, year: int) -> RoeObservation | None:
         period_end = date.fromisoformat(row["stlm_dt"])
     except (InvalidOperation, ValueError, KeyError, TypeError):
         raise ValueError("dart_roe_invalid_value") from None
-    if not value.is_finite() or period_end.year != year:
+    if not value.is_finite() or period_end != expected_period_end:
         raise ValueError("dart_roe_invalid_value")
     source = (
         f"{ENDPOINT}?corp_code={corp_code}&bsns_year={year}"
-        "&reprt_code=11011&idx_cl_code=M210000&idx_code=M211550"
+        f"&reprt_code={report_code}&idx_cl_code=M210000&idx_code=M211550"
     )
-    return RoeObservation(value, period_end, source, datetime.now(UTC))
+    return RoeObservation(value, period_end, source, datetime.now(UTC), report_code)

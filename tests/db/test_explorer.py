@@ -72,7 +72,9 @@ def explorer(pg_clean):
         {"dataset": "fundamentals", "sort_dir": "asc"},
         {"dataset": "fundamentals", "sort_by": ""},
         {"dataset": "fundamentals", "sort_by": "per", "sort_dir": "ASC"},
-        {"dataset": "fundamentals", "sort_by": "eps"},
+        {"dataset": "fundamentals", "sort_by": "metric_periods"},
+        {"dataset": "news", "latest_only": True},
+        {"dataset": "news", "latest_only": False},
         {"dataset": "news", "sort_by": "tickers"},
         {"dataset": "collector_runs", "sort_by": "stats"},
         {"dataset": "jev_reviews", "sort_by": "result_payload"},
@@ -206,6 +208,9 @@ def test_inventory_marks_only_supported_scalar_sort_columns(explorer):
         col["key"]: col["sortable"] for col in inventory["fundamentals"]["columns"]
     }
     assert fundamental_columns["per"] and fundamental_columns["pbr"]
+    assert fundamental_columns["eps"] and fundamental_columns["bps"]
+    assert fundamental_columns["market_asof"] and fundamental_columns["roe_report_code"]
+    assert "metric_periods" not in fundamental_columns
     assert fundamental_columns["roe"] and fundamental_columns["roe_period_end"]
     for dataset, key in [
         ("news", "tickers"),
@@ -256,6 +261,38 @@ def test_database_enforces_read_only(explorer):
         assert conn.execute(text("SHOW transaction_read_only")).scalar() == "on"
         conn.execute(text("DELETE FROM news"))
     assert explorer.search(Filters(dataset="news"))["total"] == 4
+
+
+def test_latest_fundamentals_selects_before_date_and_search_filters(explorer, pg_clean):
+    with pg_clean.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO fundamentals "
+            "(ticker,fdate,source,eps,bps,market_asof,metric_periods,roe_report_code) "
+            "VALUES ('005930','2026-09-24','current',20,200,'2026-09-23',"
+            "'{\"eps\":\"2026.06.\",\"dividend_yield\":\"2025.12.\"}'::jsonb,'11012'),"
+            "('000660','2026-09-23','current',2,100,'2026-09-22','{}'::jsonb,NULL)"
+        ))
+    latest = explorer.search(Filters(dataset="fundamentals", latest_only=True))
+    assert latest["total"] == 2
+    assert len({row["ticker"] for row in latest["rows"]}) == 2
+    samsung = next(row for row in latest["rows"] if row["ticker"] == "005930")
+    assert samsung["fdate"] == "2026-09-24"
+    assert samsung["market_asof"] == "2026-09-23"
+    assert samsung["metric_periods"]["eps"] == "2026.06."
+    assert samsung["roe_report_code"] == "11012"
+    detail = explorer.detail("fundamentals", samsung["_key"])
+    assert detail["metric_periods"] == samsung["metric_periods"]
+    assert explorer.search(Filters(dataset="fundamentals", ticker="005930",
+                                   latest_only=True, end="2026-09-23"))["total"] == 0
+    assert explorer.search(Filters(dataset="fundamentals", ticker="005930",
+                                   latest_only=False, end="2026-09-23"))["total"] == 1
+    assert explorer.search(Filters(dataset="fundamentals", q="fundamentals",
+                                   latest_only=True))["total"] == 0
+    assert explorer.search(Filters(dataset="fundamentals"))["total"] == 3
+    for column in ("eps", "bps"):
+        rows = explorer.search(Filters(dataset="fundamentals", latest_only=True,
+                                      sort_by=column, sort_dir="asc"))["rows"]
+        assert [row["ticker"] for row in rows] == ["000660", "005930"]
 
 
 def test_jev_audit_input_search_and_detail(explorer, pg_clean, monkeypatch):

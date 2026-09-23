@@ -84,9 +84,12 @@ DATASETS = {
         "재무지표",
         "PER·PBR·EPS·BPS·ROE·배당수익률·DPS",
         "ticker fdate per pbr eps bps roe roe_period_end roe_source roe_fetched_at "
-        "dividend_yield dps corp_code source fetched_at",
+        "dividend_yield dps corp_code source fetched_at market_asof metric_periods roe_report_code",
         ("ticker", "fdate"),
-        ("fdate", "ticker", "per", "pbr", "roe", "roe_period_end", "dividend_yield", "dps"),
+        (
+            "fdate", "market_asof", "ticker", "per", "pbr", "eps", "bps", "roe",
+            "roe_period_end", "roe_report_code", "dividend_yield", "dps",
+        ),
         ("ticker", "source"),
         "fdate",
         False,
@@ -166,7 +169,9 @@ DATASETS = {
         corp_column=None,
     ),
 }
-JSON_COLUMNS = {"payload", "stats", "extra", "input_payload", "result_payload", "usage"}
+JSON_COLUMNS = {
+    "payload", "stats", "extra", "input_payload", "result_payload", "usage", "metric_periods",
+}
 BODY_COLUMNS = {"body_md", "content_md"}
 # Only these typed scalar preview columns may become ORDER BY identifiers.
 SORTABLE_COLUMNS = {
@@ -175,11 +180,15 @@ SORTABLE_COLUMNS = {
     "ohlcv": ("trade_date", "ticker", "close", "volume", "foreign_net"),
     "fundamentals": (
         "fdate",
+        "market_asof",
         "ticker",
         "per",
         "pbr",
+        "eps",
+        "bps",
         "roe",
         "roe_period_end",
+        "roe_report_code",
         "dividend_yield",
         "dps",
     ),
@@ -204,14 +213,17 @@ LABELS = {
     "close": "종가",
     "volume": "거래량",
     "foreign_net": "외국인 순매수",
-    "fdate": "기준일",
+    "fdate": "관측일",
+    "market_asof": "시세 기준일",
+    "metric_periods": "지표별 제공 기준",
+    "roe_report_code": "ROE 보고서",
     "dividend_yield": "배당수익률 (%)",
     "dps": "DPS (원)",
     "per": "PER (배)",
     "pbr": "PBR (배)",
     "eps": "EPS (원)",
     "bps": "BPS (원)",
-    "roe": "ROE (연간 %)",
+    "roe": "ROE (%)",
     "roe_period_end": "ROE 결산일",
     "roe_source": "ROE 출처",
     "roe_fetched_at": "ROE 수집 시각",
@@ -264,6 +276,7 @@ class Filters(BaseModel):
     dataset: str = "filings"
     q: str = Field(default="", max_length=200)
     include_body: bool = False
+    latest_only: bool = False
     ticker: str = Field(default="", pattern=r"^(?:[0-9A-Z]{6})?$")
     start: date | None = None
     end: date | None = None
@@ -289,6 +302,8 @@ class Filters(BaseModel):
     @model_validator(mode="after")
     def applicable_filters(self) -> Filters:
         spec = DATASETS[self.dataset]
+        if self.dataset != "fundamentals" and "latest_only" in self.model_fields_set:
+            raise ValueError("기업별 최신값은 재무지표에서만 지원합니다.")
         if self.sort_by is not None and (
             self.sort_by not in SORTABLE_COLUMNS[self.dataset] or self.sort_by not in spec.preview
         ):
@@ -385,6 +400,13 @@ class Explorer:
         conditions: list[str] = []
         params: dict[str, Any] = {}
         relation = entity_relation(spec)
+        if filters.latest_only:
+            # Select the latest stored snapshot independently of outer filters;
+            # a historical date range must not promote an older snapshot.
+            conditions.append(
+                "d.fdate = (SELECT max(latest.fdate) FROM fundamentals latest "
+                "WHERE latest.ticker = d.ticker)"
+            )
         if filters.q.strip():
             # LIKE wildcards are literal user text, not a hidden query language.
             escaped = (
@@ -430,6 +452,8 @@ class Explorer:
             order = [f"d.{spec.date_column} DESC NULLS LAST"] if spec.date_column else []
             order += [f"d.{key} DESC" for key in spec.keys]
         columns = tuple(dict.fromkeys((*spec.keys, *spec.preview)))
+        if filters.dataset == "fundamentals":
+            columns += ("metric_periods",)
         select = ", ".join(
             f"CAST(d.{col} AS text) AS {col}" if col in JSON_COLUMNS else f"d.{col}"
             for col in columns

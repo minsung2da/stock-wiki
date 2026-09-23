@@ -1,15 +1,16 @@
 """Fundamentals collector — D-06 (Phase 3 v2.0).
 
 This collector INSERTs directly into the ``fundamentals`` Postgres table via
-``db_writer.upsert_fundamentals``. Mirrors ``collectors.krx`` pattern-for-pattern:
+``db_writer``. Mirrors ``collectors.krx`` pattern-for-pattern:
 ``Portfolio.load(Path(".")).scope_tickers()`` for scope, per-ticker try/except
 isolation (COLL-08), ``resolve_entity`` pre-write (R-03 missing-entity), and a
 dual-sink observability record (``_log.info("collector_run_complete", ...)`` +
 ``record_collector_run(engine, "fundamentals", ...)``).
 
 Data sources (Veto #6 — all typed NUMERIC, never embedded):
-- pykrx ``get_market_fundamental_by_date`` → PER / PBR / EPS / BPS.
-- Official DART annual index → ROE, independently of KRX availability.
+- Current Naver financial metrics → six values with market date and metric periods.
+- pykrx ``get_market_fundamental_by_date`` → explicitly requested historical dates.
+- Latest available closed DART reporting period → ROE, independently of market data.
 
 The ``fundamentals`` source name is already allowed by Plan 03-01 (which owns
 ``run_log._ALLOWED_SOURCES`` and the ``collector_runs.source`` CHECK widening
@@ -32,7 +33,7 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from collectors.fundamentals import dart_roe, db_writer, fetcher
+from collectors.fundamentals import dart_roe, db_writer, fetcher, market_snapshot
 from db.entity import resolve_entity
 from shared.portfolio import Portfolio
 from shared.run_log import record_collector_run
@@ -93,7 +94,10 @@ def collect_fundamentals(
 ) -> dict[str, Any]:
     """Run the fundamentals collector for the current scope (holdings ∪ watchlist).
 
-    Fetch market metrics and official prior-year annual ROE independently.
+    Fetch market metrics and latest available closed-period official ROE independently.
+    Current market snapshots use today's KST observation date; their actual market
+    date and metric reporting periods remain separate. Explicit historical dates
+    use KRX and never relabel current Naver data as historical data.
     ROE is currently observed published data, not a historical point-in-time
     reconstruction for ``since``. Its reporting period and observation time
     are stored separately from the market snapshot date.
@@ -114,10 +118,11 @@ def collect_fundamentals(
         raise RuntimeError("collect_fundamentals requires a DB engine for FK resolution")
 
     start = time.monotonic()
-    date_iso = since or _today_iso_krx()
+    today_iso = _today_iso_krx()
+    date_iso = since or today_iso
     date_str = date_iso.replace("-", "")
     fdate_obj = date.fromisoformat(date_iso)
-    roe_year = fdate_obj.year - 1
+    current_snapshot = fdate_obj == date.fromisoformat(today_iso)
 
     repo_root = Path(".")
     portfolio = Portfolio.load(repo_root)
@@ -146,28 +151,42 @@ def collect_fundamentals(
             outcomes: list[str] = []
             failures: list[dict[str, str]] = []
             try:
-                fund_df = fetcher.fetch_market_fundamental(ticker, date_str)
-                fund_row = _coerce_fundamental_row(fund_df)
-                if fund_row is None:
-                    empty_tickers.append(ticker)
-                else:
+                if current_snapshot:
+                    snapshot = market_snapshot.fetch_market_snapshot(ticker)
                     outcomes.append(
-                        db_writer.upsert_fundamentals(
+                        db_writer.upsert_market_snapshot(
                             engine,
                             ticker=ticker,
                             fdate=fdate_obj,
                             corp_code=ent.corp_code,
-                            **fund_row,
-                            roe=None,
-                            source="fundamentals",
+                            snapshot=snapshot,
                         )
                     )
+                else:
+                    fund_df = fetcher.fetch_market_fundamental(ticker, date_str)
+                    fund_row = _coerce_fundamental_row(fund_df)
+                    if fund_row is None:
+                        empty_tickers.append(ticker)
+                    else:
+                        outcomes.append(
+                            db_writer.upsert_fundamentals(
+                                engine,
+                                ticker=ticker,
+                                fdate=fdate_obj,
+                                corp_code=ent.corp_code,
+                                **fund_row,
+                                roe=None,
+                                source="fundamentals",
+                            )
+                        )
             except Exception as exc:  # noqa: BLE001 — isolate independent sources
-                failures.append({"source": "krx", "error": type(exc).__name__})
+                failures.append(
+                    {"source": "naver" if current_snapshot else "krx", "error": type(exc).__name__}
+                )
 
             stats["roe"]["requested"] += 1
             try:
-                observation = dart_roe.fetch_annual_roe(ent.corp_code, roe_year)
+                observation = dart_roe.fetch_latest_roe(ent.corp_code, fdate_obj)
                 if observation is None:
                     stats["roe"]["missing"] += 1
                 else:
