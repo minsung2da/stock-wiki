@@ -29,7 +29,7 @@ See:
 
 **Current focus:** Phase 6 — paper trade action layer
 
-Last activity: 2026-09-23 - Completed quick task 260923-qis: complete default collection, KST-day news, dividend metrics, and retire KIND. PostgreSQL validation and migration application pending Docker recovery.
+Last activity: 2026-09-23 - Completed quick task 260923-qis follow-up: Docker socket recovery, 77 collection tests passed including isolated PostgreSQL integration, and live database upgraded from 0009 to 0010.
 
 ## Current Position
 
@@ -300,7 +300,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
-| 260923-qis | Complete default collection, KST-day news, DIV/DPS persistence, retire KIND | 2026-09-23 | 65b1e1b | Code complete; 125 tests pass; DB validation blocked by Docker | [260923-qis](./quick/260923-qis-complete-recurring-collection-fundamenta/) |
+| 260923-qis | Complete default collection, KST-day news, DIV/DPS persistence, retire KIND | 2026-09-23 | 65b1e1b | 125 non-DB tests passed; follow-up 77 tests passed including DB; migration 0010 applied | [260923-qis](./quick/260923-qis-complete-recurring-collection-fundamenta/) |
 | 260628-mh9 | Fix two DART collector bugs (alphanumeric KRX tickers `^[0-9A-Z]{6}$`; fetch_body retries OpenDART throttle status 020/800) | 2026-06-28 | d4d249e, 2bbe71b | Done (190 tests pass) | [260628-mh9-...](./quick/260628-mh9-fix-two-dart-collector-bugs-alphanumeric/) |
 | 260628-n8d | Widen ticker regex `^[0-9A-Z]{6}$` across read/analysis/shared layers (cards/mcp_v2/portfolio/frontmatter) — end-to-end alphanumeric ticker consistency | 2026-06-28 | c59d276, 48c183f | Done (211 pass/2 skip) | [260628-n8d-...](./quick/260628-n8d-widen-ticker-regex-to-alphanumeric-acros/) |
 

@@ -33,6 +33,15 @@ Default portfolio collection now includes DART and fundamentals, admits only the
 
 ## Validation
 
+### Follow-up: Docker recovered, database validation completed (2026-09-23)
+
+- Restored Docker Desktop by backing up inaccessible runtime socket directories; existing containers/images/volumes retained. Docker Engine 29.5.2 and stock-postgres healthy.
+- Actual isolated PostgreSQL integration plus related regressions: **77 passed, 1 Alembic deprecation warning**, 22.83 seconds. Command: `.\.venv\Scripts\python.exe -m pytest tests/collectors/test_fundamentals.py tests/collectors/news tests/test_cli_collect_all.py tests/cli/test_collect_fundamentals.py tests/test_phase01_smoke.py tests/collectors/test_observability_wiring.py -q`.
+- Applied additive migration to the configured stock database: **0009 -> 0010 (head)**. This supersedes the initial blocked database validation/application status below.
+- Docker Desktop 4.75.0 normal restart reproduced the socket bug. A verified recovery helper exists at `C:/Users/minsu/workspace/control/scripts/repair-docker-desktop.ps1`; healthy reruns leave backend PIDs unchanged. Product-level recurrence remains possible.
+
+### Initial validation (before Docker recovery)
+
 - RED: dividend mapping 5 expected failures; news dates 3 expected failures; batch defaults 3 expected failures.
 - Focused non-DB regression: **125 passed, 35 deselected**. Explicit fixture-based selection excluded tests requiring pg_engine; these are not passing integration tests.
 - After final formatting and later-news assertion: affected CLI/news/dividend unit subset **25 passed** (overlaps the 125; do not add counts).
