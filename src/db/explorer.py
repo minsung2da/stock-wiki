@@ -12,7 +12,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
 
@@ -167,6 +167,20 @@ DATASETS = {
 }
 JSON_COLUMNS = {"payload", "stats", "extra", "input_payload", "result_payload", "usage"}
 BODY_COLUMNS = {"body_md", "content_md"}
+# Only these typed scalar preview columns may become ORDER BY identifiers.
+SORTABLE_COLUMNS = {
+    "filings": ("filed_at", "ticker", "report_nm", "pblntf_ty"),
+    "news": ("published_at", "title", "outlet"),
+    "ohlcv": ("trade_date", "ticker", "close", "volume", "foreign_net"),
+    "fundamentals": ("fdate", "ticker", "per", "pbr", "dividend_yield", "dps"),
+    "macro_series": ("obs_date", "label", "value", "unit", "source"),
+    "decision_cards": ("generated_at", "ticker", "report_type", "status", "card_id"),
+    "entities": ("canonical_name", "current_ticker", "market", "sector"),
+    "entity_aliases": ("value", "kind", "corp_code", "valid_from", "valid_to"),
+    "notes": ("updated_at", "corp_code", "path"),
+    "collector_runs": ("run_at", "source", "elapsed_ms"),
+    "jev_reviews": ("created_at", "task", "subject_id", "status"),
+}
 LABELS = {
     "filed_at": "공시 시각",
     "ticker": "종목코드",
@@ -242,6 +256,8 @@ class Filters(BaseModel):
     end: date | None = None
     page: int = Field(default=1, ge=1, le=100000)
     page_size: int = Field(default=25, ge=1, le=100)
+    sort_by: str | None = None
+    sort_dir: Literal["asc", "desc"] = "asc"
 
     @field_validator("dataset")
     @classmethod
@@ -260,6 +276,12 @@ class Filters(BaseModel):
     @model_validator(mode="after")
     def applicable_filters(self) -> Filters:
         spec = DATASETS[self.dataset]
+        if self.sort_by is not None and (
+            self.sort_by not in SORTABLE_COLUMNS[self.dataset] or self.sort_by not in spec.preview
+        ):
+            raise ValueError("이 데이터에서 정렬할 수 없는 열입니다.")
+        if self.sort_by is None and "sort_dir" in self.model_fields_set:
+            raise ValueError("정렬 방향에는 정렬할 열이 필요합니다.")
         if self.start and self.end and self.start > self.end:
             raise ValueError("시작일은 종료일보다 늦을 수 없습니다.")
         if (self.start or self.end) and not spec.date_column:
@@ -334,7 +356,12 @@ class Explorer:
                         "ticker_filter": bool(spec.ticker_column or spec.corp_column),
                         "body_search": bool(BODY_COLUMNS.intersection(spec.search)),
                         "columns": [
-                            {"key": key, "label": LABELS.get(key, key)} for key in spec.preview
+                            {
+                                "key": key,
+                                "label": LABELS.get(key, key),
+                                "sortable": key in SORTABLE_COLUMNS[name],
+                            }
+                            for key in spec.preview
                         ],
                     }
                 )
@@ -381,8 +408,14 @@ class Explorer:
                 )
                 conditions.append(f"d.{spec.date_column} {operator} :{name}")
         where = " WHERE " + " AND ".join(conditions) if conditions else ""
-        order = [f"d.{spec.date_column} DESC NULLS LAST"] if spec.date_column else []
-        order += [f"d.{key} DESC" for key in spec.keys]
+        if filters.sort_by:
+            # Both identifiers and direction are validated above; never sort the
+            # serialized Decimal strings returned to the browser.
+            order = [f"d.{filters.sort_by} {filters.sort_dir.upper()} NULLS LAST"]
+            order += [f"d.{key} ASC" for key in spec.keys if key != filters.sort_by]
+        else:
+            order = [f"d.{spec.date_column} DESC NULLS LAST"] if spec.date_column else []
+            order += [f"d.{key} DESC" for key in spec.keys]
         columns = tuple(dict.fromkeys((*spec.keys, *spec.preview)))
         select = ", ".join(
             f"CAST(d.{col} AS text) AS {col}" if col in JSON_COLUMNS else f"d.{col}"

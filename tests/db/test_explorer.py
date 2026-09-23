@@ -65,6 +65,15 @@ def explorer(pg_clean):
         {"start": "2026-02-30"},
         {"start": "2026-09-24", "end": "2026-09-23"},
         {"ticker": "12"},
+        {"dataset": "fundamentals", "sort_by": "per;DROP TABLE news"},
+        {"dataset": "fundamentals", "sort_by": "per", "sort_dir": "desc; SELECT 1"},
+        {"dataset": "fundamentals", "sort_dir": "asc"},
+        {"dataset": "fundamentals", "sort_by": ""},
+        {"dataset": "fundamentals", "sort_by": "per", "sort_dir": "ASC"},
+        {"dataset": "fundamentals", "sort_by": "eps"},
+        {"dataset": "news", "sort_by": "tickers"},
+        {"dataset": "collector_runs", "sort_by": "stats"},
+        {"dataset": "jev_reviews", "sort_by": "result_payload"},
     ],
 )
 def test_reject_invalid_filters(values):
@@ -117,6 +126,87 @@ def test_exact_numbers_and_composite_key(explorer):
     assert explorer.detail("fundamentals", '["000000","2026-09-23"]') is None
     with pytest.raises(ValueError):
         explorer.detail("fundamentals", '["005930"]')
+
+
+@pytest.mark.parametrize("column", ["per", "pbr"])
+@pytest.mark.parametrize("direction", ["asc", "desc"])
+def test_numeric_sort_nulls_ties_pagination_and_filters(pg_clean, column, direction):
+    with pg_clean.begin() as conn:
+        conn.execute(text("TRUNCATE fundamentals"))
+        conn.execute(
+            text(
+                "INSERT INTO fundamentals (ticker, fdate, per, pbr, source) "
+                "VALUES (:ticker, :date, :value, :value, :source)"
+            ),
+            [
+                {
+                    "ticker": "005930",
+                    "date": f"2026-09-{day:02}",
+                    "value": value,
+                    "source": "sort-test",
+                }
+                for day, value in [
+                    (10, 10),
+                    (11, 2),
+                    (12, None),
+                    (13, 2),
+                    (14, 0),
+                    (15, -1),
+                    (16, 100),
+                ]
+            ]
+            + [
+                {"ticker": "000660", "date": "2026-09-10", "value": -99, "source": "sort-test"},
+                {"ticker": "005930", "date": "2026-09-09", "value": -99, "source": "sort-test"},
+                {"ticker": "005930", "date": "2026-09-17", "value": -99, "source": "different"},
+            ],
+        )
+    explorer = Explorer(pg_clean)
+    filters = Filters(
+        dataset="fundamentals",
+        q="sort-test",
+        ticker="005930",
+        start="2026-09-10",
+        end="2026-09-17",
+        sort_by=column,
+        sort_dir=direction,
+        page_size=2,
+    )
+    rows = []
+    for page in range(1, 5):
+        result = explorer.search(filters.model_copy(update={"page": page}))
+        assert result["total"] == 7
+        rows.extend(result["rows"])
+    expected = (
+        ["-1.0000", "0.0000", "2.0000", "2.0000", "10.0000", "100.0000", None]
+        if direction == "asc"
+        else ["100.0000", "10.0000", "2.0000", "2.0000", "0.0000", "-1.0000", None]
+    )
+    assert [row[column] for row in rows] == expected
+    assert len({row["_key"] for row in rows}) == 7
+    assert [row["fdate"] for row in rows if row[column] == "2.0000"] == ["2026-09-11", "2026-09-13"]
+    assert explorer.search(filters)["rows"] == rows[:2]
+    if direction == "asc":
+        default_direction = Filters.model_validate(
+            {key: value for key, value in filters.model_dump().items() if key != "sort_dir"}
+        )
+        assert explorer.search(default_direction)["rows"] == rows[:2]
+
+
+def test_inventory_marks_only_supported_scalar_sort_columns(explorer):
+    inventory = {row["id"]: row for row in explorer.inventory()}
+    fundamental_columns = {
+        col["key"]: col["sortable"] for col in inventory["fundamentals"]["columns"]
+    }
+    assert fundamental_columns["per"] and fundamental_columns["pbr"]
+    for dataset, key in [
+        ("news", "tickers"),
+        ("collector_runs", "stats"),
+        ("jev_reviews", "result_payload"),
+    ]:
+        assert not next(col for col in inventory[dataset]["columns"] if col["key"] == key)[
+            "sortable"
+        ]
 
 
 def test_database_enforces_read_only(explorer):
@@ -181,6 +271,11 @@ def test_http_routes_and_boundary(explorer, monkeypatch):
         assert request("/api/search?dataset=news&dataset=ohlcv")[0] == 400
         assert request("/api/search?dataset=unknown")[0] == 400
         assert request("/api/search?dataset=macro_series&ticker=005930")[0] == 400
+        assert request("/api/search?dataset=news&sort_by=tickers&sort_dir=asc")[0] == 400
+        assert request("/api/search?dataset=fundamentals&sort_by=per%3BDROP")[0] == 400
+        status, _, body = request("/api/search?dataset=news&sort_by=published_at&sort_dir=asc")
+        assert status == 200
+        assert json.loads(body)["rows"][0]["title"] == "전일 기사"
         assert request("/api/inventory", "POST")[0] == 405
         assert request("/api/inventory", headers={"Host": "evil.example"})[0] == 403
         assert request("/api/inventory", headers={"Origin": "https://evil.example"})[0] == 403
