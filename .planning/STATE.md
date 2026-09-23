@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
 stopped_at: Phase 05 complete (5/5) — ready to discuss Phase 6
-last_updated: 2026-09-23T10:47:36Z
+last_updated: 2026-09-23T11:08:22Z
 progress:
   total_phases: 9
   completed_phases: 5
@@ -29,7 +29,7 @@ See:
 
 **Current focus:** Phase 6 — paper trade action layer
 
-Last activity: 2026-09-23 - Completed quick task 260923-r1s: local read-only database explorer with 10 datasets, search, pagination and full record details. 12 isolated DB tests and live desktop/mobile browser checks passed. Running at http://127.0.0.1:8766.
+Last activity: 2026-09-23 - Completed quick task 260923-rry: created private portfolio watchlist with 198 companies across 10 WICS sectors, ranked by full market capitalization. Source rankings and production loader verified. 68 companies still need DB mapping registration before full collection.
 
 ## Current Position
 
@@ -300,6 +300,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260923-rry | Populate private portfolio with sector top-20 companies by full market cap (utilities: 18) | 2026-09-23 | Private files excluded | 198 unique tickers; source rankings and loader verified; 68 DB mappings pending | [260923-rry](./quick/260923-rry-populate-portfolio-watchlist-with-verifi/) |
 | fast-260923-company-names | Show canonical company names beside ticker/corporation codes in explorer lists and details | 2026-09-23 | 5bd2949 | Browser verified: Samsung list/detail, multi-ticker mapping, unknown fallback, price list | src/db/explorer.html |
 | 260923-r1s | Local read-only DB explorer: inventory, keyword/ticker/date filters, pagination, full details | 2026-09-23 | 7b691ee | 12 tests pass; live DB, desktop/mobile browser, ruff and mypy verified | [260923-r1s](./quick/260923-r1s-build-local-read-only-database-explorer-/) |
 | 260923-qis | Complete default collection, KST-day news, DIV/DPS persistence, retire KIND | 2026-09-23 | 65b1e1b | 125 non-DB tests passed; follow-up 77 tests passed including DB; migration 0010 applied | [260923-qis](./quick/260923-qis-complete-recurring-collection-fundamenta/) |
