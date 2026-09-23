@@ -300,6 +300,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| fast-260923-company-names | Show canonical company names beside ticker/corporation codes in explorer lists and details | 2026-09-23 | 5bd2949 | Browser verified: Samsung list/detail, multi-ticker mapping, unknown fallback, price list | src/db/explorer.html |
 | 260923-r1s | Local read-only DB explorer: inventory, keyword/ticker/date filters, pagination, full details | 2026-09-23 | 7b691ee | 12 tests pass; live DB, desktop/mobile browser, ruff and mypy verified | [260923-r1s](./quick/260923-r1s-build-local-read-only-database-explorer-/) |
 | 260923-qis | Complete default collection, KST-day news, DIV/DPS persistence, retire KIND | 2026-09-23 | 65b1e1b | 125 non-DB tests passed; follow-up 77 tests passed including DB; migration 0010 applied | [260923-qis](./quick/260923-qis-complete-recurring-collection-fundamenta/) |
 | 260628-mh9 | Fix two DART collector bugs (alphanumeric KRX tickers `^[0-9A-Z]{6}$`; fetch_body retries OpenDART throttle status 020/800) | 2026-06-28 | d4d249e, 2bbe71b | Done (190 tests pass) | [260628-mh9-...](./quick/260628-mh9-fix-two-dart-collector-bugs-alphanumeric/) |
