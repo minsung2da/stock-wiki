@@ -518,6 +518,8 @@ class Fundamentals(Base):
     pbr = sa.Column(sa.Numeric(18, 4), nullable=True)
     eps = sa.Column(sa.Numeric(20, 4), nullable=True)
     bps = sa.Column(sa.Numeric(20, 4), nullable=True)
+    dividend_yield = sa.Column(sa.Numeric(18, 4), nullable=True)
+    dps = sa.Column(sa.Numeric(20, 4), nullable=True)
     roe = sa.Column(sa.Numeric(10, 6), nullable=True)
     corp_code = sa.Column(
         sa.CHAR(8),

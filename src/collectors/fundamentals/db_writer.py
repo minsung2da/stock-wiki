@@ -37,11 +37,11 @@ _UPSERT_SQL = text(
     """
     INSERT INTO fundamentals (
         ticker, fdate,
-        per, pbr, eps, bps, roe,
+        per, pbr, eps, bps, roe, dividend_yield, dps,
         corp_code, source, fetched_at
     ) VALUES (
         :ticker, :fdate,
-        :per, :pbr, :eps, :bps, :roe,
+        :per, :pbr, :eps, :bps, :roe, :dividend_yield, :dps,
         :corp_code, :source, now()
     )
     ON CONFLICT (ticker, fdate) DO UPDATE SET
@@ -49,6 +49,8 @@ _UPSERT_SQL = text(
         pbr        = EXCLUDED.pbr,
         eps        = EXCLUDED.eps,
         bps        = EXCLUDED.bps,
+        dividend_yield = EXCLUDED.dividend_yield,
+        dps        = EXCLUDED.dps,
         roe        = COALESCE(EXCLUDED.roe, fundamentals.roe),
         corp_code  = COALESCE(EXCLUDED.corp_code, fundamentals.corp_code),
         source     = EXCLUDED.source,
@@ -58,7 +60,7 @@ _UPSERT_SQL = text(
 
 _SELECT_EXISTING_SQL = text(
     """
-    SELECT per, pbr, eps, bps, roe, corp_code
+    SELECT per, pbr, eps, bps, roe, dividend_yield, dps, corp_code
     FROM fundamentals
     WHERE ticker = :t AND fdate = :d
     """
@@ -78,7 +80,7 @@ def _values_match_existing(existing, params: dict[str, Any]) -> bool:
     """
     from decimal import Decimal
 
-    for col in ("per", "pbr", "eps", "bps"):
+    for col in ("per", "pbr", "eps", "bps", "dividend_yield", "dps"):
         incoming = params[col]
         current = getattr(existing, col)
         if incoming is None and current is None:
@@ -118,6 +120,8 @@ def upsert_fundamentals(
     eps: float | None,
     bps: float | None,
     roe: float | None,
+    dividend_yield: float | None = None,
+    dps: float | None = None,
     source: str = "fundamentals",
 ) -> Literal["inserted", "updated", "skipped"]:
     """Upsert one (ticker, fdate) row into the ``fundamentals`` table.
@@ -151,6 +155,8 @@ def upsert_fundamentals(
         "eps": eps,
         "bps": bps,
         "roe": roe,
+        "dividend_yield": dividend_yield,
+        "dps": dps,
         "corp_code": corp_code,
         "source": source,
     }

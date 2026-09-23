@@ -75,7 +75,7 @@ def _fund_row(engine, ticker: str, fdate: date):
     with engine.connect() as conn:
         return conn.execute(
             text(
-                "SELECT ticker, fdate, per, pbr, eps, bps, roe, corp_code, source "
+                "SELECT ticker, fdate, per, pbr, eps, bps, roe, dividend_yield, dps, corp_code, source "
                 "FROM fundamentals WHERE ticker=:t AND fdate=:d"
             ),
             {"t": ticker, "d": fdate},
@@ -105,9 +105,34 @@ def test_collect_fundamentals_inserts_typed_row(tmp_path: Path, seeded_engine, m
     assert float(row.pbr) == pytest.approx(1.4)
     assert float(row.eps) == pytest.approx(5600.0)
     assert float(row.bps) == pytest.approx(50000.0)
+    assert float(row.dividend_yield) == pytest.approx(2.1)
+    assert float(row.dps) == pytest.approx(1416.0)
     assert float(row.roe) == pytest.approx(0.1)
     assert row.corp_code == "00126380"
     assert row.source == "fundamentals"
+
+
+def test_dividend_update_and_idempotence(tmp_path: Path, seeded_engine, monkeypatch) -> None:
+    _clean_fundamentals(seeded_engine)
+    _write_portfolio(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    frame = _fundamental_df()
+    monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: frame)
+    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: 0.1)
+    assert collect_fundamentals(engine=seeded_engine, since="2026-04-17")["inserted"] == 1
+    assert collect_fundamentals(engine=seeded_engine, since="2026-04-17")["skipped"] == 1
+    frame.loc[0, "DIV"] = 0
+    frame.loc[0, "DPS"] = 1500
+    assert collect_fundamentals(engine=seeded_engine, since="2026-04-17")["updated"] == 1
+    row = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
+    assert row.dividend_yield == 0
+    assert row.dps == 1500
+    frame.loc[0, "DIV"] = float("nan")
+    frame.loc[0, "DPS"] = float("nan")
+    assert collect_fundamentals(engine=seeded_engine, since="2026-04-17")["updated"] == 1
+    row = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
+    assert row.dividend_yield is None and row.dps is None
+    assert _count_fundamentals(seeded_engine) == 1
 
 
 def test_collect_fundamentals_records_run(tmp_path: Path, seeded_engine, monkeypatch) -> None:

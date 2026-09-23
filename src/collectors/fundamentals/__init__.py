@@ -82,6 +82,8 @@ def _coerce_fundamental_row(df) -> dict[str, Any] | None:
         "pbr": _num("PBR"),
         "eps": _num("EPS"),
         "bps": _num("BPS"),
+        "dividend_yield": _num("DIV"),
+        "dps": _num("DPS"),
     }
 
 
@@ -167,6 +169,8 @@ def collect_fundamentals(
                 pbr=fund_row["pbr"],
                 eps=fund_row["eps"],
                 bps=fund_row["bps"],
+                dividend_yield=fund_row["dividend_yield"],
+                dps=fund_row["dps"],
                 roe=roe_value,
                 source="fundamentals",
             )
