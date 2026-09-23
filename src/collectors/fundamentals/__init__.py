@@ -9,7 +9,7 @@ dual-sink observability record (``_log.info("collector_run_complete", ...)`` +
 
 Data sources (Veto #6 — all typed NUMERIC, never embedded):
 - pykrx ``get_market_fundamental_by_date`` → PER / PBR / EPS / BPS.
-- dart-fss 재무제표 → ROE (당기순이익 / 자본총계), computed in ``roe.py``.
+- Official DART annual index → ROE, independently of KRX availability.
 
 The ``fundamentals`` source name is already allowed by Plan 03-01 (which owns
 ``run_log._ALLOWED_SOURCES`` and the ``collector_runs.source`` CHECK widening
@@ -17,12 +17,11 @@ in migration 0008). This module only CALLS ``record_collector_run`` — it does
 NOT edit ``run_log.py`` and adds NO CHECK SQL.
 
 COLL-07: no LLM SDK imports anywhere under ``collectors/`` (enforced by
-``tests/test_import_guard.py``). ``roe.py`` uses dart-fss structured financials,
-not an LLM.
+``tests/test_import_guard.py``). Official ROE uses the deterministic DART API.
 
 ROE fill-in COALESCE: ``db_writer`` preserves an existing ROE when a later
 pykrx-only fetch returns ``roe=None`` (mirror of the KRX T+2 short fill-in) so a
-fundamentals re-run never NULL-clobbers a prior dart-fss ROE.
+fundamentals re-run never NULL-clobbers a prior sourced ROE.
 """
 
 from __future__ import annotations
@@ -33,7 +32,7 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from collectors.fundamentals import db_writer, fetcher, roe
+from collectors.fundamentals import dart_roe, db_writer, fetcher
 from db.entity import resolve_entity
 from shared.portfolio import Portfolio
 from shared.run_log import record_collector_run
@@ -94,9 +93,10 @@ def collect_fundamentals(
 ) -> dict[str, Any]:
     """Run the fundamentals collector for the current scope (holdings ∪ watchlist).
 
-    For each ticker: fetch pykrx PER/PBR/EPS/BPS (the as-of business day), derive
-    ROE from dart-fss 재무제표 (당기순이익 / 자본총계), and upsert one row into
-    ``fundamentals`` keyed ``(ticker, fdate)`` (Veto #6 — typed NUMERIC only).
+    Fetch market metrics and official prior-year annual ROE independently.
+    ROE is currently observed published data, not a historical point-in-time
+    reconstruction for ``since``. Its reporting period and observation time
+    are stored separately from the market snapshot date.
 
     Per-ticker isolation (COLL-08): any exception during a single ticker is
     captured into ``stats["failed"]`` and does NOT abort the loop.
@@ -117,7 +117,7 @@ def collect_fundamentals(
     date_iso = since or _today_iso_krx()
     date_str = date_iso.replace("-", "")
     fdate_obj = date.fromisoformat(date_iso)
-    bgn_de = date_str  # dart-fss bgn_de is YYYYMMDD; reuse the as-of day's year span
+    roe_year = fdate_obj.year - 1
 
     repo_root = Path(".")
     portfolio = Portfolio.load(repo_root)
@@ -129,19 +129,13 @@ def collect_fundamentals(
         "updated": 0,
         "skipped": 0,
         "failed": [],
+        "roe": {"requested": 0, "available": 0, "missing": 0, "failed": 0},
     }
     empty_tickers: list[str] = []
     missing_entities: list[str] = []
 
     for ticker in scope:
         try:
-            fund_df = fetcher.fetch_market_fundamental(ticker, date_str)
-            fund_row = _coerce_fundamental_row(fund_df)
-            if fund_row is None:
-                empty_tickers.append(ticker)
-                stats["skipped"] += 1
-                continue
-
             # R-03: resolve entity BEFORE writing. Missing entity → no write.
             ent = resolve_entity(engine, ticker)
             if ent is None:
@@ -149,40 +143,62 @@ def collect_fundamentals(
                 stats["failed"].append({"doc": ticker, "error": "missing_entity"})
                 continue
 
-            # ROE from dart-fss structured financials (당기순이익 / 자본총계).
-            # Best-effort: a dart-fss failure leaves roe=None so the pykrx
-            # PER/PBR/EPS/BPS still persist (COALESCE preserves a prior ROE).
-            roe_value: float | None = None
-            if ent.corp_code is not None:
-                try:
-                    roe_value = roe.compute_roe(ent.corp_code, bgn_de)
-                except Exception:  # noqa: BLE001 — ROE is optional; pykrx data still writes
-                    _log.warning("fundamentals: ROE compute failed for %s", ticker)
-                    roe_value = None
+            outcomes: list[str] = []
+            failures: list[dict[str, str]] = []
+            try:
+                fund_df = fetcher.fetch_market_fundamental(ticker, date_str)
+                fund_row = _coerce_fundamental_row(fund_df)
+                if fund_row is None:
+                    empty_tickers.append(ticker)
+                else:
+                    outcomes.append(
+                        db_writer.upsert_fundamentals(
+                            engine,
+                            ticker=ticker,
+                            fdate=fdate_obj,
+                            corp_code=ent.corp_code,
+                            **fund_row,
+                            roe=None,
+                            source="fundamentals",
+                        )
+                    )
+            except Exception as exc:  # noqa: BLE001 — isolate independent sources
+                failures.append({"source": "krx", "error": type(exc).__name__})
 
-            outcome = db_writer.upsert_fundamentals(
-                engine,
-                ticker=ticker,
-                fdate=fdate_obj,
-                corp_code=ent.corp_code,
-                per=fund_row["per"],
-                pbr=fund_row["pbr"],
-                eps=fund_row["eps"],
-                bps=fund_row["bps"],
-                dividend_yield=fund_row["dividend_yield"],
-                dps=fund_row["dps"],
-                roe=roe_value,
-                source="fundamentals",
-            )
-            if outcome == "inserted":
+            stats["roe"]["requested"] += 1
+            try:
+                observation = dart_roe.fetch_annual_roe(ent.corp_code, roe_year)
+                if observation is None:
+                    stats["roe"]["missing"] += 1
+                else:
+                    outcomes.append(
+                        db_writer.upsert_roe(
+                            engine,
+                            ticker=ticker,
+                            fdate=fdate_obj,
+                            corp_code=ent.corp_code,
+                            observation=observation,
+                        )
+                    )
+                    stats["roe"]["available"] += 1
+            except Exception as exc:  # noqa: BLE001 — market data survives DART failure
+                stats["roe"]["failed"] += 1
+                failures.append({"source": "dart_roe", "error": type(exc).__name__})
+            if failures:
+                # Exception messages may contain authenticated provider URLs.
+                stats["failed"].append(
+                    {"doc": ticker, "error": "source_failure", "sources": failures}
+                )
+                _log.warning("fundamentals source failure for %s: %s", ticker, failures)
+            if "inserted" in outcomes:
                 stats["inserted"] += 1
-            elif outcome == "updated":
+            elif "updated" in outcomes:
                 stats["updated"] += 1
-            else:
+            elif outcomes or not failures:
                 stats["skipped"] += 1
         except Exception as exc:  # noqa: BLE001 — per-ticker isolation (COLL-08)
-            _log.exception("fundamentals collect failed for %s", ticker)
-            stats["failed"].append({"doc": ticker, "error": str(exc)})
+            _log.warning("fundamentals collect failed for %s: %s", ticker, type(exc).__name__)
+            stats["failed"].append({"doc": ticker, "error": type(exc).__name__})
 
     stats["elapsed_ms"] = int((time.monotonic() - start) * 1000)
 

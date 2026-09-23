@@ -3,7 +3,7 @@
 Each test:
 1. Materializes a temporary repo root via ``tmp_path`` with a
    ``notes/private/portfolio.md`` so ``Portfolio.load(Path("."))`` resolves.
-2. Mocks the pykrx fundamentals fetcher + the dart-fss ROE source via
+2. Mocks the pykrx fundamentals fetcher + the official DART ROE source via
    ``monkeypatch`` (NO live network — environment note).
 3. Invokes ``collect_fundamentals`` and asserts both the returned stats dict AND
    the ``fundamentals`` table state via SQL.
@@ -18,7 +18,8 @@ test DELETEs the fundamentals rows it owns up-front for isolation.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -26,10 +27,19 @@ import pytest
 from sqlalchemy import text
 
 from collectors.fundamentals import collect_fundamentals
+from collectors.fundamentals import dart_roe as fund_roe
 from collectors.fundamentals import fetcher as fund_fetcher
-from collectors.fundamentals import roe as fund_roe
 
 pytestmark = pytest.mark.db
+
+
+def _observation(value="0.1"):
+    return fund_roe.RoeObservation(
+        Decimal(value),
+        date(2025, 12, 31),
+        "dart:fnlttSinglIndx:M211550:11011",
+        datetime(2026, 9, 24, tzinfo=UTC),
+    )
 
 
 _SAMSUNG_PORTFOLIO = (
@@ -75,7 +85,8 @@ def _fund_row(engine, ticker: str, fdate: date):
     with engine.connect() as conn:
         return conn.execute(
             text(
-                "SELECT ticker, fdate, per, pbr, eps, bps, roe, dividend_yield, dps, corp_code, source "
+                "SELECT ticker, fdate, per, pbr, eps, bps, roe, dividend_yield, "
+                "dps, corp_code, source "
                 "FROM fundamentals WHERE ticker=:t AND fdate=:d"
             ),
             {"t": ticker, "d": fdate},
@@ -83,14 +94,14 @@ def _fund_row(engine, ticker: str, fdate: date):
 
 
 def test_collect_fundamentals_inserts_typed_row(tmp_path: Path, seeded_engine, monkeypatch) -> None:
-    """pykrx PER/PBR/EPS/BPS + dart-fss ROE → one typed fundamentals row."""
+    """pykrx metrics + independently sourced official ROE form one typed row."""
     _clean_fundamentals(seeded_engine)
     _write_portfolio(tmp_path)
     monkeypatch.chdir(tmp_path)
 
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
-    # ROE = 당기순이익 / 자본총계 = 100 / 1000 = 0.1
-    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: 0.1)
+    # Official observation stores a fraction; the UI renders it as percent.
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
 
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
 
@@ -118,7 +129,7 @@ def test_dividend_update_and_idempotence(tmp_path: Path, seeded_engine, monkeypa
     monkeypatch.chdir(tmp_path)
     frame = _fundamental_df()
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: frame)
-    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: 0.1)
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
     assert collect_fundamentals(engine=seeded_engine, since="2026-04-17")["inserted"] == 1
     assert collect_fundamentals(engine=seeded_engine, since="2026-04-17")["skipped"] == 1
     frame.loc[0, "DIV"] = 0
@@ -143,7 +154,7 @@ def test_collect_fundamentals_records_run(tmp_path: Path, seeded_engine, monkeyp
     monkeypatch.chdir(tmp_path)
 
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
-    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: 0.1)
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
 
     collect_fundamentals(engine=seeded_engine, since="2026-04-17")
 
@@ -174,7 +185,7 @@ def test_collect_fundamentals_missing_entity_isolation(
     monkeypatch.chdir(tmp_path)
 
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
-    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: 0.1)
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
 
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
 
@@ -196,7 +207,7 @@ def test_collect_fundamentals_empty_frame_skips(tmp_path: Path, seeded_engine, m
     monkeypatch.setattr(
         fund_fetcher, "fetch_market_fundamental", lambda t, d: _empty_fundamental_df()
     )
-    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: 0.1)
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: None)
 
     stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
 
@@ -218,14 +229,14 @@ def test_collect_fundamentals_roe_coalesce_fill_in(
     monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
 
     # Run 1: ROE source returns None
-    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: None)
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: None)
     stats1 = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
     assert stats1["inserted"] == 1
     row1 = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
     assert row1.roe is None
 
     # Run 2: ROE arrives
-    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: 0.0789)
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation("0.0789"))
     stats2 = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
     assert stats2["updated"] == 1
     assert stats2["inserted"] == 0
@@ -235,7 +246,7 @@ def test_collect_fundamentals_roe_coalesce_fill_in(
     assert float(row2.per) == pytest.approx(12.5)
 
     # Run 3: pykrx-only refresh (ROE None again) must NOT NULL-clobber the ROE
-    monkeypatch.setattr(fund_roe, "compute_roe", lambda cc, bgn: None)
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: None)
     stats3 = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
     assert stats3["skipped"] == 1  # COALESCE-None on roe → no change
     row3 = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
@@ -249,3 +260,77 @@ def test_collect_fundamentals_no_engine_raises(tmp_path: Path, monkeypatch) -> N
 
     with pytest.raises(RuntimeError, match="engine"):
         collect_fundamentals(engine=None, since="2026-04-17")
+
+
+@pytest.mark.parametrize("market_failure", [False, True])
+def test_roe_independent_of_krx_preserves_existing_metrics(
+    tmp_path, seeded_engine, monkeypatch, market_failure, caplog
+):
+    _clean_fundamentals(seeded_engine)
+    _write_portfolio(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    with seeded_engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO fundamentals (ticker, fdate, per, pbr, eps, bps, "
+                "dividend_yield, dps, source) VALUES "
+                "('005930','2026-04-17',12.5,1.4,5600,50000,2.1,1416,'fundamentals')"
+            )
+        )
+
+    def market(ticker, day):
+        if market_failure:
+            raise RuntimeError("https://provider.invalid/?key=SECRET")
+        return _empty_fundamental_df()
+
+    requested = []
+
+    def official(corp_code, year):
+        requested.append((corp_code, year))
+        return _observation()
+
+    monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", market)
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", official)
+    stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
+    assert requested == [("00126380", 2025)]
+    assert stats["updated"] == 1 and stats["inserted"] == stats["skipped"] == 0
+    assert stats["roe"] == {"requested": 1, "available": 1, "missing": 0, "failed": 0}
+    row = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
+    assert tuple(
+        row._mapping[key] for key in ("per", "pbr", "eps", "bps", "dividend_yield", "dps")
+    ) == tuple(map(Decimal, ("12.5", "1.4", "5600", "50000", "2.1", "1416")))
+    assert row.roe == Decimal("0.1")
+    assert len(stats["failed"]) == int(market_failure)
+    assert "SECRET" not in str(stats) + caplog.text
+
+
+def test_roe_failure_keeps_market_data(tmp_path, seeded_engine, monkeypatch, caplog):
+    _clean_fundamentals(seeded_engine)
+    _write_portfolio(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(fund_fetcher, "fetch_market_fundamental", lambda t, d: _fundamental_df())
+
+    def official(corp_code, year):
+        raise RuntimeError("https://provider.invalid/?key=SECRET")
+
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", official)
+    stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
+    assert stats["inserted"] == 1
+    assert stats["roe"] == {"requested": 1, "available": 0, "missing": 0, "failed": 1}
+    row = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
+    assert row.per == Decimal("12.5") and row.roe is None
+    assert "SECRET" not in str(stats) + caplog.text
+
+
+def test_roe_only_insert_when_market_empty(tmp_path, seeded_engine, monkeypatch):
+    _clean_fundamentals(seeded_engine)
+    _write_portfolio(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        fund_fetcher, "fetch_market_fundamental", lambda t, d: _empty_fundamental_df()
+    )
+    monkeypatch.setattr(fund_roe, "fetch_annual_roe", lambda cc, year: _observation())
+    stats = collect_fundamentals(engine=seeded_engine, since="2026-04-17")
+    assert stats["inserted"] == 1 and not stats["failed"]
+    row = _fund_row(seeded_engine, "005930", date(2026, 4, 17))
+    assert row.per is None and row.roe == Decimal("0.1") and row.source == "dart_roe"

@@ -28,6 +28,8 @@ from sqlalchemy import text
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
 
+    from collectors.fundamentals.dart_roe import RoeObservation
+
 _TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 
 __all__ = ["upsert_fundamentals"]
@@ -171,3 +173,65 @@ def upsert_fundamentals(
             outcome = "updated"
         conn.execute(_UPSERT_SQL, params)
     return outcome
+
+
+def upsert_roe(
+    engine: Engine,
+    *,
+    ticker: str,
+    fdate: date,
+    corp_code: str | None,
+    observation: RoeObservation,
+) -> Literal["inserted", "updated", "skipped"]:
+    """Enrich ROE only: never overwrite daily market metrics or their source.
+
+    fdate identifies the valuation row being enriched; roe_fetched_at identifies
+    when the current published annual figure was actually acquired.
+    """
+    from decimal import Decimal
+
+    if not _TICKER_RE.fullmatch(ticker):
+        raise ValueError("invalid_roe_ticker")
+    if not observation.value.is_finite() or observation.period_end > fdate:
+        raise ValueError("invalid_roe_observation")
+    value = observation.value.quantize(Decimal("0.000001"))
+    params = {
+        "ticker": ticker,
+        "fdate": fdate,
+        "corp_code": corp_code,
+        "roe": value,
+        "period": observation.period_end,
+        "source": observation.source,
+        "observed": observation.fetched_at,
+    }
+    with engine.begin() as conn:
+        existing = (
+            conn.execute(
+                text(
+                    "SELECT roe, roe_period_end, roe_source FROM fundamentals "
+                    "WHERE ticker=:ticker AND fdate=:fdate"
+                ),
+                params,
+            )
+            .mappings()
+            .first()
+        )
+        if existing and (existing["roe"], existing["roe_period_end"], existing["roe_source"]) == (
+            value,
+            observation.period_end,
+            observation.source,
+        ):
+            return "skipped"
+        conn.execute(
+            text(
+                "INSERT INTO fundamentals (ticker,fdate,corp_code,roe,roe_period_end,roe_source,"
+                "roe_fetched_at,source,fetched_at) VALUES "
+                "(:ticker,:fdate,:corp_code,:roe,:period,:source,:observed,'dart_roe',now()) "
+                "ON CONFLICT (ticker,fdate) DO UPDATE SET roe=EXCLUDED.roe, "
+                "roe_period_end=EXCLUDED.roe_period_end, roe_source=EXCLUDED.roe_source, "
+                "roe_fetched_at=EXCLUDED.roe_fetched_at, "
+                "corp_code=COALESCE(fundamentals.corp_code,EXCLUDED.corp_code)"
+            ),
+            params,
+        )
+    return "updated" if existing else "inserted"

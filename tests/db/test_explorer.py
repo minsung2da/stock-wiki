@@ -48,8 +48,10 @@ def explorer(pg_clean):
         conn.execute(
             text(
                 "INSERT INTO fundamentals "
-                "(ticker, fdate, per, dividend_yield, dps, source) VALUES "
-                "('005930', '2026-09-23', 12.3456, 2.1234, 1444.0000, 'fundamentals')"
+                "(ticker, fdate, per, dividend_yield, dps, source, roe, roe_period_end, "
+                "roe_source, roe_fetched_at) VALUES "
+                "('005930', '2026-09-23', 12.3456, 2.1234, 1444.0000, 'fundamentals', "
+                "0.107830, '2025-12-31', 'dart:M211550:11011', '2026-09-24T01:02:03Z')"
             )
         )
     return Explorer(pg_clean)
@@ -123,6 +125,11 @@ def test_exact_numbers_and_composite_key(explorer):
     assert detail["per"] == "12.3456"
     assert detail["dividend_yield"] == "2.1234"
     assert detail["dps"] == "1444.0000"
+    assert result["rows"][0]["roe"] == "0.107830"
+    assert result["rows"][0]["roe_period_end"] == "2025-12-31"
+    assert detail["roe"] == "0.107830"
+    assert detail["roe_source"] == "dart:M211550:11011"
+    assert detail["roe_fetched_at"] == "2026-09-24T10:02:03+09:00"
     assert explorer.detail("fundamentals", '["000000","2026-09-23"]') is None
     with pytest.raises(ValueError):
         explorer.detail("fundamentals", '["005930"]')
@@ -199,6 +206,7 @@ def test_inventory_marks_only_supported_scalar_sort_columns(explorer):
         col["key"]: col["sortable"] for col in inventory["fundamentals"]["columns"]
     }
     assert fundamental_columns["per"] and fundamental_columns["pbr"]
+    assert fundamental_columns["roe"] and fundamental_columns["roe_period_end"]
     for dataset, key in [
         ("news", "tickers"),
         ("collector_runs", "stats"),
@@ -207,6 +215,40 @@ def test_inventory_marks_only_supported_scalar_sort_columns(explorer):
         assert not next(col for col in inventory[dataset]["columns"] if col["key"] == key)[
             "sortable"
         ]
+
+
+@pytest.mark.parametrize("direction", ["asc", "desc"])
+def test_roe_sort_contract(direction):
+    assert Filters(dataset="fundamentals", sort_by="roe", sort_dir=direction).sort_by == "roe"
+    assert Filters(dataset="fundamentals", sort_by="roe_period_end").sort_by == "roe_period_end"
+
+
+@pytest.mark.parametrize("direction", ["asc", "desc"])
+def test_roe_fraction_and_period_sort_nulls_last(pg_clean, direction):
+    with pg_clean.begin() as conn:
+        conn.execute(text("TRUNCATE fundamentals"))
+        conn.execute(
+            text(
+                "INSERT INTO fundamentals (ticker, fdate, roe, roe_period_end, source) "
+                "VALUES (:ticker, '2026-09-24', :roe, :period, 'dart_roe')"
+            ),
+            [
+                {"ticker": "000001", "roe": "0.107830", "period": "2025-12-31"},
+                {"ticker": "000002", "roe": "0", "period": "2024-12-31"},
+                {"ticker": "000003", "roe": "-0.024500", "period": "2023-12-31"},
+                {"ticker": "000004", "roe": None, "period": None},
+            ],
+        )
+    explorer = Explorer(pg_clean)
+    result = explorer.search(Filters(dataset="fundamentals", sort_by="roe", sort_dir=direction))
+    expected = ["-0.024500", "0.000000", "0.107830"]
+    if direction == "desc":
+        expected.reverse()
+    assert [row["roe"] for row in result["rows"]] == [*expected, None]
+    periods = explorer.search(
+        Filters(dataset="fundamentals", sort_by="roe_period_end", sort_dir=direction)
+    )
+    assert [row["_key"] for row in periods["rows"]] == [row["_key"] for row in result["rows"]]
 
 
 def test_database_enforces_read_only(explorer):
