@@ -13,9 +13,10 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import UTC, datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from zoneinfo import ZoneInfo
 
 from collectors.news import client, db_writer, fetcher, matcher
 from collectors.news.feeds import FEEDS_BY_OUTLET
@@ -53,6 +54,10 @@ def collect_news(
     tradeoff — surfaces in DB queries as duplicate-body detection).
     """
     start = time.monotonic()
+    kst = ZoneInfo("Asia/Seoul")
+    target_date = date.fromisoformat(since) if since else datetime.now(kst).date()
+    if max_per_feed < 1:
+        raise ValueError("max_per_feed must be positive")
     if engine is None:
         raise RuntimeError("collect_news requires a DB engine for alias resolution")
 
@@ -82,9 +87,18 @@ def collect_news(
                 rss_bytes = client.fetch_rss_feed(feed_url)  # R-08: requests
                 if not rss_bytes:
                     continue
-                items = fetcher.parse_rss(rss_bytes)[:max_per_feed]
+                items = fetcher.parse_rss(rss_bytes)
+                eligible_count = 0
                 for item in items:
                     stats["total"] += 1
+                    if (item.published is None or item.published.tzinfo is None
+                            or item.published.astimezone(kst).date() != target_date):
+                        stats["skipped"] += 1
+                        continue
+                    if eligible_count >= max_per_feed:
+                        stats["skipped"] += 1
+                        continue
+                    eligible_count += 1
                     try:
                         html = client.fetch_article_html(item.url)  # R-08: trafilatura
                         if not html:
@@ -105,11 +119,7 @@ def collect_news(
                         # the first match's corp_code for the FK (Q1 §news).
                         tickers = [m["ticker"] for m in matches]
                         primary_corp_code = matches[0].get("corp_code")
-                        published_at = (
-                            item.published
-                            if item.published is not None
-                            else datetime.fromtimestamp(0, tz=UTC)
-                        )
+                        published_at = item.published
                         outcome = db_writer.upsert_news_article(
                             engine,
                             url=item.url,

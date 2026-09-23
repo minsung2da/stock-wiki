@@ -209,7 +209,7 @@ def test_collect_news_inserts_row(tmp_path, seeded_engine, monkeypatch) -> None:
     )
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    stats = collect_news(engine=seeded_engine)
+    stats = collect_news(engine=seeded_engine, since="2026-04-20")
     assert stats["inserted"] == 1, stats
     assert stats["updated"] == 0
     assert stats["skipped"] == 0
@@ -247,11 +247,11 @@ def test_collect_news_idempotent(tmp_path, seeded_engine, monkeypatch) -> None:
     )
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    s1 = collect_news(engine=seeded_engine)
+    s1 = collect_news(engine=seeded_engine, since="2026-04-20")
     assert s1["inserted"] == 1
     assert _select_news_count(seeded_engine) == 1
 
-    s2 = collect_news(engine=seeded_engine)
+    s2 = collect_news(engine=seeded_engine, since="2026-04-20")
     assert s2["inserted"] == 0
     assert s2["updated"] == 0
     assert s2["skipped"] == 1
@@ -280,7 +280,7 @@ def test_collect_news_body_edited_updates(tmp_path, seeded_engine, monkeypatch) 
     )
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    s1 = collect_news(engine=seeded_engine)
+    s1 = collect_news(engine=seeded_engine, since="2026-04-20")
     assert s1["inserted"] == 1
     row1 = _select_news_row(
         seeded_engine, url_hash64("https://www.hankyung.com/article/EDITED01")
@@ -293,7 +293,7 @@ def test_collect_news_body_edited_updates(tmp_path, seeded_engine, monkeypatch) 
         "extract",
         lambda *a, **kw: "삼성전자 수정된 본문.\n\n수정된 두 번째 문단.",
     )
-    s2 = collect_news(engine=seeded_engine)
+    s2 = collect_news(engine=seeded_engine, since="2026-04-20")
     assert s2["updated"] == 1
     assert s2["inserted"] == 0
     assert s2["skipped"] == 0
@@ -327,7 +327,7 @@ def test_collect_news_no_match_skipped(tmp_path, seeded_engine, monkeypatch) -> 
     )
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    stats = collect_news(engine=seeded_engine)
+    stats = collect_news(engine=seeded_engine, since="2026-04-20")
     assert stats["inserted"] == 0
     assert stats["updated"] == 0
     assert stats["skipped"] >= 1
@@ -379,7 +379,7 @@ def test_collect_news_multiple_tickers_array(
     )
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    stats = collect_news(engine=seeded_engine)
+    stats = collect_news(engine=seeded_engine, since="2026-04-20")
     assert stats["inserted"] == 1
 
     row = _select_news_row(
@@ -424,7 +424,7 @@ def test_collect_news_no_markdown_written(
     )
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    collect_news(engine=seeded_engine)
+    collect_news(engine=seeded_engine, since="2026-04-20")
 
     # No vault/raw/news/ subdir was created by collect_news under cwd.
     # (chdir target is tmp_path, which has only notes/private/.)
@@ -453,7 +453,7 @@ def test_collect_news_truncates_body_to_two_paragraphs(
     monkeypatch.setattr(trafilatura, "extract", lambda *a, **kw: raw_5para)
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    stats = collect_news(engine=seeded_engine)
+    stats = collect_news(engine=seeded_engine, since="2026-04-20")
     assert stats["inserted"] == 1
 
     row = _select_news_row(
@@ -483,7 +483,7 @@ def test_collect_news_soft_skips_when_trafilatura_returns_none(
     monkeypatch.setattr(fetcher_mod, "extract_first_two_paragraphs", lambda html: None)
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    stats = collect_news(engine=seeded_engine)
+    stats = collect_news(engine=seeded_engine, since="2026-04-20")
     assert stats["inserted"] == 0
     assert stats["updated"] == 0
     assert stats["skipped"] >= 1
@@ -525,7 +525,7 @@ def test_collect_news_cross_url_dedup_writes_two_rows_same_content_hash(
     )
     _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
 
-    stats = collect_news(engine=seeded_engine)
+    stats = collect_news(engine=seeded_engine, since="2026-04-20")
     assert stats["inserted"] == 2  # 2 distinct url_hashes
     with seeded_engine.begin() as conn:
         rows = conn.execute(

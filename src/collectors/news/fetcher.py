@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 import feedparser
 import trafilatura
@@ -24,7 +24,7 @@ def parse_rss(rss_content: str | bytes) -> list[RSSItem]:
         pub: datetime | None = None
         pub_parsed = getattr(e, "published_parsed", None)
         if pub_parsed:
-            pub = datetime(*pub_parsed[:6])
+            pub = datetime(*pub_parsed[:6], tzinfo=UTC)
         title = getattr(e, "title", "") or ""
         link = getattr(e, "link", "") or ""
         if not link:
