@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
 stopped_at: Phase 05 complete (5/5) — ready to discuss Phase 6
-last_updated: 2026-07-16T14:17:49.831Z
+last_updated: 2026-09-23T10:20:00Z
 progress:
   total_phases: 9
   completed_phases: 5
@@ -28,6 +28,8 @@ See:
 로 압축해 사람에게 제시하고, 검증된 paper-trade 실적이 있는 종목만 KIS 자동매매로 보조한다.
 
 **Current focus:** Phase 6 — paper trade action layer
+
+Last activity: 2026-09-23 - Completed quick task 260923-qis: complete default collection, KST-day news, dividend metrics, and retire KIND. PostgreSQL validation and migration application pending Docker recovery.
 
 ## Current Position
 
@@ -298,6 +300,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260923-qis | Complete default collection, KST-day news, DIV/DPS persistence, retire KIND | 2026-09-23 | 65b1e1b | Code complete; 125 tests pass; DB validation blocked by Docker | [260923-qis](./quick/260923-qis-complete-recurring-collection-fundamenta/) |
 | 260628-mh9 | Fix two DART collector bugs (alphanumeric KRX tickers `^[0-9A-Z]{6}$`; fetch_body retries OpenDART throttle status 020/800) | 2026-06-28 | d4d249e, 2bbe71b | Done (190 tests pass) | [260628-mh9-...](./quick/260628-mh9-fix-two-dart-collector-bugs-alphanumeric/) |
 | 260628-n8d | Widen ticker regex `^[0-9A-Z]{6}$` across read/analysis/shared layers (cards/mcp_v2/portfolio/frontmatter) — end-to-end alphanumeric ticker consistency | 2026-06-28 | c59d276, 48c183f | Done (211 pass/2 skip) | [260628-n8d-...](./quick/260628-n8d-widen-ticker-regex-to-alphanumeric-acros/) |
 

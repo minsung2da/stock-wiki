@@ -15,14 +15,9 @@ Hard Veto #6 — ``filings.body_embedding halfvec(1024)`` is left NULL on
 insert. Phase 3 populates embeddings from a separate pipeline. We never
 import ``sentence-transformers`` or ``mecab-ko`` from this module.
 
-DART vs KIND precedence on ``event_type``:
-- ``upsert_dart_filing`` HARD-CODES ``event_type = NULL`` because DART
-  regular filings (pblntf_ty A/B) carry no event classifier.
-- KIND (plan 01-05) uses ``upsert_kind_filing`` for pblntf_ty='I' filings;
-  that writer sets ``event_type`` from the KIND scraper. If both writers
-  hit the same ``rcept_no`` (rare — DART regular's list_ab_filings filters
-  pblntf_ty='A'/'B' only), the latter UPSERT wins. In practice this
-  collision is empty because the pblntf_ty filters are disjoint.
+``upsert_dart_filing`` sets ``event_type = NULL`` because regular
+filings (pblntf_ty A/B) carry no event classifier. The retired risk-event
+collector's historical rows remain in the database.
 
 SQL safety:
 - ``rcept_no`` regex-pre-filtered ``^[0-9]{14}$``.
