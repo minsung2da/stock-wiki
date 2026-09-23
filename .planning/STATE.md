@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
 stopped_at: Phase 05 complete (5/5) — ready to discuss Phase 6
-last_updated: 2026-09-23T11:25:15Z
+last_updated: 2026-09-23T11:54:25Z
 progress:
   total_phases: 9
   completed_phases: 5
@@ -29,7 +29,7 @@ See:
 
 **Current focus:** Phase 6 — paper trade action layer
 
-Last activity: 2026-09-23 - Completed quick task 260923-s0u: mapped all 198 portfolio companies and collected 3,671 September rows (OHLCV 3,366; current fundamentals 198; filings 20; news 25; macro 62). Source-to-DB and explorer checks passed. Historical news/fundamentals and KRX flow/short coverage remain partial. Fixed and tested news two-paragraph extraction.
+Last activity: 2026-09-23 - Completed quick task 260923-smr: integrated Jev shadow news-company matching and card citation review; migration 0011 applied. Live news 25 completed; historical card 9 citation pairs reviewed, 6 missing snapshots flagged. Original news/card hashes unchanged. Related tests: 157 passed. Collection coverage gaps from 260923-s0u remain.
 
 ## Current Position
 
@@ -300,6 +300,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260923-smr | Integrate Jev shadow news-company matching and card evidence review | 2026-09-23 | 4cc743a | 157 tests passed; live news 25 completed; card 9 reviewed / 6 missing sources; originals unchanged | [260923-smr](./quick/260923-smr-integrate-jev-shadow-news-company-matchi/) |
 | 260923-s0u | Collect September portfolio data and repair news paragraph cap | 2026-09-23 | 54b3e21 + task metadata | 3,671 rows verified; 198 entities mapped; upstream historical coverage partial; 4 news tests passed | [260923-s0u](./quick/260923-s0u-collect-september-2026-data-for-the-198-/) |
 | 260923-rry | Populate private portfolio with sector top-20 companies by full market cap (utilities: 18) | 2026-09-23 | Private files excluded | 198 unique tickers; source rankings and loader verified; 68 DB mappings pending | [260923-rry](./quick/260923-rry-populate-portfolio-watchlist-with-verifi/) |
 | fast-260923-company-names | Show canonical company names beside ticker/corporation codes in explorer lists and details | 2026-09-23 | 5bd2949 | Browser verified: Samsung list/detail, multi-ticker mapping, unknown fallback, price list | src/db/explorer.html |
