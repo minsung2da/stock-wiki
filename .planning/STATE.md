@@ -4,7 +4,7 @@ milestone: v2.0
 milestone_name: DB-direct redesign
 status: ready_to_plan
 stopped_at: Phase 05 complete (5/5) — ready to discuss Phase 6
-last_updated: 2026-09-23T23:03:24Z
+last_updated: 2026-09-23T23:25:55Z
 progress:
   total_phases: 9
   completed_phases: 5
@@ -29,7 +29,7 @@ See:
 
 **Current focus:** Phase 6 — paper trade action layer
 
-Last activity: 2026-09-24 - Completed quick task 260924-ax5: collect official annual DART ROE independently of KRX, preserve provenance and show sortable percentage/settlement date. Migration 0012 applied; 197 of 198 portfolio snapshots enriched, Samsung Epis Holdings unavailable; other valuation fields unchanged. Related tests 69 passed and native Aside browser QA passed. Other historical collection coverage gaps remain.
+Last activity: 2026-09-24 - Completed quick task 260924-bgs: refreshed all seven portfolio fundamentals using current provider data and latest available DART reports. 198 new observations; all 198 ROE values from 2026 H1; PER 167, PBR/EPS/BPS 198 each, dividend fields 152 each. Historical rows unchanged. Migration 0013, latest-per-company UI, 97 passing tests and native Aside verification completed. Other historical collection coverage gaps remain.
 
 ## Current Position
 
@@ -300,6 +300,7 @@ v1.0의 7개 quick task는 archive branch에 보존. v2.0 quick task는 새로 �
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
+| 260924-bgs | Refresh latest seven fundamentals with market/reporting dates and latest-company view | 2026-09-24 | 88f3594 | 198 snapshots; ROE 198/198 H1 2026; 97 tests passed; Aside verified; historical hashes unchanged | [260924-bgs](./quick/260924-bgs-refresh-all-portfolio-fundamentals-from-/) |
 | 260924-ax5 | Collect official annual ROE independently of KRX and expose sortable ROE/period | 2026-09-24 | a7f5202 | 69 tests passed; 197/198 sourced ROE values; native Aside list/detail/sort verified; other metrics preserved | [260924-ax5](./quick/260924-ax5-collect-sourced-roe-independently-of-krx/) |
 | 260923-th4 | Add database explorer table sorting including PER/PBR ascending and descending | 2026-09-23 | 0b0e3f2 | 27 tests passed; ruff/mypy and live Edge sorting/filter/paging checks passed | [260923-th4](./quick/260923-th4-add-server-side-sortable-explorer-table-/) |
 | 260923-smr | Integrate Jev shadow news-company matching and card evidence review | 2026-09-23 | 4cc743a | 157 tests passed; live news 25 completed; card 9 reviewed / 6 missing sources; originals unchanged | [260923-smr](./quick/260923-smr-integrate-jev-shadow-news-company-matchi/) |
