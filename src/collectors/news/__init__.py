@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 from collectors.news import client, db_writer, fetcher, matcher
 from collectors.news.feeds import FEEDS_BY_OUTLET
 from collectors.news.matcher import NoAliasesSeededError
+from orchestration.news_review import review_news
 from shared.portfolio import Portfolio
 from shared.run_log import record_collector_run
 
@@ -79,6 +80,7 @@ def collect_news(
         "updated": 0,
         "skipped": 0,
         "failed": [],
+        "jev": {"completed": 0, "disabled": 0, "errors": 0, "requires_review": 0},
     }
 
     for outlet, urls in FEEDS_BY_OUTLET.items():
@@ -115,6 +117,21 @@ def collect_news(
                         if not matches:
                             stats["skipped"] += 1
                             continue
+                        # Advisory shadow audit only: original matches remain canonical.
+                        review = review_news(
+                            engine, url=item.url, title=item.title, body=body, matches=matches
+                        )
+                        review_status = review.get("status")
+                        if review_status == "completed":
+                            stats["jev"]["completed"] += 1
+                            stats["jev"]["requires_review"] += int(any(
+                                answer.get("requires_review", False)
+                                for answer in review.get("answers", {}).values()
+                            ))
+                        elif review_status == "disabled":
+                            stats["jev"]["disabled"] += 1
+                        else:
+                            stats["jev"]["errors"] += 1
                         # matcher returns [{"corp_code", "ticker", "name"}, ...].
                         # Extract ticker strings for the TEXT[] column, and use
                         # the first match's corp_code for the FK (Q1 §news).

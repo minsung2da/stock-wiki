@@ -126,6 +126,26 @@ def test_database_enforces_read_only(explorer):
     assert explorer.search(Filters(dataset="news"))["total"] == 4
 
 
+def test_jev_audit_input_search_and_detail(explorer, pg_clean, monkeypatch):
+    from orchestration.jev import review_choices
+
+    monkeypatch.setenv("JEV_MODE", "shadow")
+    result = review_choices(
+        pg_clean, task="news_company", subject_id="https://example.com/review",
+        state={"company": "삼성전자"},
+        questions={"relation": {"criteria": {"primary": "main", "unrelated": "other"}}},
+        backend=lambda **_: {"answers": {"relation": {
+            "choice": "primary", "probabilities": {"primary": 0.9, "unrelated": 0.1},
+            "confidence": 0.9,
+        }}},
+    )
+    found = explorer.search(Filters(dataset="jev_reviews", q="삼성전자"))
+    assert found["total"] == 1
+    detail = explorer.detail("jev_reviews", found["rows"][0]["_key"])
+    assert detail["review_id"] == result["review_id"]
+    assert detail["result_payload"]["answers"]["relation"]["choice"] == "primary"
+
+
 def test_all_allowlisted_queries_match_migrated_schema(explorer):
     for dataset, spec in DATASETS.items():
         result = explorer.search(Filters(dataset=dataset))

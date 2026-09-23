@@ -152,8 +152,20 @@ DATASETS = {
         True,
         corp_column=None,
     ),
+    "jev_reviews": Dataset(
+        "JEV 검토 기록",
+        "뉴스 기업 관련성·카드 인용 검토 (비교 기록 모드, 원본 판단 유지)",
+        "review_id task subject_id input_hash model prompt_version mode status threshold "
+        "input_payload result_payload request_id usage error_code created_at",
+        ("review_id",),
+        ("created_at", "task", "subject_id", "status", "result_payload"),
+        ("task", "subject_id", "input_payload", "result_payload", "error_code"),
+        "created_at",
+        True,
+        corp_column=None,
+    ),
 }
-JSON_COLUMNS = {"payload", "stats", "extra"}
+JSON_COLUMNS = {"payload", "stats", "extra", "input_payload", "result_payload", "usage"}
 BODY_COLUMNS = {"body_md", "content_md"}
 LABELS = {
     "filed_at": "공시 시각",
@@ -207,6 +219,16 @@ LABELS = {
     "expires_at": "만료 시각",
     "rcept_no": "접수번호",
     "extra": "추가 실행 정보",
+    "review_id": "검토 ID",
+    "task": "검토 종류",
+    "subject_id": "검토 대상",
+    "input_payload": "입력 근거·질문",
+    "result_payload": "JEV 판정·검토 필요 여부",
+    "error_code": "오류 코드",
+    "created_at": "기록 시각",
+    "threshold": "검토 분기 임계값",
+    "model": "사용 모델",
+    "usage": "API 사용량",
 }
 
 

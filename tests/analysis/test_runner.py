@@ -246,3 +246,35 @@ def test_cost_logged(seeded_engine, make_fake_backend, caplog) -> None:
         r.stage for r in caplog.records if r.getMessage() == "analysis_stage_cost"
     }
     assert {"bundle", "bull", "bear", "judge"} <= stages
+
+
+def test_full_run_reviews_jev_only_after_card_saved(seeded_engine, make_fake_backend, monkeypatch):
+    from orchestration import card_review
+
+    calls = []
+
+    def review(engine, card, bundle):
+        active = get_active(engine, card.corp_code)
+        assert active is not None and active.card_id == card.card_id
+        assert bundle.corp_code == card.corp_code
+        calls.append(card.card_id)
+
+    monkeypatch.setattr(card_review, "review_generated_card", review)
+    card = analyze_ticker("00126380", as_of=_AS_OF, engine=seeded_engine,
+                          backend=make_fake_backend())
+    assert calls == [card.card_id]
+
+
+def test_refresh_does_not_run_jev_review(seeded_engine, make_fake_backend, monkeypatch):
+    from orchestration import card_review
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Lightweight refresh must not invoke Jev")
+
+    monkeypatch.setattr(card_review, "review_generated_card", forbidden)
+    save_card(seeded_engine, _prior(as_of=_dt(2026, 6, 25),
+                                   generated_at=_dt(2026, 6, 25),
+                                   expires_at=_dt(2026, 8, 25)))
+    backend = make_fake_backend()
+    analyze_ticker("00126380", as_of=_dt(2026, 6, 30), engine=seeded_engine, backend=backend)
+    assert backend.calls == []

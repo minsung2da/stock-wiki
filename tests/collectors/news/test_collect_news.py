@@ -21,6 +21,11 @@ _FIXTURE_RSS = Path("tests/fixtures/rss")
 _FIXTURE_NEWS = Path("tests/fixtures/news")
 
 
+@pytest.fixture(autouse=True)
+def _disable_live_jev(monkeypatch):
+    monkeypatch.setenv("JEV_MODE", "off")
+
+
 # ---- Client ------------------------------------------------------------------
 
 
@@ -318,7 +323,13 @@ def test_collect_news_body_edited_updates(tmp_path, seeded_engine, monkeypatch) 
 
 def test_collect_news_no_match_skipped(tmp_path, seeded_engine, monkeypatch) -> None:
     """Body with no alias matches → skipped; no DB row written."""
+    import collectors.news as news_module
     from collectors.news import collect_news
+
+    def unexpected_review(*args, **kwargs):
+        raise AssertionError("No alias candidate must mean no Jev review")
+
+    monkeypatch.setattr(news_module, "review_news", unexpected_review)
 
     _seed_portfolio(monkeypatch, tmp_path)
 
@@ -343,6 +354,48 @@ def test_collect_news_no_match_skipped(tmp_path, seeded_engine, monkeypatch) -> 
     assert stats["updated"] == 0
     assert stats["skipped"] >= 1
     assert _select_news_count(seeded_engine) == 0
+
+
+@pytest.mark.parametrize("review_status", ["completed", "error"])
+def test_news_shadow_review_keeps_aliases_and_survives_error(
+    tmp_path, seeded_engine, monkeypatch, review_status
+) -> None:
+    import trafilatura
+
+    import collectors.news as news_module
+    from collectors.news.client import url_hash64
+
+    _seed_portfolio(monkeypatch, tmp_path)
+    url = "https://www.hankyung.com/article/SHADOW01"
+    rss = _rss_one_item("삼성전자".encode(), url.encode())
+    monkeypatch.setattr(news_client, "fetch_rss_feed", lambda url: rss)
+    monkeypatch.setattr(news_client, "fetch_article_html", lambda url: "<html/>")
+    monkeypatch.setattr(trafilatura, "extract", lambda *a, **kw: "삼성전자 실적.\n둘째 문단.")
+    _single_feed(monkeypatch, "hankyung", "https://www.hankyung.com/feed/economy")
+    seen = []
+
+    def review(engine, **kwargs):
+        seen.append(kwargs)
+        return {
+            "status": review_status,
+            "answers": {"005930": {"choice": "unrelated", "requires_review": True}},
+            "review_id": 9,
+        }
+
+    monkeypatch.setattr(news_module, "review_news", review)
+    stats = news_module.collect_news(engine=seeded_engine, since="2026-04-20")
+    assert len(seen) == 1
+    assert seen[0]["matches"][0]["ticker"] == "005930"
+    row = _select_news_row(seeded_engine, url_hash64(url))
+    assert row.tickers == ["005930"]
+    assert row.corp_code == "00126380"
+    assert stats["inserted"] == 1
+    assert stats["failed"] == []
+    if review_status == "completed":
+        assert stats["jev"]["completed"] == 1
+        assert stats["jev"]["requires_review"] == 1
+    else:
+        assert stats["jev"]["errors"] == 1
 
 
 def test_collect_news_multiple_tickers_array(

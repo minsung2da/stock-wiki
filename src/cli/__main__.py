@@ -1,9 +1,9 @@
-"""stock CLI entry — collectors only (post-LLM-wiki-shutdown).
+"""stock CLI entry — source collection and advisory Jev reviews.
 
 The ingest, sync, and graph subcommands were removed as part of the LLM-wiki
 shutdown (see git tag ``pre-llm-wiki-shutdown`` / branch
-``archive/llm-wiki-2026-04``). What remains is the raw-data collection layer;
-the DB-direct write path is pending redesign.
+``archive/llm-wiki-2026-04``). Collection writes directly to Postgres; review
+commands append Jev audit records without changing news or card decisions.
 
 Phase 1 v2.0: ``--vault-root`` removed (collectors INSERT directly to
 Postgres; ``DATABASE_URL`` env drives connection). Collector bodies still
@@ -21,7 +21,9 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from dotenv import find_dotenv, load_dotenv
 
@@ -107,6 +109,22 @@ def build_parser() -> argparse.ArgumentParser:
         "--since", default=None, help="KST collection date YYYY-MM-DD (default: today)"
     )
     all_.set_defaults(func=cmd_collect_all)
+
+    from cli.review_commands import cmd_review_card, cmd_review_news
+
+    review = subs.add_parser("review", help="Run advisory Jev reviews on stored data")
+    review_subs = review.add_subparsers(dest="review_source", required=True)
+    news_review = review_subs.add_parser("news", help="Review portfolio news company matches")
+    news_review.add_argument("--since", required=True, type=date.fromisoformat)
+    news_review.add_argument(
+        "--until", type=date.fromisoformat,
+        default=datetime.now(ZoneInfo("Asia/Seoul")).date(),
+    )
+    news_review.add_argument("--limit", type=int, default=25, help="Article cap (1..500)")
+    news_review.set_defaults(func=cmd_review_news)
+    card_review = review_subs.add_parser("card", help="Review a stored card's cited evidence")
+    card_review.add_argument("--card-id", required=True)
+    card_review.set_defaults(func=cmd_review_card)
 
     return parser
 

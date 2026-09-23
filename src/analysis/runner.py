@@ -223,6 +223,10 @@ def analyze_ticker(
 
     _maybe_warn_no_contradictions(card)
     save_card(engine, card, supersedes=prior.card_id if prior else None)
+    # Narrow, optional shadow audit; numeric checks and card decisions stay unchanged.
+    from orchestration.card_review import review_generated_card
+
+    review_generated_card(engine, card, bundle)
     return card
 
 

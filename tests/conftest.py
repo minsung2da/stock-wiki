@@ -10,6 +10,12 @@ from sqlalchemy.engine import Engine
 _SAFE_TABLE_RE = re.compile(r"^[a-z_]+$")
 
 
+@pytest.fixture(autouse=True)
+def _disable_live_jev(monkeypatch):
+    """A developer's local shadow configuration must never spend API quota in tests."""
+    monkeypatch.setenv("JEV_MODE", "off")
+
+
 @pytest.fixture
 def tmp_vault(tmp_path: Path) -> Path:
     """Temporary vault directory for test files."""
@@ -95,6 +101,7 @@ def pg_engine() -> Engine:
 # and `events_legacy` is the renamed Phase 2 events table. All are TRUNCATEd
 # for hygiene even though most stay empty.
 _LIVE_TABLES = (
+    "jev_reviews",
     # Phase 1 observability — independent of FK graph, safe to truncate first
     "collector_runs",
     # Phase 1 KIND classifier — FKs into filings, must precede filings
